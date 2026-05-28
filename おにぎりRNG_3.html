@@ -1,0 +1,1939 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>おにぎり工場RNG 〜食品文明の崩壊〜 v5</title>
+<style>
+*{box-sizing:border-box}
+body{
+    margin:0;
+    background:#0d0d0d;
+    color:#e0e0e0;
+    font-family:"Segoe UI","Hiragino Sans","Meiryo",sans-serif;
+}
+h1{
+    text-align:center;
+    margin:15px 0;
+    padding:0 110px;
+    color:#ffd166;
+    text-shadow: 0 0 10px rgba(255,209,102,0.3);
+}
+h2{margin-top:0; color:#ffd166; border-bottom:1px solid #333; padding-bottom:5px;}
+#main{
+    max-width:1700px;
+    margin:auto;
+    padding:20px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+@media (min-width: 1200px) {
+    #main {
+        grid-template-columns: 3fr 1fr;
+    }
+    .left-column { grid-column: 1; }
+    .right-column { grid-column: 2; }
+}
+.panel{
+    background:#1a1a1a;
+    padding:20px;
+    border-radius:14px;
+    margin-bottom:20px;
+    border: 1px solid #2a2a2a;
+}
+.center{text-align:center}
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    gap:12px;
+}
+.multiGrid{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    max-height:640px;
+    overflow-y:auto;
+    background:#111;
+    border-radius:10px;
+    padding:10px;
+}
+.rollCard{
+    width:100%;
+    background:#252525;
+    border-radius:14px;
+    padding:10px;
+    overflow:hidden;
+    flex:0 0 auto;
+    border: 1px solid #333;
+}
+.card{
+    background:#222;
+    border-radius:12px;
+    padding:15px;
+    border:2px solid #555;
+    transition:.15s;
+    position: relative;
+}
+.card.selected{outline:4px solid #ffd166}
+.card.transporting{opacity:.5}
+
+/* 通過時に光るクラス */
+.glow-common { border-color:#888 !important; background:#2a2a2a !important; color:#fff !important; box-shadow:0 0 5px #888 inset; }
+.glow-uncommon { border-color:#5edc88 !important; background:#1e3323 !important; color:#5edc88 !important; box-shadow:0 0 10px #5edc88 inset; }
+.glow-rare { border-color:#55aaff !important; background:#1a2a3a !important; color:#55aaff !important; box-shadow:0 0 12px #55aaff inset; }
+.glow-epic { border-color:#c86cff !important; background:#2a1a3a !important; color:#c86cff !important; box-shadow:0 0 15px #c86cff inset; }
+.glow-legend { border-color:#ffbf47 !important; background:#3a2a1a !important; color:#ffbf47 !important; box-shadow:0 0 18px #ffbf47 inset; }
+.glow-mythical { border-color:#ff77aa !important; background:#3a1a2a !important; color:#ff77aa !important; box-shadow:0 0 22px #ff77aa inset; }
+.glow-danger-ex { border-color:#ff3333 !important; background:#330000 !important; color:#ff3333 !important; box-shadow:0 0 25px #ff3333 inset; animation: pulse 1s infinite; }
+
+.common{border-color:#888}
+.uncommon{border-color:#5edc88}
+.rare{border-color:#55aaff}
+.epic{border-color:#c86cff}
+.legend{border-color:#ffbf47}
+.mythical{border-color:#ff77aa}
+.danger-ex{border-color:#ff3333; animation: pulse 1.5s infinite;}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 5px #ff3333; }
+    50% { box-shadow: 0 0 20px #ff3333; }
+    100% { box-shadow: 0 0 5px #ff3333; }
+}
+
+.scrollName{
+    height:50px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    line-height:1.12;
+    overflow-wrap:anywhere;
+    word-break:keep-all;
+    font-weight: bold;
+}
+.money{
+    color:#ffd76a;
+    font-size:22px;
+    font-weight:bold;
+}
+button{
+    border:none;
+    padding:10px 16px;
+    border-radius:10px;
+    cursor:pointer;
+    background:#ffd166;
+    color:#111;
+    font-weight:bold;
+    margin:4px;
+    transition: 0.2s;
+}
+button:hover:not(:disabled){
+    background:#ffea9f;
+    transform: translateY(-1px);
+}
+button:disabled{
+    opacity:.25;
+    cursor:not-allowed;
+}
+.btn-shop:disabled{
+    opacity: 0.25;
+    cursor:not-allowed;
+}
+input,select{
+    padding:8px;
+    border:none;
+    border-radius:8px;
+    background:#333;
+    color:white;
+}
+.shop{
+    background:#222;
+    padding:15px;
+    border-radius:12px;
+    border:3px solid transparent;
+}
+.shop.locked{border-color:#444;}
+.shop.dragTarget{border-color:#ffd166}
+.transportBadge{
+    margin-top:10px;
+    background:#ff9f1c;
+    color:black;
+    padding:6px;
+    border-radius:8px;
+    font-weight:bold;
+}
+#toast{
+    position:fixed;
+    left:50%;
+    bottom:20px;
+    transform:translateX(-50%);
+    background:#ffd166;
+    color:black;
+    padding:14px 24px;
+    border-radius:14px;
+    font-weight:bold;
+    opacity:0;
+    transition:.2s;
+    pointer-events:none;
+    z-index:5;
+}
+#toast.show{opacity:1}
+#codeBox{
+    position:fixed;
+    top:10px;
+    right:10px;
+    background:#1a1a1a;
+    padding:10px;
+    border-radius:12px;
+    z-index:4;
+    border: 1px solid #333;
+}
+#codeBox input{width:120px}
+.topStats{
+    display:flex;
+    justify-content:center;
+    gap:20px;
+    flex-wrap:wrap;
+}
+.statBox{
+    background:#222;
+    padding:15px;
+    border-radius:12px;
+    min-width:200px;
+    text-align:center;
+    border: 1px solid #333;
+}
+.controlRow{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+    margin:10px 0;
+}
+.mutationList{
+    height:78px;
+    overflow-y:auto;
+    font-size:12px;
+    color:#aaa;
+    text-align: left;
+    background: #151515;
+    padding: 5px;
+    border-radius: 6px;
+}
+.factoryLine{
+    position:relative;
+    height:130px;
+    margin-top:5px;
+    overflow:hidden;
+}
+.factoryInner{
+    position:relative;
+    width:100%;
+    height:126px;
+}
+.belt{
+    position:absolute;
+    left:4px;
+    right:4px;
+    top:54px;
+    height:18px;
+    border-radius:4px;
+    background: repeating-linear-gradient(90deg,#2b2b2b 0 10px,#1a1a1a 10px 20px);
+    border:1px solid #444;
+}
+.movingProduct{
+    position:absolute;
+    top:66px;
+    left:0;
+    transform:translateX(-50%);
+    font-size:20px;
+    z-index:4;
+}
+.onigiriLabel{
+    position:absolute;
+    bottom:calc(100% + 2px);
+    left:50%;
+    transform:translateX(-50%);
+    background:rgba(0,0,0,0.88);
+    border:1px solid #555;
+    border-radius:5px;
+    padding:2px 5px;
+    font-size:8px;
+    color:#fff;
+    pointer-events:none;
+    z-index:10;
+    width:max-content;
+    max-width:160px;
+    white-space:normal;
+    text-align:center;
+    line-height:1.3;
+}
+.machineTrack{
+    position:absolute;
+    left:0;
+    right:0;
+    top:0;
+    display:grid;
+    grid-template-columns:repeat(17,1fr);
+    gap:2px;
+}
+.machine{
+    position:relative;
+    min-height:50px;
+    padding:2px;
+    border-radius:5px;
+    background:linear-gradient(#3a3a3a,#1a1a1a);
+    border:1px solid #444;
+    color:#ccc;
+    font-size:8px;
+    text-align:center;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    transition: 0.3s;
+}
+.machine.active{
+    background:linear-gradient(#ffe39a,#b77d18);
+    border-color:#ffd166;
+    color:#111;
+    font-weight:bold;
+    transform: scale(1.05);
+}
+.machine-broken{
+    background: linear-gradient(#3a0a0a, #1a0505) !important;
+    border-color: #ff3333 !important;
+    box-shadow: 0 0 8px #ff3333 inset !important;
+    animation: breakerFlicker 1s infinite;
+}
+@keyframes breakerFlicker{
+    0%,100%{opacity:1} 50%{opacity:0.6}
+}
+.machine.flash{
+    transition: background 0.05s, border-color 0.05s, box-shadow 0.05s !important;
+}
+.logBox{
+    height:180px;
+    background:#050505;
+    font-family:monospace;
+    font-size:12px;
+    padding:10px;
+    overflow-y:auto;
+    border-radius:8px;
+    border:1px solid #222;
+    color: #4af626;
+}
+.dangerBadge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+    color: black;
+}
+.danger-low { background: #888; }
+.danger-mid { background: #ff9f1c; }
+.danger-high { background: #ff3333; color: white; }
+.danger-ex { background: #000; color: #ff3333; border: 1px solid #ff3333; }
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    font-size: 13px;
+}
+.status-val { font-weight: bold; color: #ffd166; }
+</style>
+</head>
+<body>
+<div id="toast"></div>
+
+<div id="codeBox">
+    <div>裏コード</div>
+    <input id="codeInput" autocomplete="off">
+    <button onclick="redeemCode()">接続</button>
+</div>
+
+<h1>🍙 おにぎり工場RNG 〜食品文明の崩壊〜 v5 🍙</h1>
+
+<div id="main">
+    <div class="left-column">
+        <div class="panel">
+            <div class="topStats">
+                <div class="statBox">💰 資金残高<br><br><span id="money" class="money">0</span>円<br><span id="debtDisplay" style="display:none; font-size:12px; color:#ff3333; font-weight:bold;"></span></div>
+                <div class="statBox">🎒 倉庫保管数<br><br><span id="itemCount" style="font-size:22px; font-weight:bold;">0</span></div>
+                <div class="statBox">🔌 現在電力<br><br><span id="powerDisplay" style="font-size:22px; font-weight:bold; color:#ff9f1c;">100%</span><br><span id="instabilityDisplay" style="font-size:11px; color:#888;">電圧不安定度: 安定</span></div>
+            </div>
+        </div>
+
+        <div class="panel center">
+            <h2>🏭 生産ライン（通過時に変異確定）</h2>
+            <div id="brokenMachinePanel" style="display:none;background:#2a1a0a;border:1px solid #ff9f1c;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;"></div>
+            <div class="multiGrid" id="multiRollDisplay"></div>
+            <div style="margin-top:10px;">
+                <button id="rollButton" onclick="manualRoll()">手動パルス生産</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>⚙️ 工場拡張・禁断研究</h2>
+            <div id="upgradeArea"></div>
+        </div>
+
+        <div class="panel">
+            <h2>🚚 物流トラック配備</h2>
+            <div class="grid" id="truckInfo"></div>
+        </div>
+
+        <div class="panel">
+            <h2>🏪 指定納品先市場</h2>
+            <div id="accidentBanner" style="display:none; background:#7a1a1a; color:#ff9999; padding:6px 10px; border-radius:6px; margin-bottom:8px; font-size:12px; font-weight:bold;"></div>
+            <div class="grid" id="shops"></div>
+
+        </div>
+
+        <div class="panel">
+            <h2>🤖 自動輸送プロトコル</h2>
+            <button id="autoTransportBuyBtn" onclick="buyAutoTransport()">輸送AI購入(150,000円)</button>
+            <div id="autoTransportArea"></div>
+        </div>
+
+        <div class="panel">
+            <h2>🎒 倉庫ストレージ（Shift/Ctrl+クリックで複数選択・ドラッグで出荷）</h2>
+            <div style="margin-bottom:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <select id="shopSelectForSend" style="padding:6px;border-radius:8px;background:#333;color:white;border:none;"></select>
+                <select id="truckSelectForSend" style="padding:6px;border-radius:8px;background:#333;color:white;border:none;"></select>
+                <button onclick="sendSelected()" style="background:#5edc88;color:#111;">🚚 選択アイテムを輸送</button>
+            </div>
+            <div class="grid" id="inventory"></div>
+        </div>
+    </div>
+
+    <div class="right-column">
+        <div class="panel">
+            <h2>📊 工場ステータス</h2>
+            <div class="status-grid">
+                <div>工場状態:</div><div id="factoryStatusText" class="status-val">健全経営</div>
+                <div>電力モード:</div><div id="powerStatusText" class="status-val">安定</div>
+                <div>AI倫理制限:</div><div id="aiEthicsText" class="status-val" style="color:#5edc88;">ON</div>
+                <div>最高危険度:</div><div id="maxDangerText" class="status-val">-</div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>⚡ 発電所ハッキング</h2>
+            <p style="font-size:12px; color:#aaa;">動くバーを<span style="color:#5edc88; font-weight:bold;">緑のゾーン</span>で止めると電力+100%！失敗すると微増、最悪停電するぜ。<br>※100%超で電圧が不安定になり、電力が高いほど毎秒ブレーカーが落ちやすくなる。</p>
+            <div id="hackArea" class="center">
+                </div>
+        </div>
+
+        <div class="panel">
+            <h2>📈 市場トレンド相場</h2>
+            <div id="trendArea" style="background:#111; padding:10px; border-radius:8px; font-size:14px; text-align:center;">
+                トレンド算出中...
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>📜 工場中央メインログ</h2>
+            <div class="logBox" id="logBox"></div>
+        </div>
+
+        <div class="panel">
+            <h2>📖 危険食品アーカイブ (<span id="dictCount">0</span>/10)</h2>
+            <div id="dictionaryArea" style="font-size:12px; max-height:200px; overflow-y:auto; color:#bbb;">
+                未発見
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let money = 0;
+let inventory = [];
+let selectedItems = [];
+let rolling = false;
+let usedCodes = [];
+let nextItemId = 1;
+let nextSaleId = 1;
+
+let autoRollOwned = false;
+let autoRollEnabled = false;
+let autoTransportOwned = false;
+let packagingLevel = 0;
+
+let speedLevel = 1;
+let multiRoll = 1;
+let mutationLevel = 0;
+let qualityLevel = 0;
+
+// ステータス管理
+let powerGrid = { level: 100, status: "安定", isBroken: false };
+let truckAccidentPenalty = 1.0;
+let truckAccidentEnd = 0;
+let debt = 0;
+let brokenMachines = []; // { id, stageIndex, stageName, stageIcon }
+let autoRepairOwned = false;
+let _machineIdCtr = 0;
+const REPAIR_COST = 100000;
+const BREAKABLE_STAGES = new Set(["精米","炊飯","具材","成形","海苔","包装","検査"]);
+let earnLog = [];
+let debtTimer = 0;
+let _recovering = false;
+let _autoRollWasEnabled = false;
+let marketTrend = { name: "安定市場", targetType: "none", targetKey: "", multi: 1.0, desc: "特記事項なし" };
+let discoveredOnigiris = new Set();
+let maxDangerAchieved = "低";
+
+// ハッキングミニゲーム用変数
+let hackUnlocked = false;
+let hackActive = false;
+let hackPos = 0;
+let hackDir = 2.5;
+let hackAnimId = null;
+
+const MAX_SPEED_LEVEL = 15;
+const MAX_MULTI_ROLL = 10;
+const MAX_MUTATION_LEVEL = 15;
+const MAX_QUALITY_LEVEL = 10;
+
+const PACKAGING_UPGRADES = [
+    { name:"包装", cost:50000, next:"クレート", description:"100個入りクレート梱包。速度1/10、価格100倍。" },
+    { name:"コンテナ化", cost:5000000, next:"コンテナ", description:"100クレート入り巨大コンテナ。さらに速度1/10、価格100倍。" }
+];
+
+const autoTransportSettings = { enabled:false, maxPrice:5000, truck:"light", shop:0 };
+
+const trucks = {
+    light:{name:"軽トラ",speed:1,baseAmount:10,owned:true,price:0,upgradeLevel:0,maxUpgrade:5,upgradePrice:30000},
+    medium:{name:"中型トラック",speed:2,baseAmount:20,owned:false,price:50000,upgradeLevel:0,maxUpgrade:5,upgradePrice:80000},
+    large:{name:"大型トラック",speed:1.5,baseAmount:50,owned:false,price:150000,upgradeLevel:0,maxUpgrade:6,upgradePrice:180000},
+    huge:{name:"超大型トラック",speed:1.2,baseAmount:1000,owned:false,price:2000000,upgradeLevel:0,maxUpgrade:6,upgradePrice:700000}
+};
+
+const shops = [
+    {name:"セブンイレブン",multi:1,time:15,unlocked:true,busy:false,price:0,endTime:0,saleId:null},
+    {name:"ローソン",multi:2,time:25,unlocked:true,busy:false,price:0,endTime:0,saleId:null},
+    {name:"万代",multi:3,time:40,unlocked:false,busy:false,price:30000,endTime:0,saleId:null},
+    {name:"ライフ",multi:5,time:60,unlocked:false,busy:false,price:70000,endTime:0,saleId:null},
+    {name:"いかりスーパー",multi:10,time:120,unlocked:false,busy:false,price:150000,endTime:0,saleId:null},
+    {name:"闇通販",multi:18,time:5,unlocked:false,busy:false,price:250000,endTime:0,saleId:null}
+];
+
+const onigiris = [
+    {name:"塩おにぎり",emoji:"🍙",price:100,chance:35,class:"common"},
+    {name:"梅おにぎり",emoji:"🔴🍙",price:130,chance:30,class:"common"},
+    {name:"鮭おにぎり",emoji:"🐟🍙",price:180,chance:25,class:"uncommon"},
+    {name:"明太子おにぎり",emoji:"🌶️🍙",price:240,chance:22,class:"uncommon"},
+    {name:"ツナマヨ",emoji:"🐟🍙",price:320,chance:18,class:"rare"},
+    {name:"エビマヨ",emoji:"🦐🍙",price:450,chance:14,class:"rare"},
+    {name:"焼肉おにぎり",emoji:"🥩🍙",price:650,chance:10,class:"epic"},
+    {name:"明太マヨおにぎり",emoji:"🌶️🍙",price:1000,chance:7,class:"legend"},
+    {name:"イクラおにぎり",emoji:"🔴🍙",price:1800,chance:5,class:"legend"},
+    {name:"焼きおにぎり",emoji:"🔥🍙",price:4000,chance:2,class:"mythical"}
+];
+
+const firstMutations = [
+    {name:"うるち米",multi:1,chance:40,class:"common"},
+    {name:"もち米",multi:1.2,chance:25,class:"uncommon"},
+    {name:"北海道産",multi:1.5,chance:15,class:"rare"},
+    {name:"棚田米",multi:1.8,chance:10,class:"epic"},
+    {name:"農家直送",multi:2,chance:7,class:"legend"},
+    {name:"新潟県コシヒカリ",multi:3,chance:3,class:"mythical"}
+];
+
+const secondMutations = [
+    {name:"炊飯器炊き",multi:1,chance:40,class:"common"},
+    {name:"高級炊飯器炊き",multi:1.35,chance:25,class:"uncommon"},
+    {name:"備長炭炊き",multi:1.7,chance:15,class:"rare"},
+    {name:"羽釜炊き",multi:1.9,chance:10,class:"epic"},
+    {name:"地下水炊き",multi:2.2,chance:7,class:"legend"},
+    {name:"七輪炊き",multi:3,chance:3,class:"mythical"}
+];
+
+const noriMutations = [
+    {name:"普通の海苔",multi:1,chance:45,class:"common"},
+    {name:"有明海苔",multi:1.25,chance:25,class:"uncommon"},
+    {name:"韓国のり",multi:1.6,chance:15,class:"rare"},
+    {name:"味付け海苔",multi:1.8,chance:9,class:"epic"},
+    {name:"金箔海苔",multi:2.5,chance:4,class:"legend"},
+    {name:"神話の海苔",multi:4,chance:2,class:"mythical"}
+];
+
+const fillingMutations = [
+    {name:"具なし",        multi:1.0,  chance:30, class:"common"},
+    {name:"梅干し",        multi:1.2,  chance:25, class:"common"},
+    {name:"鮭フレーク",    multi:1.5,  chance:20, class:"uncommon"},
+    {name:"ツナマヨ",      multi:1.8,  chance:15, class:"uncommon"},
+    {name:"明太子",        multi:2.2,  chance:10, class:"rare"},
+    {name:"いくら",        multi:3.0,  chance:6,  class:"epic"},
+    {name:"トリュフ",      multi:6.0,  chance:2,  class:"mythical"},
+    {name:"幻の白トリュフ",multi:12.0, chance:1,  class:"mythical"},
+];
+
+const shapeMutations = [
+    {name:"通常サイズ",multi:1,chance:86,class:"common"},
+    {name:"BIG",multi:2,chance:10,class:"rare"},
+    {name:"Giant",multi:5,chance:3,class:"epic"},
+    {name:"SuperGiant",multi:12,chance:1,class:"mythical"}
+];
+
+const productionStages = [
+    {name:"田んぼ",icon:"🌾"}, {name:"トラック",icon:"🚚"}, {name:"工場",icon:"🏭"},
+    {name:"コンベア",icon:"➜",conveyor:true}, {name:"精米",icon:"⚙️"},
+    {name:"コンベア",icon:"➜",conveyor:true}, {name:"炊飯",icon:"🍚"},
+    {name:"コンベア",icon:"➜",conveyor:true}, {name:"具材",icon:"🥢"},
+    {name:"コンベア",icon:"➜",conveyor:true}, {name:"成形",icon:"🍙"},
+    {name:"コンベア",icon:"➜",conveyor:true}, {name:"海苔",icon:"⬛"},
+    {name:"コンベア",icon:"➜",conveyor:true}, {name:"包装",icon:"📦"},
+    {name:"コンベア",icon:"➜",conveyor:true}, {name:"検査",icon:"✅"}
+];
+
+const trends = [
+    { name: "空前の鮭ブーム", targetType: "base", targetKey: "鮭おにぎり", multi: 2.5, desc: "鮭の価値が2.5倍に高騰！" },
+    { name: "韓国海苔ブーム", targetType: "nori", targetKey: "韓国のり", multi: 3.0, desc: "韓国のり変異の価値が3倍！" },
+    { name: "健康志向の波", targetType: "base", targetKey: "塩おにぎり", multi: 2.0, desc: "シンプルな塩おにぎりが2倍！" },
+    { name: "高級米の需要暴騰", targetType: "rice", targetKey: "新潟県コシヒカリ", multi: 2.5, desc: "コシヒカリの価値が2.5倍！" },
+    { name: "謎の発酵食品人気", targetType: "accident", targetKey: "異常発酵", multi: 4.0, desc: "事故による異常発酵食品が4倍！" },
+    { name: "カビ混入のデマ発生", targetType: "all", targetKey: "", multi: 0.5, desc: "市場がパニック。全商品の価値が半減！" },
+    { name: "安定市場", targetType: "none", targetKey: "", multi: 1.0, desc: "特記事項なし" }
+];
+
+function addLog(type, text) {
+    const logBox = document.getElementById("logBox");
+    const time = new Date().toLocaleTimeString();
+    let color = "#4af626";
+    if (type === "警告") color = "#ff9f1c";
+    if (type === "危険" || type === "事故") color = "#ff3333";
+    if (type === "AI") color = "#55aaff";
+
+    logBox.innerHTML += `<div style="color:${color}">[${type}][${time}] ${text}</div>`;
+    logBox.scrollTop = logBox.scrollHeight;
+}
+
+function showToast(text){
+    const toast = document.getElementById("toast");
+    toast.textContent = text;
+    toast.classList.add("show");
+    setTimeout(()=>toast.classList.remove("show"),2000);
+}
+
+function weightedRandom(list, boostChance = false){
+    let mutationBonus = mutationLevel * 1 + (powerGrid.level - 100) / 20;
+    if (powerGrid.isBroken) mutationBonus += 50;
+
+    let modifiedList = list.map(item => {
+        let c = item.chance;
+        if (boostChance && item.class !== "common") {
+            c += mutationBonus;
+        }
+        return { ...item, tempChance: Math.max(1, c) };
+    });
+
+    const total = modifiedList.reduce((a,b)=>a+b.tempChance,0);
+    let rand = Math.random()*total;
+
+    for(const item of modifiedList){
+        if(rand < item.tempChance) return item;
+        rand -= item.tempChance;
+    }
+    return list[0];
+}
+
+function productNameHtml(name, rarityClass){
+    let size = 22;
+    if(name.length > 12) size = 18;
+    if(name.length > 18) size = 14;
+    const color = RARITY_COLORS[rarityClass] || "#fff";
+    return `<div class="scrollName" style="font-size:${size}px; color:${color};">${name}</div>`;
+}
+
+function getQualityMultiplier(quality){ return 0.5 + (quality / 100) * 2.5; }
+
+function getStageDetail(process, stageName){
+    if(!process) return null;
+    if(stageName === "田んぼ") return process.rice;
+    if(stageName === "精米") return process.qualityDetail;
+    if(stageName === "炊飯") return process.cook;
+    if(stageName === "具材") return process.fillingDetail;
+    if(stageName === "成形") return process.shape;
+    if(stageName === "海苔") return process.nori;
+    if(stageName === "包装") return process.packagingDetail;
+    if(stageName === "検査") return process.inspectDetail;
+    return null;
+}
+
+function buildProductionProcess(){
+    if (powerGrid.isBroken) return null;
+
+    const base = weightedRandom(onigiris, true);
+    const product = formatProduct(base);
+    const rice = weightedRandom(firstMutations, true);
+    const quality = Math.floor(Math.random() * 101);
+    const qualityMulti = getQualityMultiplier(quality);
+    
+    const qualityClass = quality >= 95 ? "mythical" : quality >= 85 ? "legend" : quality >= 70 ? "epic" : "common";
+    const cook = weightedRandom(secondMutations, true);
+    const filling = weightedRandom(fillingMutations, true);
+    let shape = weightedRandom(shapeMutations, true);
+    let nori = weightedRandom(noriMutations, true);
+    
+    let name = base.name;
+    let finalClass = base.class;
+    let accidents = [];
+    let dangerScore = 0;
+
+    if (powerGrid.level >= 180 && Math.random() < 0.4) {
+        shape = { name: "超巨大(圧力異常)", multi: 6.0, class: "epic" };
+        accidents.push("成形機高圧粉砕");
+        dangerScore += 1;
+    }
+    if (powerGrid.level >= 250 && Math.random() < 0.5) {
+        nori = { name: "過電導韓国海苔", multi: 4.5, class: "legend" };
+        accidents.push("海苔ライン漏電燃焼");
+        dangerScore += 1;
+    }
+    if (powerGrid.level >= 130 && Math.random() < 0.3) {
+        accidents.push("異常発酵");
+        dangerScore += 1;
+    }
+    if (powerGrid.level >= 400 || (powerGrid.level >= 250 && Math.random() < 0.2)) {
+        accidents.push("自我の覚醒(AI倫理OFF)");
+        dangerScore += 2;
+    }
+
+    if (accidents.includes("自我の覚醒(AI倫理OFF)")) name = "【自我】" + name;
+    if (accidents.includes("異常発酵")) name = "発酵 " + name;
+    if (shape.name !== "通常サイズ") name = shape.name + " " + name;
+    
+    // 海苔の変異を名前に直接付与する
+    if (nori.name === "過電導韓国海苔") {
+        name += "(過電導韓国のり)";
+    } else if (nori.name !== "普通の海苔") {
+        name += `(${nori.name})`;
+    }
+
+    let dangerText = "低";
+    let dangerBadgeClass = "danger-low";
+    if (dangerScore >= 4) { dangerText = "EX"; dangerBadgeClass = "danger-ex"; finalClass = "danger-ex"; }
+    else if (dangerScore === 3) { dangerText = "高"; dangerBadgeClass = "danger-high"; finalClass = "mythical"; }
+    else if (dangerScore >= 1) { dangerText = "中"; dangerBadgeClass = "danger-mid"; finalClass = "epic"; }
+
+    if (dangerText === "EX" || (dangerText === "高" && maxDangerAchieved !== "EX")) maxDangerAchieved = dangerText;
+
+    return {
+        base, product, rice, quality, qualityMulti, cook, filling, shape, nori, name,
+        emoji: accidents.includes("自我の覚醒(AI倫理OFF)") ? "👁️" : base.emoji,
+        accidents, dangerText, dangerBadgeClass, class: finalClass,
+        qualityDetail:{ name:`品質${quality}%`, label:`品質${quality}% x${qualityMulti.toFixed(2)}`, class:qualityClass },
+        fillingDetail:{ name:filling.name, label:`${filling.name} x${filling.multi}`, class:filling.class },
+        packagingDetail:{ name:product.kind, label:`${product.kind} / ${product.count}個`, class:packagingLevel > 0 ? "rare" : "common" },
+        inspectDetail:{ name:"検査OK", label: accidents.length > 0 ? "⚠️検知回避出荷" : "AI通常検査パス", class: accidents.length > 0 ? "epic" : "uncommon" }
+    };
+}
+
+// 進行度に応じた仮の名前と絵文字を返す関数
+function getCurrentState(process, i) {
+    let tempName = "搬入中...";
+    let tempEmoji = "🌾";
+    
+    if (i >= 0) { tempName = `🌾 ${process.rice.name}`; }
+    if (i >= 4) { tempName = `🌾 ${process.rice.name} (品質${process.quality}%)`; }
+    if (i >= 6) { 
+        tempName = `🍚 ${process.cook.name}`; 
+        tempEmoji = "🍚"; 
+    }
+    if (i >= 8) {
+        let n = process.base.name;
+        if (process.accidents.includes("異常発酵")) n = "発酵 " + n;
+        if (process.shape.name !== "通常サイズ") n = process.shape.name + " " + n;
+        if (process.accidents.includes("自我の覚醒(AI倫理OFF)")) n = "【自我】" + n;
+        tempName = n;
+        tempEmoji = process.emoji;
+    }
+    if (i >= 10) {
+        if (process.nori.name === "過電導韓国海苔") {
+            tempName += "(過電導)";
+        } else if (process.nori.name !== "普通の海苔") {
+            tempName += `(${process.nori.name})`;
+        }
+    }
+    if (i >= 12) {
+        if(packagingLevel === 1) tempName += " 📦";
+        if(packagingLevel === 2) tempName += " 🚢";
+    }
+    if (i >= 14) {
+        tempName = process.name; // 最終的に決まった名前
+    }
+    return { name: tempName, emoji: tempEmoji };
+}
+
+
+
+function formatProduct(base){
+    if(packagingLevel === 0) return { name:base.name, emoji:base.emoji, priceMulti:1, count:1, loadSize:1, kind:"通常" };
+    if(packagingLevel === 1) return { name:`${base.name}クレート`, emoji:`📦`, priceMulti:100, count:100, loadSize:10, kind:"クレート" };
+    return { name:`${base.name}コンテナ`, emoji:`🚢`, priceMulti:10000, count:10000, loadSize:1000, kind:"コンテナ" };
+}
+
+function getRollDelay(){
+    const powerSpeedBonus = powerGrid.level / 100;
+    const baseDelay = Math.max(1600, (18000 - (speedLevel-1)*800) / powerSpeedBonus);
+    return baseDelay * Math.pow(6, packagingLevel);
+}
+
+function getTruckCapacity(truck){ return truck.baseAmount * Math.pow(2, truck.upgradeLevel); }
+function getTruckItemLimit(truck, loadSize){ return Math.floor(getTruckCapacity(truck) / loadSize); }
+function getTruckUpgradeCost(truck){ return Math.floor(truck.upgradePrice * Math.pow(2.1, truck.upgradeLevel)); }
+
+
+// ── Multi-line rAF production system ─────────────────────────
+// lines[i] = { id, items:[{process,pos,done,completedOnce}], container, domReady }
+let lines = [];
+let lineRafId = null;
+let lastLineTime = 0;
+let _lineIdCtr = 0;
+let _renderInvPending = false;
+
+const MUTATION_STAGES = new Set(["田んぼ","精米","炊飯","成形","海苔","包装","検査"]);
+
+function getMutsSoFar(process, pos){
+    const out = [];
+    productionStages.forEach((stage,idx)=>{
+        if(stage.conveyor || !MUTATION_STAGES.has(stage.name) || idx > pos) return;
+        const d = getStageDetail(process, stage.name);
+        if(d) out.push(`${stage.icon} ${d.name}`);
+    });
+    return out;
+}
+
+function buildLineDOM(line){
+    line.container.innerHTML = `
+        <div id="ln_name_${line.id}" style="height:44px;text-align:center;overflow:hidden;"></div>
+        <div class="factoryLine"><div class="factoryInner" id="ln_inner_${line.id}">
+            <div class="machineTrack" id="ln_track_${line.id}">
+                ${productionStages.map((s,i)=>`
+                <div class="machine ${s.conveyor?"conveyor":""}" id="ln_m_${line.id}_${i}">
+                    <div style="font-size:13px;">${s.icon}</div>
+                    <div style="font-size:9px;margin-top:2px;" id="ln_mt_${line.id}_${i}">${s.conveyor?"":s.name}</div>
+                </div>`).join("")}
+            </div>
+            <div class="belt"></div>
+            <div id="ln_oni_${line.id}" style="position:absolute;inset:0;pointer-events:none;"></div>
+        </div></div>
+        <div id="ln_price_${line.id}" style="text-align:center;margin-top:4px;"></div>
+        <div id="ln_muts_${line.id}" class="mutationList" style="margin-top:4px;"></div>`;
+    line.domReady = true;
+}
+
+const RARITY_COLORS = {
+    common: "#888", uncommon: "#5edc88", rare: "#55aaff",
+    epic: "#c86cff", legend: "#ffbf47", mythical: "#ff77aa"
+};
+
+// 変異テキスト "⬛ 普通の海苔" → レア度色でラップ（アイコン含む）
+// mutations 文字列は "🌾 米: 新潟県コシヒカリ (x3)" 形式
+// getStageDetailの結果を使うのが難しいのでクラス名のキーワードマッチで色付け
+const RARITY_KEYWORDS = {
+    mythical: ["神話","七輪","コシヒカリ","SuperGiant","焼きおにぎり","幻の白トリュフ","トリュフ"],
+    legend:   ["品質9","品質8"],
+    epic:     ["棚田","羽釜","味付け海苔","Giant","焼肉","いくら","品質7"],
+    rare:     ["北海道","備長炭","韓国のり","BIG","エビマヨ","ツナマヨ","明太子"],
+    uncommon: ["もち木","高級炊飯","有明","鮭フレーク","梅干し"],
+};
+function calcBaseOdds(itemName){
+    const total = onigiris.reduce((s,o)=>s+o.chance,0);
+    // 完全一致 or アイテム名がベース名を含む（変異で名前が変わっていても対応）
+    const o = onigiris.find(o => itemName === o.name || itemName.includes(o.name));
+    if(!o) return null;
+    const denom = Math.round(total / o.chance);
+    return denom === 1 ? null : `1/${denom}`;
+}
+
+function colorMutation(text){
+    // 品質%は数値で判定
+    const qMatch = text.match(/品質(\d+)%/);
+    if(qMatch){
+        const q = Number(qMatch[1]);
+        const cls = q >= 95 ? "mythical" : q >= 85 ? "legend" : q >= 70 ? "epic" : "common";
+        return `<span style="color:${RARITY_COLORS[cls]};">${text}</span>`;
+    }
+    for(const [cls, keywords] of Object.entries(RARITY_KEYWORDS)){
+        if(keywords.some(k=>text.includes(k))){
+            return `<span style="color:${RARITY_COLORS[cls]};">${text}</span>`;
+        }
+    }
+    return `<span style="color:${RARITY_COLORS.common};">${text}</span>`;
+}
+const _flashTimers = {};
+const _textTimers = {};
+
+function flashMachineLine(lineId, si, cls){
+    const el = document.getElementById(`ln_m_${lineId}_${si}`);
+    if(!el || cls==="glow-common") return;
+    const key = `${lineId}_${si}`;
+    clearTimeout(_flashTimers[key]);
+    el.classList.add("flash", cls);
+    _flashTimers[key] = setTimeout(()=>{
+        el.classList.remove("flash", cls);
+    }, Math.min(500, Math.max(150, getRollDelay() / (productionStages.length - 1) * 0.39)));
+}
+
+function renderOniLayer(line, lineW){
+    const layer = document.getElementById(`ln_oni_${line.id}`);
+    if(!layer) return;
+    const W = lineW || 800;
+    const MAX = productionStages.length-1;
+    const active = line.items.filter(it=>!it.done);
+
+    // DOM要素を使い回す: 足りなければ追加、余れば非表示
+    let nodes = Array.from(layer.children);
+    while(nodes.length < active.length){
+        const d = document.createElement("div");
+        d.style.cssText = "position:absolute;top:66px;font-size:20px;z-index:4;transform:translateX(-50%);";
+        d.innerHTML = '<div class="onigiriLabel"></div><span class="oni-emoji"></span>';
+        layer.appendChild(d);
+        nodes.push(d);
+    }
+    for(let i=0;i<nodes.length;i++){
+        if(i>=active.length){ nodes[i].style.display="none"; continue; }
+        nodes[i].style.display="";
+        const it=active[i];
+        const px=(it.pos/MAX)*(W-40)+8;
+        nodes[i].style.left=px+"px";
+        // 絵文字: posのfloorが変わったときだけ更新
+        const flr=Math.round(it.pos);
+        if(it._lastEmojiFl!==flr){
+            it._lastEmojiFl=flr;
+            const cur=getCurrentState(it.process,flr);
+            nodes[i].querySelector(".oni-emoji").textContent=cur.emoji;
+        }
+        // ラベル: mutリストの長さが変わったときだけ更新
+        const mutFlr=Math.floor(it.pos);
+        if(it._lastMutFl!==mutFlr){
+            it._lastMutFl=mutFlr;
+            const muts=getMutsSoFar(it.process,it.pos);
+            const lbl=nodes[i].querySelector(".onigiriLabel");
+            if(muts.length){
+                lbl.style.color=""; lbl.innerHTML=muts.map(m=>colorMutation(m)).join("<br>");
+            } else {
+                lbl.style.color="#888"; lbl.textContent="搬入中...";
+            }
+        }
+    }
+}
+
+// leadのfloor posを記録して変化時だけDOM更新
+function updateMachines(line){
+    const active = line.items.filter(it=>!it.done);
+    const lead = active.reduce((b,it)=>(!b||it.pos>b.pos)?it:b, null);
+    const fp = lead ? Math.floor(lead.pos) : -1;
+    if(line._lastLeadFp === fp) return; // 変化なし → スキップ
+    line._lastLeadFp = fp;
+
+    productionStages.forEach((stage,i)=>{
+        const el  = document.getElementById(`ln_m_${line.id}_${i}`);
+        const tel = document.getElementById(`ln_mt_${line.id}_${i}`);
+        if(!el) return;
+        const mkey = `${line.id}_${i}`;
+        const textActive = !!_textTimers[mkey];
+        if(!el.classList.contains("flash")) el.className = `machine ${stage.conveyor?"conveyor":""}`;
+        if(!tel||stage.conveyor) return;
+        if(!lead){ if(!textActive){tel.textContent=stage.name;tel.style.color="";tel.style.fontWeight="";} return; }
+        if(i===fp) el.classList.add("active");
+        if(!textActive){ tel.textContent=stage.name; tel.style.color=""; tel.style.fontWeight=""; }
+    });
+}
+
+function tickLines(now){
+    const anyActive = lines.some(l=>l.items.some(it=>!it.done));
+    if(!anyActive){ lineRafId=null; lastLineTime=0; return; }
+    if(!lastLineTime) lastLineTime=now;
+    const dt = Math.min(now-lastLineTime, 100);
+    lastLineTime=now;
+
+    const _delay = getRollDelay();
+    const speed = (productionStages.length-1) / _delay;
+    const _stageMs = _delay / (productionStages.length-1);
+    const _textDur = Math.min(1500, Math.max(200, _stageMs * 1.17));
+    const _flashDur = Math.min(500, Math.max(150, _stageMs * 0.39));
+
+    for(const line of lines){
+        const _inner = document.getElementById(`ln_inner_${line.id}`);
+        const _lineW = _inner ? (_inner.offsetWidth||800) : 800;
+        for(const it of line.items){
+            if(it.done) continue;
+            // 田んぼ(s=0)の初回フラッシュ
+            if(it.needsInitFlash){
+                it.needsInitFlash = false;
+                const stage0 = productionStages[0];
+                if(stage0 && !stage0.conveyor){
+                    const d0 = getStageDetail(it.process, stage0.name);
+                    if(d0 && d0.class !== "common"){
+                        flashMachineLine(line.id, 0, `glow-${d0.class}`);
+                        const tel0 = document.getElementById(`ln_mt_${line.id}_0`);
+                        if(tel0){
+                            const tkey0 = `${line.id}_0`;
+                            clearTimeout(_textTimers[tkey0]);
+                            tel0.textContent = d0.name;
+                            tel0.style.color = RARITY_COLORS[d0.class] || "#fff";
+                            tel0.style.fontWeight = "bold";
+                                                    _textTimers[tkey0] = setTimeout(()=>{
+                                _textTimers[tkey0] = null;
+                                if(tel0){ tel0.textContent = stage0.name; tel0.style.color = ""; tel0.style.fontWeight = ""; }
+                            }, _textDur);
+                        }
+                    }
+                }
+            }
+            const prev = it.pos;
+            it.pos = Math.min(it.pos + speed*dt, productionStages.length-1);
+            // 前バッチ先頭が6%進んだらロック解放（pos更新後にチェック）
+            if(it.batchId !== undefined && pendingBatches.has(it.batchId) && it.pos >= (productionStages.length-1) * 0.06){
+                onLineTruckArrival(it.batchId);
+            }
+            const pf=Math.floor(prev), nf=Math.floor(it.pos);
+            if(nf>pf){
+                for(let s=pf+1;s<=nf;s++){
+                    const stage=productionStages[s];
+                    if(!stage||stage.conveyor) continue;
+                    const d=getStageDetail(it.process,stage.name);
+                    if(d && d.class !== "common"){
+                        flashMachineLine(line.id,s,`glow-${d.class}`);
+                        const tel=document.getElementById(`ln_mt_${line.id}_${s}`);
+                        if(tel){
+                            const tkey = `${line.id}_${s}`;
+                            clearTimeout(_textTimers[tkey]);
+                            tel.textContent = d.name;
+                            tel.style.color = RARITY_COLORS[d.class] || "#fff";
+                            tel.style.fontWeight = "bold";
+                            _textTimers[tkey] = setTimeout(()=>{
+                                _textTimers[tkey] = null;
+                                if(tel){ tel.textContent = stage.name; tel.style.color = ""; tel.style.fontWeight = ""; }
+                            }, _textDur);
+                        }
+                    }
+                    // トラック通過 → ボタン解放
+                    if(s===1){
+                        if(Math.random() < 0.01){
+                            it.done = true;
+                            it.completedOnce = true;
+                            // 事故でもpendingBatchesから削除してロック解除
+                            if(it.batchId !== undefined) onLineTruckArrival(it.batchId);
+                            addLog("危険", `🚛💥 生産ラインのトラックが事故！${it.process.rice.name}の米が全滅しました。`);
+                        }
+                    }
+
+                }
+            }
+            if(it.pos>=productionStages.length-1 && !it.completedOnce){
+                it.completedOnce=true; it.done=true;
+                // 万一pendingBatchesに残っていたら解放
+                if(it.batchId !== undefined) onLineTruckArrival(it.batchId);
+                const p=it.process, total=calcTotal(p), trend=getTrendMulti(p);
+                const muts=[
+                    `🌾 米: ${p.rice.name} (x${p.rice.multi})`,
+                    `⚙️ 精米: 品質${p.quality}%`,
+                    `🥢 具材: ${p.filling.name} (x${p.filling.multi})`,
+                    `⬛ 海苔: ${p.nori.name}`,
+                    `⚠️ 危険度: [${p.dangerText}]`
+                ];
+                if(p.accidents.length) muts.push(`💥 異常: ${p.accidents.join(",")}`);
+                if(trend!==1.0) muts.push(`📈 トレンド補正: x${trend}`);
+                inventory.push({
+                    id:nextItemId++, ...p.base, name:p.name, emoji:p.emoji,
+                    finalPrice:total, count:p.product.count, loadSize:p.product.loadSize,
+                    kind:p.product.kind, mutations:muts, transporting:false, transportEnd:0, saleId:null,
+                    class:p.class, dangerText:p.dangerText, dangerBadgeClass:p.dangerBadgeClass
+                });
+                discoveredOnigiris.add(p.name);
+                inventory.sort((a,b)=>b.finalPrice-a.finalPrice);
+                // throttled heavy renders
+                if(!_renderInvPending){ _renderInvPending=true; setTimeout(()=>{ renderInventory(); renderDictionary(); runAutoTransport(); _renderInvPending=false; },80); }
+                const na=document.getElementById(`ln_name_${line.id}`);
+                const pa=document.getElementById(`ln_price_${line.id}`);
+                const ma=document.getElementById(`ln_muts_${line.id}`);
+                if(na) na.innerHTML=`${productNameHtml(p.name,p.class)}<span class="dangerBadge ${p.dangerBadgeClass}">危険度:${p.dangerText}</span>`;
+                if(pa) pa.innerHTML=`<span class="money" style="color:${RARITY_COLORS[p.class]||'#fff'};">${Math.floor(total).toLocaleString()}円</span>`;
+                if(ma) ma.innerHTML=muts.map(m=>colorMutation(m)).join("<br>");
+            }
+        }
+        line.items = line.items.filter(it=>!it.done);
+        if(line.domReady){ renderOniLayer(line, _lineW); updateMachines(line); }
+    }
+    lineRafId = requestAnimationFrame(tickLines);
+}
+
+// ボタン制御
+let pendingBatches = new Set(); // まだトラック未通過のbatchId
+let _batchIdCtr = 0;
+function onLineTruckArrival(batchId){
+    if(!pendingBatches.has(batchId)) return; // 同じバッチの2個目以降は無視
+    pendingBatches.delete(batchId);
+    if(pendingBatches.size === 0){ rolling=false; updateRollButtonState(); }
+}
+function updateRollButtonState(){
+    const btn=document.getElementById("rollButton");
+    if(!btn) return;
+    btn.disabled = rolling||powerGrid.isBroken;
+    btn.textContent = rolling ? `🚚 生産中...` : "手動パルス生産";
+    btn.style.background = rolling ? "#555" : "";
+    btn.style.color = rolling ? "#aaa" : "";
+}
+
+function manualRoll(){
+    if(rolling||powerGrid.isBroken) return;
+    rolling=true;
+    truckArrivalPending=0; // 投入完了後にセット
+    updateRollButtonState();
+
+    const display=document.getElementById("multiRollDisplay");
+    // ラインカードを必要数確保
+    while(lines.length < multiRoll){
+        const line={id:_lineIdCtr++,items:[],container:null,domReady:false};
+        const card=document.createElement("div");
+        card.className="rollCard";
+        display.appendChild(card);
+        line.container=card;
+        buildLineDOM(line);
+        lines.push(line);
+    }
+
+    // 全ライン同時投入（awaitなし）してからtruckArrivalPendingをセット
+    let injected=0;
+    for(let i=0;i<multiRoll;i++){
+        if(powerGrid.isBroken) break;
+        const line=lines[i];
+        const process=buildProductionProcess();
+        if(!process) continue;
+        if(process.accidents.length) addLog("事故",`ライン異常検知: ${process.accidents.join(" ➜ ")}`);
+        const batchId = _batchIdCtr++;
+        pendingBatches.add(batchId);
+        line.items.push({process,pos:0,done:false,completedOnce:false,needsInitFlash:true,batchId});
+        injected++;
+    }
+    if(injected===0){ rolling=false; updateRollButtonState(); }
+
+    if(!lineRafId){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); }
+}
+
+function getTrendMulti(process){
+    let appliedTrend = 1.0;
+    if (marketTrend.targetType === "base" && marketTrend.targetKey === process.base.name) appliedTrend = marketTrend.multi;
+    if (marketTrend.targetType === "nori" && marketTrend.targetKey === process.nori.name) appliedTrend = marketTrend.multi;
+    if (marketTrend.targetType === "rice" && marketTrend.targetKey === process.rice.name) appliedTrend = marketTrend.multi;
+    if (marketTrend.targetType === "accident" && process.accidents.includes(marketTrend.targetKey)) appliedTrend = marketTrend.multi;
+    if (marketTrend.targetType === "all") appliedTrend = marketTrend.multi;
+    return appliedTrend;
+}
+
+function calcTotal(process){
+    let total = process.base.price * process.rice.multi * process.qualityMulti * process.cook.multi * (process.filling ? process.filling.multi : 1) * process.shape.multi * process.nori.multi;
+    if (process.accidents.includes("異常発酵")) total *= 2.0;
+    if (process.accidents.includes("自我の覚醒(AI倫理OFF)")) total *= 5.0;
+    total *= getTrendMulti(process);
+    total *= (1 + qualityLevel*0.25);
+    total *= truckAccidentPenalty;
+    return Math.floor(total) * process.product.priceMulti;
+}
+
+function renderInventory(){
+    const inv = document.getElementById("inventory");
+    inv.innerHTML = "";
+
+    inventory.forEach(item=>{
+        const remain = item.transporting ? Math.max(0, Math.ceil((item.transportEnd-Date.now())/1000)) : 0;
+        inv.innerHTML += `
+            <div data-item-id="${item.id}" class="card ${item.class} ${selectedItems.includes(item.id) ? "selected":""} ${item.transporting ? "transporting":""}" draggable="${!item.transporting}" onclick="selectItem(event,${item.id})" ondragstart="dragItem(event,${item.id})">
+                <span class="dangerBadge ${item.dangerBadgeClass}">危険度:${item.dangerText}</span>
+                <div style="font-size:40px; margin-top:10px;">${item.emoji}</div>
+                <h4 style="margin:5px 0; color:${RARITY_COLORS[item.class]||'#fff'};">${item.name}${(()=>{const o=calcBaseOdds(item.name);return o?` <span style="font-size:10px;color:#888;">${o}</span>`:''})()}</h4>
+                <div class="money" style="font-size:16px; color:${RARITY_COLORS[item.class]||'#fff'};">${item.finalPrice.toLocaleString()}円</div>
+                <div style="font-size:11px; color:#aaa;">${item.kind} / 積載:${item.loadSize}枠</div>
+                <div style="font-size:10px; margin-top:5px;">${item.mutations.map(m=>colorMutation(m)).join("<br>")}</div>
+                ${item.transporting ? `<div class="transportBadge">🚚 輸送中 (${remain}s)</div>` : ""}
+            </div>
+        `;
+    });
+
+    document.getElementById("money").textContent = Math.floor(money).toLocaleString();
+    document.getElementById("itemCount").textContent = inventory.length;
+}
+
+function selectItem(event,id){
+    const item = inventory.find(target=>target.id === id);
+    if(!item || item.transporting) return;
+    if(event.shiftKey || event.ctrlKey || event.metaKey){
+        if(selectedItems.includes(id)) selectedItems = selectedItems.filter(itemId=>itemId!==id);
+        else selectedItems.push(id);
+    }else{
+        selectedItems = [id];
+    }
+    renderInventory();
+}
+
+function dragItem(event,id){
+    if(!selectedItems.includes(id)) selectedItems = [id];
+    event.dataTransfer.setData("text/plain",String(id));
+}
+
+function sendSelected(){
+    const shopSel = document.getElementById("shopSelectForSend");
+    const truckSel = document.getElementById("truckSelectForSend");
+    if(!shopSel||!truckSel) return;
+    if(selectedItems.length===0){ showToast("アイテムを選択してください"); return; }
+    startSell(Number(shopSel.value), null, truckSel.value);
+}
+
+function updateShopSelects(){
+    const shopSel = document.getElementById("shopSelectForSend");
+    if(shopSel){
+        const prev = shopSel.value;
+        shopSel.innerHTML = shops.map((s,i)=>
+            s.unlocked ? `<option value="${i}" ${prev==i?"selected":""}>${s.name} (x${s.multi})${s.busy?" 🚚":""}</option>` : ""
+        ).join("");
+    }
+    const truckSel = document.getElementById("truckSelectForSend");
+    if(truckSel){
+        const prev = truckSel.value;
+        truckSel.innerHTML = Object.entries(trucks).filter(([,t])=>t.owned)
+            .map(([k,t])=>`<option value="${k}" ${prev===k?"selected":""}>${t.name}</option>`).join("");
+    }
+}
+
+function renderShops(){
+    const div = document.getElementById("shops");
+    div.innerHTML = "";
+    // 事故価格半減バナー
+    const banner = document.getElementById("accidentBanner");
+    if(banner){
+        if(truckAccidentPenalty < 1.0){
+            const rem = Math.max(0, Math.ceil((truckAccidentEnd-Date.now())/1000));
+            banner.style.display = "block";
+            banner.textContent = `🚛💥 トラック事故報道中 — おにぎり価格50%減 残り${rem}秒`;
+        } else {
+            banner.style.display = "none";
+        }
+    }
+
+    shops.forEach((shop,index)=>{
+        const remain = shop.busy ? Math.max(0, Math.ceil((shop.endTime-Date.now())/1000)) : 0;
+        div.innerHTML += `
+            <div class="shop ${shop.unlocked ? "" : "locked"}" id="shop${index}" ondragover="shopHover(event,${index})" ondrop="dropSell(event,${index})" ondragleave="shopLeave(${index})">
+                <h3>${shop.name}</h3>
+                <div>市場倍率 x${shop.multi}</div>
+                <div>輸送時間: ${shop.time}秒</div>
+                <div style="font-weight:bold; margin-top:5px;">${shop.busy ? `🚚 納品中 (${remain}秒)` : shop.unlocked ? "注文待機中" : "未開放市場"}</div>
+                ${!shop.unlocked ? `<button class="btn-shop" onclick="buyShop(${index})" ${money < shop.price ? "disabled" : ""}>市場開拓(${shop.price.toLocaleString()}円)</button>` : ""}
+            </div>
+        `;
+    });
+    updateShopSelects();
+}
+
+function shopHover(event,index){ event.preventDefault(); document.getElementById(`shop${index}`).classList.add("dragTarget"); }
+function shopLeave(index){ document.getElementById(`shop${index}`).classList.remove("dragTarget"); }
+function dropSell(event,index){ event.preventDefault(); shopLeave(index); startSell(index); }
+
+function startSell(index,forcedItems=null,forcedTruck=null){
+    const shop = shops[index];
+    if(!shop || !shop.unlocked || shop.busy) return;
+
+    const truckKey = forcedTruck || "light";
+    const truck = trucks[truckKey] || trucks.light;
+    if(!truck.owned) return;
+
+    const candidates = forcedItems
+        ? forcedItems.map(id=>inventory.find(item=>item.id === id)).filter(Boolean)
+        : selectedItems.map(id=>inventory.find(item=>item.id === id)).filter(Boolean);
+
+    let usedCapacity = 0;
+    const sending = [];
+    const capacity = getTruckCapacity(truck);
+
+    for(const item of candidates){
+        if(item.transporting) continue;
+        if(usedCapacity + item.loadSize > capacity) continue;
+        usedCapacity += item.loadSize;
+        sending.push(item);
+    }
+
+    if(sending.length <= 0){
+        showToast("積載容量不足、または対象がありません");
+        return;
+    }
+
+    const saleId = nextSaleId++;
+    let total = 0;
+
+    sending.forEach(item=>{
+        item.transporting = true;
+        item.saleId = saleId;
+        total += item.finalPrice;
+    });
+
+    const sentIds = sending.map(item=>item.id);
+    const time = Math.max(1, Math.floor(shop.time / truck.speed));
+    shop.busy = true;
+    shop.saleId = saleId;
+    shop.endTime = Date.now() + time*1000;
+
+    inventory.forEach(item=>{
+        if(item.saleId === saleId) item.transportEnd = shop.endTime;
+    });
+
+    selectedItems = selectedItems.filter(id=>!sentIds.includes(id));
+    renderInventory();
+    renderShops();
+
+    setTimeout(()=>finishSell(index,saleId,total), time*1000);
+}
+
+function finishSell(shopIndex,saleId,total){
+    const shop = shops[shopIndex];
+    if(!shop || shop.saleId !== saleId){ 
+        // stale call: cleanup if stuck
+        if(shop && shop.busy && shop.endTime > 0 && Date.now() > shop.endTime + 5000){
+            shop.busy=false; shop.saleId=null; shop.endTime=0;
+        }
+        return;
+    }
+
+    const profit = Math.floor(total * shop.multi);
+    if(debt > 0){
+        const repay = Math.min(debt, profit);
+        debt = Math.max(0, debt - repay);
+        profit -= repay;
+        addLog("通知", `💳 借金 ${repay.toLocaleString()}円を自動返済。残債: ${debt.toLocaleString()}円`);
+        renderDebtDisplay();
+    }
+    money += profit;
+    earnLog.push({t: Date.now(), v: profit + (debt > 0 ? 0 : 0)});
+    inventory = inventory.filter(item=>item.saleId !== saleId);
+
+    shop.busy = false;
+    shop.saleId = null;
+    shop.endTime = 0;
+
+    addLog("通知", `${shop.name}への納品完了。利益 +${profit.toLocaleString()}円 を受領。`);
+    renderAll();
+}
+
+function buyShop(index){
+    const shop = shops[index];
+    if(!shop || money < shop.price) return;
+    money -= shop.price;
+    shop.unlocked = true;
+    addLog("通知", `新規市場 [${shop.name}] を開拓した。`);
+    renderAll();
+}
+
+function buyTruck(type){
+    const truck = trucks[type];
+    if(!truck || truck.owned || money < truck.price) return;
+    money -= truck.price;
+    truck.owned = true;
+    addLog("通知", `新型車両 [${truck.name}] を配備。`);
+    renderAll();
+}
+
+function upgradeTruck(type){
+    const truck = trucks[type];
+    const cost = truck ? getTruckUpgradeCost(truck) : Infinity;
+    if(!truck || !truck.owned || truck.upgradeLevel >= truck.maxUpgrade || money < cost) return;
+
+    money -= cost;
+    truck.upgradeLevel++;
+    renderAll();
+}
+
+function renderHackArea(){
+    const area = document.getElementById("hackArea");
+    if(_recovering) return; // カウントダウン中は上書きしない
+    // isBroken を最優先チェック（hackActiveより先）
+    if(powerGrid.isBroken){
+        area.innerHTML = `<button onclick="recoverPower()" style="background:#5edc88; width:100%;">ブレーカー復旧 (100万円 / 5秒)</button>`;
+        return;
+    }
+    if(!hackUnlocked){
+        area.innerHTML = `<button onclick="buyHack()" ${money < 500000 ? "disabled":""} style="width:100%;">ハッキングモジュール解放(500,000円)</button>`;
+        return;
+    }
+    
+    if(hackActive){
+        area.innerHTML = `
+            <div style="width:100%; height:30px; background:#111; position:relative; border-radius:15px; overflow:hidden; border:2px solid #444;">
+                <div style="position:absolute; left:70%; width:15%; height:100%; background:#5edc88;"></div>
+                <div id="hackCursor" style="position:absolute; left:0%; width:6px; height:100%; background:#ff3333; transform:translateX(-50%); box-shadow:0 0 10px #ff3333;"></div>
+            </div>
+            <button onclick="stopHack()" style="background:#ff9f1c; width:100%; margin-top:10px;">STOP!</button>
+        `;
+    } else {
+        area.innerHTML = `
+            <button onclick="startHack()" style="background:#ff9f1c; width:100%;">グリッド過負荷注入 (ミニゲーム開始)</button>
+        `;
+    }
+}
+
+function buyHack(){
+    if(money >= 500000 && !hackUnlocked){
+        money -= 500000;
+        hackUnlocked = true;
+        addLog("通知", "ハッキングモジュールを導入した。過負荷注入が可能。");
+        renderAll();
+    }
+}
+
+function startHack(){
+    if(hackActive) return;
+    hackActive = true;
+    hackPos = 0;
+    hackDir = 1.5 + Math.random() * 2.0;
+    renderHackArea();
+    hackLoop();
+}
+
+function hackLoop(){
+    if(!hackActive) return;
+    hackPos += hackDir;
+    if(hackPos >= 100){ hackPos = 100; hackDir *= -1; }
+    if(hackPos <= 0){ hackPos = 0; hackDir *= -1; }
+    
+    const cursor = document.getElementById("hackCursor");
+    if(cursor) cursor.style.left = hackPos + "%";
+    
+    hackAnimId = requestAnimationFrame(hackLoop);
+}
+
+function stopHack(){
+    hackActive = false;
+    cancelAnimationFrame(hackAnimId);
+    
+    if(hackPos >= 70 && hackPos <= 85){
+        powerGrid.level += 100;
+        addLog("警告", `ハッキング大成功！電力が一気に ${powerGrid.level}% に上昇！`);
+    } else {
+        powerGrid.level += 10;
+        addLog("通知", `ハッキング失敗...電力微増 (${powerGrid.level}%)`);
+        if(Math.random() < 0.3){
+            triggerBlackout("ハッキング失敗によるシステム短絡で");
+        }
+    }
+    
+    updateFactoryStatusText();
+    renderHackArea();
+}
+
+function triggerBlackout(reason){
+    powerGrid.level = 0;
+    powerGrid.status = "ブラックアウト(全機能停止)";
+    powerGrid.isBroken = true;
+    _autoRollWasEnabled = autoRollEnabled; // falseにする前に保存
+    autoRollEnabled = false;
+    rolling = false;
+    pendingBatches.clear();
+    hackActive = false; // ハッキング強制停止
+    // アイテムは消さない（復旧後に再開できるよう保持）
+    if(lineRafId){ cancelAnimationFrame(lineRafId); lineRafId=null; lastLineTime=0; }
+    addLog("危険", `⚠️警告: ${reason}送電グリッドが崩壊。ブレーカーが落ちました！`);
+    renderHackArea();
+}
+
+function triggerBananaEvent(){
+    // ブラックアウト演出 → バナナがラインに流れる
+    const overlay = document.createElement("div");
+    overlay.style.cssText = "position:fixed;inset:0;background:#000;z-index:9999;display:flex;align-items:center;justify-content:center;font-size:80px;";
+    overlay.textContent = "🌑";
+    document.body.appendChild(overlay);
+
+    setTimeout(()=>{ overlay.textContent = "🍌"; }, 800);
+    setTimeout(()=>{ overlay.textContent = "🍌🍌🍌"; }, 1200);
+    setTimeout(()=>{
+        document.body.removeChild(overlay);
+        // 全ラインにバナナを投入
+        for(const line of lines){
+            if(!line.domReady) continue;
+            const bananaProcess = buildProductionProcess();
+            if(bananaProcess){
+                bananaProcess.name = "🍌バナナおにぎり";
+                bananaProcess.emoji = "🍌";
+                bananaProcess.base = {...bananaProcess.base, name:"バナナおにぎり", emoji:"🍌", price:99999};
+                bananaProcess.class = "mythical";
+                line.items.push({process:bananaProcess, pos:0, done:false, completedOnce:false, needsInitFlash:true});
+            }
+        }
+        if(!lineRafId){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); }
+        // 生産ラインのパネルまでスクロール
+        const rollDisplay = document.getElementById("multiRollDisplay");
+        if(rollDisplay) rollDisplay.scrollIntoView({behavior:"smooth", block:"center"});
+        addLog("AI", "🍌 電力過剰による量子バナナ生成を確認。おにぎり工場にバナナが侵入しました。");
+    }, 2000);
+}
+
+function payOrBorrow(amount){
+    if(money >= amount){
+        money -= amount;
+    } else {
+        const shortfall = amount - money;
+        debt += shortfall;
+        money = 0;
+        addLog("危険", `💸 資金不足のため ${shortfall.toLocaleString()}円を借金しました。借金総額: ${debt.toLocaleString()}円`);
+        renderDebtDisplay();
+    }
+}
+
+function repairMachine(mid, auto=false){
+    const idx = brokenMachines.findIndex(b=>b.id===mid);
+    if(idx===-1) return;
+    const m = brokenMachines[idx];
+    if(!auto) payOrBorrow(REPAIR_COST);
+    brokenMachines.splice(idx, 1);
+    addLog("通知", `🔧 ${m.stageIcon}${m.stageName}マシンを修理しました。`);
+    renderBrokenMachines();
+    for(const line of lines){
+        const el = document.getElementById(`ln_m_${line.id}_${m.stageIndex}`);
+        if(el) el.classList.remove("machine-broken");
+    }
+}
+
+function renderBrokenMachines(){
+    for(const line of lines){
+        productionStages.forEach((stage,si)=>{
+            const el = document.getElementById(`ln_m_${line.id}_${si}`);
+            if(!el) return;
+            if(brokenMachines.some(b=>b.stageIndex===si)){
+                el.classList.add("machine-broken");
+            } else {
+                el.classList.remove("machine-broken");
+            }
+        });
+    }
+    const panel = document.getElementById("brokenMachinePanel");
+    if(!panel) return;
+    if(brokenMachines.length === 0){ panel.style.display="none"; panel.innerHTML=""; return; }
+    panel.style.display = "block";
+    panel.innerHTML = `<div style="color:#ff9f1c;font-weight:bold;margin-bottom:4px;">🔧 故障中マシン</div>` +
+        brokenMachines.map(m=>`
+            <div style="display:flex;align-items:center;gap:8px;margin:3px 0;">
+                <span>${m.stageIcon} ${m.stageName}</span>
+                <button onclick="repairMachine(${m.id})" style="font-size:11px;padding:2px 8px;background:#ff9f1c;color:#111;border:none;border-radius:4px;cursor:pointer;">修理(10万円)</button>
+            </div>`).join("");
+}
+
+function buyAutoRepair(){
+    if(autoRepairOwned || money < 300000) return;
+    money -= 300000;
+    autoRepairOwned = true;
+    [...brokenMachines].forEach(m=>repairMachine(m.id, true));
+    addLog("通知", "🔧 自動修理システムを導入しました。機械故障を自動で修理します。");
+    renderAll();
+}
+
+function triggerTruckAccident(type){
+    if(truckAccidentPenalty < 1.0) return; // すでに事故中
+    truckAccidentPenalty = 0.5;
+    truckAccidentEnd = Date.now() + 5 * 60 * 1000; // 5分
+    showToast("🚛💥 トラック事故！5分間おにぎり価格が半減します");
+    addLog("危険", `📺 速報: ${type}のトラック事故がSNSで拡散。おにぎり忌避ムードで5分間価格が50%減。`);
+}
+
+function recoverPower() {
+    if(_recovering) return;
+    _recovering = true;
+    const cost = 1000000;
+    if(money >= cost){
+        money -= cost;
+        addLog("通知", `💰 復旧費用 ${cost.toLocaleString()}円を支払いました。`);
+    } else {
+        const shortfall = cost - money;
+        debt += shortfall;
+        money = 0;
+        addLog("危険", `💸 資金不足のため ${shortfall.toLocaleString()}円を借金して復旧します。借金総額: ${debt.toLocaleString()}円`);
+        renderDebtDisplay();
+    }
+    addLog("通知", "システム再起動シーケンスを開始...");
+    const area = document.getElementById("hackArea");
+    let count = 5;
+    function tick(){
+        if(area) area.innerHTML = `<div style="text-align:center; font-size:48px; font-weight:bold; color:#5edc88; text-shadow:0 0 20px #5edc88;">${count}</div><div style="text-align:center; font-size:12px; color:#aaa;">ブレーカー復旧中...</div>`;
+        if(count <= 0){
+            _recovering = false;
+            powerGrid.level = 100;
+            powerGrid.status = "安定";
+            powerGrid.isBroken = false;
+            if(_autoRollWasEnabled && autoRollOwned) autoRollEnabled = true;
+            addLog("通知", "送電網の復旧を完了。工場は安全稼働に戻りました。");
+            updateFactoryStatusText();
+            renderHackArea();
+            renderUpgradeArea();
+            // ライン再起動（停電前に流れていたおにぎりを再開）
+            lastLineTime = 0;
+            if(!lineRafId){
+                lineRafId = requestAnimationFrame(tickLines);
+            }
+            return;
+        }
+        count--;
+        setTimeout(tick, 1000);
+    }
+    tick();
+}
+
+function renderDebtDisplay(){
+    const el = document.getElementById("debtDisplay");
+    if(!el) return;
+    if(debt <= 0){ el.style.display = "none"; el.textContent = ""; return; }
+    el.style.display = "block";
+    el.textContent = `💸 借金: ${debt.toLocaleString()}円`;
+}
+
+function updateTrend() {
+    const nextTrend = trends[Math.floor(Math.random() * trends.length)];
+    marketTrend = nextTrend;
+    const area = document.getElementById("trendArea");
+    area.innerHTML = `<strong>【${marketTrend.name}】</strong><br><span style="font-size:12px; color:#ff9f1c;">${marketTrend.desc}</span>`;
+    addLog("AI", `市場予測変動を検知: [${marketTrend.name}] が適用されました。`);
+}
+
+function renderTruckInfo(){
+    document.getElementById("truckInfo").innerHTML = `
+        ${renderTruckCard("light","🚚 軽トラ")}
+        ${renderTruckCard("medium","🚛 中型トラック")}
+        ${renderTruckCard("large","🚛 大型トラック")}
+        ${renderTruckCard("huge","🚛 超大型特大コンテナ")}
+    `;
+}
+
+function renderTruckCard(type,title){
+    const truck = trucks[type];
+    const capacity = getTruckCapacity(truck);
+    const upgradeCost = getTruckUpgradeCost(truck);
+
+    return `
+        <div class="card" style="padding:10px;">
+            <h4 style="margin:5px 0;">${title}</h4>
+            速度:${truck.speed}x | 枠:${capacity}<br>
+            状態:${truck.owned ? '<span class="statusOwned">運用中</span>' : "未配備"}
+            <br>
+            <button onclick="buyTruck('${type}')" ${money < truck.price || truck.owned ? "disabled":""} style="padding:4px 8px; font-size:11px;">
+                ${truck.owned ? "確保済" : `購入(${truck.price.toLocaleString()}円)`}
+            </button>
+            <button onclick="upgradeTruck('${type}')" ${!truck.owned || money < upgradeCost || truck.upgradeLevel >= truck.maxUpgrade ? "disabled":""} style="padding:4px 8px; font-size:11px;">
+                強化 L.${truck.upgradeLevel} (${upgradeCost.toLocaleString()}円)
+            </button>
+        </div>
+    `;
+}
+
+function renderUpgradeArea(){
+    const nextPackaging = PACKAGING_UPGRADES[packagingLevel];
+    document.getElementById("upgradeArea").innerHTML = `
+        <div class="controlRow" style="margin-bottom:6px;">
+            🔧 自動修理システム:
+            <button onclick="buyAutoRepair()" ${autoRepairOwned || money < 300000 ? "disabled":""} style="padding:2px 8px; font-size:11px; margin-left:4px;">${autoRepairOwned ? "✅ 導入済み" : "導入(300,000円)"}</button>
+        </div>
+        <hr style="border-color:#333;margin:4px 0 8px;">
+        <div style="font-size:13px; line-height:1.8;">
+            ⚡ 生産基本速度 Lv.${speedLevel}/${MAX_SPEED_LEVEL} <span style="color:#ffd166; font-size:11px;">(x${(18000/Math.max(1600,(18000-(speedLevel-1)*800))).toFixed(2)}倍速)</span>
+            <button onclick="upgradeSpeed()" ${money < speedLevel*10000 || speedLevel >= MAX_SPEED_LEVEL ? "disabled":""} style="padding:2px 8px; font-size:11px;">強化(${(speedLevel*10000).toLocaleString()}円)</button>
+            | 🔁 同時並列ライン ${multiRoll}/${MAX_MULTI_ROLL} 
+            <button onclick="upgradeMultiRoll()" ${money < multiRoll*20000 || multiRoll >= MAX_MULTI_ROLL ? "disabled":""} style="padding:2px 8px; font-size:11px;">拡張(${(multiRoll*20000).toLocaleString()}円)</button>
+            <br>
+            🧬 禁断変異誘導誘発 Lv.${mutationLevel}/${MAX_MUTATION_LEVEL} <span style="color:#c86cff; font-size:11px;">(変異ボーナス+${mutationLevel})</span>
+            <button onclick="upgradeMutation()" ${money < (mutationLevel+1)*30000 || mutationLevel >= MAX_MUTATION_LEVEL ? "disabled":""} style="padding:2px 8px; font-size:11px;">研究(${((mutationLevel+1)*30000).toLocaleString()}円)</button>
+            | ✨ 量子品質保証 Lv.${qualityLevel}/${MAX_QUALITY_LEVEL} (現在:x${(1 + qualityLevel*0.25).toFixed(2)})
+            <button onclick="upgradeQuality()" ${money < (qualityLevel+1)*50000 || qualityLevel >= MAX_QUALITY_LEVEL ? "disabled":""} style="padding:2px 8px; font-size:11px;">投資(${((qualityLevel+1)*50000).toLocaleString()}円)</button>
+            <br>
+            📦 バルク梱包システム: <span style="color:#ffd166;">${packagingLevel === 0 ? "通常生産" : packagingLevel === 1 ? "クレート(100倍)" : "コンテナ(10000倍)"}</span>
+            <button onclick="upgradePackaging()" ${!nextPackaging || money < nextPackaging.cost ? "disabled":""} style="padding:2px 8px; font-size:11px;">
+                ${nextPackaging ? `${nextPackaging.next}化(${nextPackaging.cost.toLocaleString()}円)` : "最大自動化"}
+            </button>
+            <br>
+            🤖 自動化パルス生産コア:
+            <button onclick="buyAutoRoll()" ${money < 5000 || autoRollOwned ? "disabled":""} style="padding:2px 8px; font-size:11px;">AIコア購入(5,000円)</button>
+            <button onclick="toggleAutoRoll()" ${!autoRollOwned ? "disabled":""} style="padding:2px 8px; font-size:11px; background:${powerGrid.isBroken ? '#444' : autoRollEnabled?'#5edc88':'#ffd166'}">
+                状態: ${powerGrid.isBroken ? "⚡ ブレーカー停止によりOFF" : autoRollEnabled ? "稼働中(ON)" : "待機中(OFF)"}
+            </button>
+        </div>
+    `;
+}
+
+function upgradeSpeed(){ if(speedLevel >= MAX_SPEED_LEVEL) return; const cost = speedLevel*10000; if(money < cost) return; speedLevel++; money -= cost; renderAll(); }
+function upgradeMultiRoll(){ if(multiRoll >= MAX_MULTI_ROLL) return; const cost = multiRoll*20000; if(money < cost) return; multiRoll++; money -= cost; renderAll(); }
+function upgradePackaging(){ const nextPackaging = PACKAGING_UPGRADES[packagingLevel]; if(!nextPackaging || money < nextPackaging.cost) return; money -= nextPackaging.cost; packagingLevel++; addLog("通知", `生産形態が「${nextPackaging.next}」へシフトした。`); renderAll(); }
+function upgradeMutation(){ if(mutationLevel >= MAX_MUTATION_LEVEL) return; const cost = (mutationLevel+1)*30000; if(money < cost) return; mutationLevel++; money -= cost; addLog("AI", "遺伝子組換え・変異確率の上昇を確認。"); renderAll(); }
+function upgradeQuality(){ if(qualityLevel >= MAX_QUALITY_LEVEL) return; const cost = (qualityLevel+1)*50000; if(money < cost) return; qualityLevel++; money -= cost; renderAll(); }
+function buyAutoRoll(){ if(autoRollOwned || money < 5000) return; money -= 5000; autoRollOwned = true; addLog("AI", "自動生産パルスコアがオンラインになった。"); renderAll(); }
+function toggleAutoRoll(){ if(!autoRollOwned || powerGrid.isBroken) return; autoRollEnabled = !autoRollEnabled; renderAll(); }
+function buyAutoTransport(){ if(autoTransportOwned || money < 150000) return; money -= 150000; autoTransportOwned = true; addLog("AI", "物流自動化AIルーチンが承認された。"); renderAll(); }
+
+function renderAutoTransport(){
+    const buyBtn = document.getElementById("autoTransportBuyBtn");
+    buyBtn.disabled = !autoTransportOwned && money < 150000;
+    if(!autoTransportOwned){
+        buyBtn.textContent = "物流AIを購入(150,000円)";
+    } else if(autoTransportSettings.enabled){
+        buyBtn.textContent = "🤖 AI自動物流システム稼働中";
+        buyBtn.style.background = "#5edc88";
+        buyBtn.style.color = "#111";
+    } else {
+        buyBtn.textContent = "⏸ AI自動物流システム待機中";
+        buyBtn.style.background = "#555";
+        buyBtn.style.color = "#aaa";
+    }
+
+    const area = document.getElementById("autoTransportArea");
+    if(!autoTransportOwned){ area.innerHTML = "物流コア未接続"; return; }
+
+    // 初回だけDOMを構築。以降はvalueとoptionだけ更新（selectがフォーカス中でも壊れない）
+    if(!area.dataset.built){
+        area.dataset.built = "1";
+        area.innerHTML = `
+            <div class="controlRow" style="font-size:12px;">
+                <label><input type="checkbox" id="atEnabled"> 自動出荷を承認する</label>
+                | <span>安全閾値: 単価 <input type="number" id="atMaxPrice" style="width:80px;" min="0"> 円以下を出荷</span>
+                <br>
+                配備車両: <select id="atTruck"></select>
+                ➜ 納品先目標: <select id="atShop"></select>
+            </div>`;
+        document.getElementById("atEnabled").onchange  = e => { autoTransportSettings.enabled = e.target.checked; };
+        document.getElementById("atMaxPrice").onchange = e => { autoTransportSettings.maxPrice = Number(e.target.value); };
+        document.getElementById("atTruck").onchange    = e => { autoTransportSettings.truck = e.target.value; };
+        document.getElementById("atShop").onchange     = e => { autoTransportSettings.shop = Number(e.target.value); };
+    }
+
+    const cb = document.getElementById("atEnabled");
+    if(cb && cb !== document.activeElement) cb.checked = autoTransportSettings.enabled;
+    const mp = document.getElementById("atMaxPrice");
+    if(mp && mp !== document.activeElement) mp.value = autoTransportSettings.maxPrice;
+
+    const atTruck = document.getElementById("atTruck");
+    if(atTruck && atTruck !== document.activeElement){
+        atTruck.innerHTML = Object.entries(trucks).filter(([,t])=>t.owned)
+            .map(([k,t])=>`<option value="${k}" ${autoTransportSettings.truck===k?"selected":""}>${t.name}</option>`).join("");
+    }
+    const atShop = document.getElementById("atShop");
+    if(atShop && atShop !== document.activeElement){
+        atShop.innerHTML = shops.map((s,i)=>
+            `<option value="${i}" ${autoTransportSettings.shop===i?"selected":""} ${!s.unlocked?"disabled":""}>${s.name}</option>`
+        ).join("");
+    }
+}
+
+function runAutoTransport(){
+    if(!autoTransportOwned || !autoTransportSettings.enabled) return;
+    const shopIndex = autoTransportSettings.shop;
+    const shop = shops[shopIndex];
+    const truckKey = autoTransportSettings.truck;
+    const truck = trucks[truckKey] || trucks.light;
+    if(!shop || !shop.unlocked || shop.busy || !truck.owned) return;
+
+    const capacity = getTruckCapacity(truck);
+    let usedCapacity = 0;
+    const targets = [];
+
+    for(const item of inventory){
+        if(item.transporting || item.finalPrice > autoTransportSettings.maxPrice) continue;
+        if(usedCapacity + item.loadSize > capacity) continue;
+        usedCapacity += item.loadSize;
+        targets.push(item.id);
+    }
+    if(targets.length <= 0) return;
+    startSell(shopIndex, targets, truckKey);
+}
+
+function renderDictionary() {
+    const area = document.getElementById("dictionaryArea");
+    document.getElementById("dictCount").textContent = discoveredOnigiris.size;
+    if(discoveredOnigiris.size === 0) {
+        area.innerHTML = "出荷実績なし";
+        return;
+    }
+    area.innerHTML = Array.from(discoveredOnigiris).map(name => {
+        return `<div style="padding:2px 0; border-bottom:1px solid #222;">🔬 ${name}</div>`;
+    }).join("");
+}
+
+function updateFactoryStatusText() {
+    let statusText = "健全経営";
+    let ethicsText = "ON";
+    let ethicsColor = "#5edc88";
+
+    if(powerGrid.level >= 180) { statusText = "違法過負荷稼働"; ethicsText = "麻痺"; ethicsColor = "#ff9f1c"; }
+    if(powerGrid.level >= 250) { statusText = "食品安全法違反"; ethicsText = "警告無視"; ethicsColor = "#ff3333"; }
+    if(powerGrid.level >= 400) { statusText = "狂気のマッドファクトリー"; ethicsText = "OFF (完全暴走)"; ethicsColor = "#ff3333"; }
+    if(!powerGrid.isBroken && powerGrid.level > 100){
+        const instPct = Math.min(100, Math.round((powerGrid.level - 100) / 10));
+        const instEl = document.getElementById("instabilityDisplay");
+        if(instEl) instEl.textContent = `電圧不安定度: ${instPct}%`;
+    } else {
+        const instEl = document.getElementById("instabilityDisplay");
+        if(instEl) instEl.textContent = powerGrid.isBroken ? "電圧不安定度: ブラックアウト" : "電圧不安定度: 安定";
+    }
+    if(powerGrid.isBroken) { statusText = "文明崩壊(機能停止中)"; ethicsText = "沈黙"; ethicsColor = "#888"; }
+
+    document.getElementById("factoryStatusText").textContent = statusText;
+    document.getElementById("powerStatusText").textContent = powerGrid.status;
+    const eElement = document.getElementById("aiEthicsText");
+    eElement.textContent = ethicsText;
+    eElement.style.color = ethicsColor;
+    document.getElementById("maxDangerText").textContent = maxDangerAchieved;
+    document.getElementById("powerDisplay").textContent = powerGrid.level + "%";
+}
+
+function redeemCode(){
+    const code = document.getElementById("codeInput").value.trim();
+    if(!code || usedCodes.includes(code)) return;
+
+    if(code === "Onigiri"){
+        money += 100000000;
+        usedCodes.push(code);
+        addLog("AI", "🧠 外部バックドアより資金調達コードを受理。1億円がチャージされました。");
+        showToast("💰 1億円注入成功");
+        renderAll();
+    }else{
+        showToast("シグナル不一致");
+    }
+}
+
+function renderAll(){
+    renderInventory();
+    renderShops();
+    renderBrokenMachines();
+    renderDebtDisplay();
+    renderTruckInfo();
+    renderUpgradeArea();
+    renderAutoTransport();
+    renderDictionary();
+    updateFactoryStatusText();
+    renderHackArea();
+}
+
+// メインシステムタイマー（軽量版）
+let trendTimer = 0;
+let slowTimer = 0;
+setInterval(()=>{
+    // 輸送カウントダウン・ボタン状態は毎秒更新
+    renderShops();
+    if(inventory.some(it=>it.transporting)){
+        renderInventory();
+    }
+
+    // stuck shop 強制リセット（endTimeを5秒超過してもbusyのまま）
+    for(const sh of shops){
+        if(sh.busy && sh.endTime > 0 && Date.now() > sh.endTime + 5000){
+            sh.busy=false; sh.saleId=null; sh.endTime=0;
+            inventory = inventory.filter(it=>it.transporting===false || (it.transporting && it.transportEnd < Date.now()-5000));
+            inventory.forEach(it=>{ if(it.transportEnd < Date.now()-5000){ it.transporting=false; it.saleId=null; } });
+        }
+    }
+
+    // 物流トラック事故チェック（毎秒0.02%）
+    for(let si=0; si<shops.length; si++){
+        const sh = shops[si];
+        if(!sh.busy || !sh.saleId) continue;
+        if(Math.random() < 0.0002){
+            const lost = inventory.filter(it=>it.saleId===sh.saleId).map(it=>it.name).slice(0,3).join("、");
+            inventory = inventory.filter(it=>it.saleId!==sh.saleId);
+            sh.busy=false; sh.saleId=null; sh.endTime=0;
+            addLog("危険", `🚛💥 ${sh.name}へのトラックが事故！${lost||"積荷"}が消滅しました。`);
+            triggerTruckAccident("物流");
+            renderInventory(); renderShops();
+        }
+    }
+
+    // 事故ペナルティ終了チェック
+    if(truckAccidentPenalty < 1.0 && Date.now() > truckAccidentEnd){
+        truckAccidentPenalty = 1.0;
+        addLog("通知", "📺 おにぎりトラック事故のニュース報道が落ち着きました。価格が通常に戻りました。");
+    }
+
+    // バナナイースターエッグ: 400%から基本1%、700%超で1.5%ごとに+1%
+    if(!powerGrid.isBroken && powerGrid.level > 400){
+        let bananaPct = 0.04;
+        if(powerGrid.level > 700) bananaPct += Math.floor((powerGrid.level - 700) / 1.5) * 0.02;
+        if(Math.random() < bananaPct) triggerBananaEvent();
+    }
+
+    // 電圧不安定ブレーカー判定（確率を大幅低下: 200%以上で1%/秒, 300%で3%/秒）
+    if(!powerGrid.isBroken && powerGrid.level > 100){
+        const instabilityChance = Math.pow((powerGrid.level - 100) / 200, 2) * 0.012;
+        if(Math.random() < instabilityChance){
+            const severity = powerGrid.level >= 300 ? "大規模電圧スパイク" : powerGrid.level >= 200 ? "電圧不安定" : "微小電圧変動";
+            triggerBlackout(`${severity}(${powerGrid.level}%過負荷)による`);
+        }
+    }
+
+    // 借金利息（5分=300秒ごと）
+    debtTimer++;
+    if(debt > 0 && debtTimer >= 300){
+        debtTimer = 0;
+        const now = Date.now();
+        const recent = earnLog.filter(e => now - e.t < 60000);
+        const avgPerMin = recent.reduce((s,e)=>s+e.v,0) || 1000;
+        const interest = Math.floor(avgPerMin * 0.3);
+        debt += interest;
+        addLog("危険", `💸 借金利息 +${interest.toLocaleString()}円（直近1分収入の30%）。借金総額: ${debt.toLocaleString()}円`);
+        renderDebtDisplay();
+    }
+
+    runAutoTransport();
+
+    // pendingBatchesが空なのにrollingが残っていたら強制解除
+    if(pendingBatches.size===0 && rolling){ rolling=false; }
+    if(autoRollEnabled && !rolling && !powerGrid.isBroken && pendingBatches.size===0){
+        manualRoll();
+    }
+    updateRollButtonState();
+
+    trendTimer++;
+    if(trendTimer >= 15){
+        updateTrend();
+        trendTimer = 0;
+        updateFactoryStatusText();
+    }
+
+    // 重いUI（アップグレード・トラック）は5秒ごとだけ更新
+    slowTimer++;
+    if(slowTimer >= 5){
+        slowTimer = 0;
+        renderTruckInfo();
+        renderUpgradeArea();
+        renderAutoTransport();
+    }
+},1000);
+
+// 電圧変動 + 機械故障タイマー（0.5秒ごと）
+setInterval(()=>{
+    if(powerGrid.isBroken || powerGrid.level <= 100) return;
+    const drop = 1 + Math.random() * 2;
+    powerGrid.level = Math.max(100, Math.round(powerGrid.level - drop));
+    updateFactoryStatusText();
+
+    // 機械故障チェック: (level-100)/5000 per 0.5秒
+    const breakChance = (powerGrid.level - 100) / 5000;
+    productionStages.forEach((stage, si)=>{
+        if(!BREAKABLE_STAGES.has(stage.name)) return;
+        if(brokenMachines.some(b=>b.stageIndex===si)) return;
+        if(Math.random() < breakChance){
+            const mid = _machineIdCtr++;
+            brokenMachines.push({id:mid, stageIndex:si, stageName:stage.name, stageIcon:stage.icon});
+            if(autoRepairOwned){
+                repairMachine(mid, true);
+            } else {
+                addLog("危険", `🔧 ${stage.icon}${stage.name}マシンが故障！修理費用: ${REPAIR_COST.toLocaleString()}円 <button onclick="repairMachine(${mid})" style="font-size:10px;padding:1px 6px;margin-left:6px;background:#ff9f1c;color:#111;border:none;border-radius:4px;cursor:pointer;">修理(10万円)</button>`);
+                renderBrokenMachines();
+            }
+        }
+    });
+}, 500);
+
+// 初期起動
+addLog("AI", "🤖 おにぎり自動製造コア起動。初期シーケンス正常。コンビニへの出荷義務を果たしてください。");
+updateTrend();
+renderAll();
+</script>
+</body>
+</html>
