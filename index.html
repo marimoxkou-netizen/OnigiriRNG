@@ -477,6 +477,9 @@ let debt = 0;
 let brokenMachines = []; // { id, stageIndex, stageName, stageIcon }
 let autoRepairOwned = false;
 let _machineIdCtr = 0;
+let _bananaEventActive = false;
+let _shoesEventActive = false;
+let _discEventActive = false;
 const REPAIR_COST = 100000;
 const BREAKABLE_STAGES = new Set(["精米","炊飯","具材","成形","海苔","包装","検査"]);
 let earnLog = [];
@@ -844,8 +847,19 @@ const RARITY_KEYWORDS = {
     uncommon: ["もち木","高級炊飯","有明","鮭フレーク","梅干し"],
 };
 function calcBaseOdds(itemName){
+    // 激レア特別おにぎり
+    const specials = {
+        "🍌バナナおにぎり": "1/∞",
+        "👟シューズおにぎり": "1/∞",
+        "💿DISCおにぎり": "1/∞",
+    };
+    for(const [key, val] of Object.entries(specials)){
+        if(itemName.includes(key.replace(/^[^\w]/,'').split('お')[0]) || itemName === key) return val;
+    }
+    if(itemName.includes("バナナ")) return "1/∞";
+    if(itemName.includes("シューズ")) return "1/∞";
+    if(itemName.includes("DISC")) return "1/∞";
     const total = onigiris.reduce((s,o)=>s+o.chance,0);
-    // 完全一致 or アイテム名がベース名を含む（変異で名前が変わっていても対応）
     const o = onigiris.find(o => itemName === o.name || itemName.includes(o.name));
     if(!o) return null;
     const denom = Math.round(total / o.chance);
@@ -948,6 +962,8 @@ function updateMachines(line){
 }
 
 function tickLines(now){
+    // バナナ演出中はライン停止
+    if(_bananaEventActive || _shoesEventActive || _discEventActive){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); return; }
     const anyActive = lines.some(l=>l.items.some(it=>!it.done));
     if(!anyActive){ lineRafId=null; lastLineTime=0; return; }
     if(!lastLineTime) lastLineTime=now;
@@ -1015,6 +1031,33 @@ function tickLines(now){
                             }, _textDur);
                         }
                     }
+                    // 具材(8)→バナナ、海苔(11)→シューズ、検査(16)→DISCの激レア判定
+                    if(!powerGrid.isBroken && powerGrid.level > 400 && (s===8||s===11||s===16)){
+                        const rarePct = powerGrid.level < 700
+                            ? (powerGrid.level - 400) / 300000
+                            : 0.001 + (powerGrid.level - 700) / 100000;
+                        if(s===8 && !_bananaEventActive && Math.random() < rarePct){
+                            it.process.name = "🍌バナナおにぎり";
+                            it.process.emoji = "🍌";
+                            it.process.base = {...it.process.base, name:"バナナおにぎり", emoji:"🍌", price:99999};
+                            it.process.class = "mythical";
+                            triggerBananaEvent();
+                        }
+                        if(s===11 && !_shoesEventActive && Math.random() < rarePct){
+                            it.process.name = "👟シューズおにぎり";
+                            it.process.emoji = "👟";
+                            it.process.base = {...it.process.base, name:"シューズおにぎり", emoji:"👟", price:88888};
+                            it.process.class = "mythical";
+                            triggerShoesEvent();
+                        }
+                        if(s===16 && !_discEventActive && Math.random() < rarePct){
+                            it.process.name = "💿DISCおにぎり";
+                            it.process.emoji = "💿";
+                            it.process.base = {...it.process.base, name:"DISCおにぎり", emoji:"💿", price:77777};
+                            it.process.class = "mythical";
+                            triggerDiscEvent();
+                        }
+                    }
                     // トラック通過 → ボタン解放
                     if(s===1){
                         if(Math.random() < 0.01){
@@ -1032,6 +1075,7 @@ function tickLines(now){
                 it.completedOnce=true; it.done=true;
                 // 万一pendingBatchesに残っていたら解放
                 if(it.batchId !== undefined) onLineTruckArrival(it.batchId);
+
                 const p=it.process, total=calcTotal(p), trend=getTrendMulti(p);
                 const muts=[
                     `🌾 米: ${p.rice.name} (x${p.rice.multi})`,
@@ -1089,6 +1133,7 @@ function manualRoll(){
     truckArrivalPending=0; // 投入完了後にセット
     updateRollButtonState();
 
+
     const display=document.getElementById("multiRollDisplay");
     // ラインカードを必要数確保
     while(lines.length < multiRoll){
@@ -1106,8 +1151,9 @@ function manualRoll(){
     for(let i=0;i<multiRoll;i++){
         if(powerGrid.isBroken) break;
         const line=lines[i];
-        const process=buildProductionProcess();
+        let process=buildProductionProcess();
         if(!process) continue;
+
         if(process.accidents.length) addLog("事故",`ライン異常検知: ${process.accidents.join(" ➜ ")}`);
         const batchId = _batchIdCtr++;
         pendingBatches.add(batchId);
@@ -1442,34 +1488,306 @@ function triggerBlackout(reason){
 }
 
 function triggerBananaEvent(){
-    // ブラックアウト演出 → バナナがラインに流れる
-    const overlay = document.createElement("div");
-    overlay.style.cssText = "position:fixed;inset:0;background:#000;z-index:9999;display:flex;align-items:center;justify-content:center;font-size:80px;";
-    overlay.textContent = "🌑";
-    document.body.appendChild(overlay);
+    if(_bananaEventActive) return;
+    _bananaEventActive = true;
+    // ULTIMATE BANANA EVENT 演出
+    // 演出用DOM生成
+    const blackout = document.createElement("div");
+    blackout.style.cssText = "position:fixed;inset:0;background:black;opacity:0;pointer-events:none;z-index:9100;transition:0s;";
+    document.body.appendChild(blackout);
 
-    setTimeout(()=>{ overlay.textContent = "🍌"; }, 800);
-    setTimeout(()=>{ overlay.textContent = "🍌🍌🍌"; }, 1200);
+    const aura = document.createElement("div");
+    aura.style.cssText = "position:fixed;width:300px;height:300px;left:50%;top:50%;border-radius:50%;transform:translate(-50%,-50%) scale(0);opacity:0;background:radial-gradient(circle,rgba(255,230,0,1),rgba(255,170,0,0.25),transparent 70%);z-index:9120;";
+    document.body.appendChild(aura);
+
+    const finalDiv = document.createElement("div");
+    finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.4);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
+    finalDiv.innerHTML = `<div style="font-size:220px;filter:drop-shadow(0 0 25px gold) drop-shadow(0 0 60px orange);">🍌</div><div style="margin-top:-10px;font-size:48px;letter-spacing:8px;color:#fff5a0;text-shadow:0 0 10px gold,0 0 30px orange;">banana.</div>`;
+    document.body.appendChild(finalDiv);
+
+    // 初動（bodyではなくblackoutを揺らす）
+    blackout.style.transition = "0.15s";
+    blackout.style.transform = "scale(1.03)";
+    setTimeout(()=>{ blackout.style.transform = "scale(1)"; }, 150);
+
+    // 徐々に暗転
     setTimeout(()=>{
-        document.body.removeChild(overlay);
-        // 全ラインにバナナを投入
-        for(const line of lines){
-            if(!line.domReady) continue;
+        blackout.style.transition = "1.2s";
+        blackout.style.opacity = "1";
+    }, 150);
+
+    // 画面揺れ（bodyではなくblackout+auraを揺らす）
+    setTimeout(()=>{
+        let shake = 0;
+        const shaker = setInterval(()=>{
+            shake++;
+            const tx = (Math.random()-0.5)*18, ty = (Math.random()-0.5)*18;
+            blackout.style.transform = `translate(${tx}px,${ty}px)`;
+            aura.style.marginLeft = tx+"px";
+            aura.style.marginTop = ty+"px";
+            if(shake > 45){
+                clearInterval(shaker);
+                blackout.style.transform = "";
+                aura.style.marginLeft = "";
+                aura.style.marginTop = "";
+            }
+        }, 35);
+    }, 900);
+
+    // オーラ
+    setTimeout(()=>{
+        aura.style.transition = "none";
+        aura.style.opacity = "1";
+        aura.style.transform = "translate(-50%,-50%) scale(0)";
+        setTimeout(()=>{
+            aura.style.transition = "2.8s cubic-bezier(.1,.8,.2,1)";
+            aura.style.transform = "translate(-50%,-50%) scale(12)";
+            aura.style.opacity = "0";
+        }, 20);
+    }, 1300);
+
+    // リング
+    for(let i=0;i<7;i++){
+        setTimeout(()=>{
+            const ring = document.createElement("div");
+            ring.style.cssText = "position:fixed;width:100px;height:100px;left:50%;top:50%;border-radius:50%;border:6px solid gold;transform:translate(-50%,-50%) scale(0);opacity:1;z-index:9130;";
+            document.body.appendChild(ring);
+            ring.animate([
+                {transform:"translate(-50%,-50%) scale(0)",opacity:1},
+                {transform:"translate(-50%,-50%) scale(24)",opacity:0}
+            ],{duration:2200,easing:"cubic-bezier(.1,.8,.2,1)"});
+            setTimeout(()=>ring.remove(), 2200);
+        }, 1400+i*180);
+    }
+
+    // 火花
+    setTimeout(()=>{
+        for(let i=0;i<80;i++){
+            const spark = document.createElement("div");
+            spark.style.cssText = "position:fixed;width:8px;height:8px;border-radius:50%;background:gold;left:50%;top:50%;pointer-events:none;z-index:9150;";
+            document.body.appendChild(spark);
+            const angle = Math.random()*Math.PI*2;
+            const dist = Math.random()*1200+200;
+            spark.animate([
+                {transform:"translate(-50%,-50%) scale(1)",opacity:1},
+                {transform:`translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px) scale(0)`,opacity:0}
+            ],{duration:1800,easing:"ease-out"});
+            setTimeout(()=>spark.remove(), 1800);
+        }
+    }, 1700);
+
+    // バナナ大量放出
+    setTimeout(()=>{
+        for(let i=0;i<65;i++){
+            const b = document.createElement("div");
+            b.style.cssText = "position:fixed;left:50%;top:50%;font-size:70px;pointer-events:none;z-index:9140;filter:drop-shadow(0 0 15px gold) drop-shadow(0 0 40px orange);";
+            b.textContent = "🍌";
+            document.body.appendChild(b);
+            const angle = Math.random()*Math.PI*2;
+            const dist = Math.random()*1600+400;
+            b.animate([
+                {transform:"translate(-50%,-50%) scale(0.4) rotate(0deg)",opacity:1},
+                {transform:`translate(${Math.cos(angle)*dist}px,${Math.sin(angle)*dist}px) scale(2.2) rotate(${Math.random()*1000}deg)`,opacity:0}
+            ],{duration:2600,easing:"cubic-bezier(.1,.8,.2,1)"});
+            setTimeout(()=>b.remove(), 2600);
+        }
+    }, 2200);
+
+    // 白フラッシュ
+    setTimeout(()=>{
+        const flash = document.createElement("div");
+        flash.style.cssText = "position:fixed;inset:0;background:white;opacity:0;pointer-events:none;z-index:9200;";
+        document.body.appendChild(flash);
+        flash.animate([{opacity:0},{opacity:1},{opacity:0}],{duration:900,easing:"ease-out"});
+        setTimeout(()=>flash.remove(), 900);
+    }, 3400);
+
+    // 最終演出
+    setTimeout(()=>{
+        blackout.style.transition = "none";
+        blackout.style.opacity = "1";
+        finalDiv.style.transition = "2s cubic-bezier(.1,.8,.2,1)";
+        finalDiv.style.opacity = "1";
+        finalDiv.style.transform = "translate(-50%,-50%) scale(1)";
+    }, 4300);
+
+    // ゲームへ戻る + バナナ投入
+    setTimeout(()=>{
+        blackout.style.transition = "3s";
+        blackout.style.opacity = "0";
+        setTimeout(()=>{
+            blackout.remove(); aura.remove(); finalDiv.remove();
+        }, 3000);
+
+        // 1本目のラインにバナナを1個投入
+        const targetLine = lines.find(l=>l.domReady) || null;
+        if(targetLine){
             const bananaProcess = buildProductionProcess();
             if(bananaProcess){
                 bananaProcess.name = "🍌バナナおにぎり";
                 bananaProcess.emoji = "🍌";
                 bananaProcess.base = {...bananaProcess.base, name:"バナナおにぎり", emoji:"🍌", price:99999};
                 bananaProcess.class = "mythical";
-                line.items.push({process:bananaProcess, pos:0, done:false, completedOnce:false, needsInitFlash:true});
+                targetLine.items.push({process:bananaProcess, pos:0, done:false, completedOnce:false, needsInitFlash:true});
+                if(!lineRafId){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); }
             }
         }
-        if(!lineRafId){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); }
-        // 生産ラインのパネルまでスクロール
-        const rollDisplay = document.getElementById("multiRollDisplay");
-        if(rollDisplay) rollDisplay.scrollIntoView({behavior:"smooth", block:"center"});
         addLog("AI", "🍌 電力過剰による量子バナナ生成を確認。おにぎり工場にバナナが侵入しました。");
-    }, 2000);
+        _bananaEventActive = false;
+    }, 7200);
+}
+
+
+function triggerShoesEvent(){
+    if(_shoesEventActive) return;
+    _shoesEventActive = true;
+
+    const blackout = document.createElement("div");
+    blackout.style.cssText = "position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:9100;transition:0s;";
+    document.body.appendChild(blackout);
+
+    const finalDiv = document.createElement("div");
+    finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.4);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
+    finalDiv.innerHTML = `<div style="font-size:180px;filter:drop-shadow(0 0 25px #ff69b4) drop-shadow(0 0 60px #ff1493);">👟</div><div style="margin-top:-10px;font-size:36px;letter-spacing:6px;color:#ffb6d9;text-shadow:0 0 10px #ff69b4,0 0 30px #ff1493;">wait why is there a shoe.</div>`;
+    document.body.appendChild(finalDiv);
+
+    // 暗転
+    setTimeout(()=>{ blackout.style.transition="0.8s"; blackout.style.opacity="1"; }, 100);
+
+    // 揺れ
+    setTimeout(()=>{
+        let n=0; const sh=setInterval(()=>{
+            n++;
+            blackout.style.transform=`translate(${(Math.random()-0.5)*12}px,${(Math.random()-0.5)*12}px)`;
+            if(n>30){ clearInterval(sh); blackout.style.transform=""; }
+        },40);
+    }, 600);
+
+    // リング（ピンク）
+    for(let i=0;i<5;i++) setTimeout(()=>{
+        const r=document.createElement("div");
+        r.style.cssText="position:fixed;width:80px;height:80px;left:50%;top:50%;border-radius:50%;border:5px solid #ff69b4;z-index:9130;";
+        document.body.appendChild(r);
+        r.animate([{transform:"translate(-50%,-50%) scale(0)",opacity:1},{transform:"translate(-50%,-50%) scale(20)",opacity:0}],{duration:1800,easing:"cubic-bezier(.1,.8,.2,1)"});
+        setTimeout(()=>r.remove(),1800);
+    }, 1000+i*150);
+
+    // 靴を飛ばす
+    setTimeout(()=>{
+        for(let i=0;i<40;i++){
+            const s=document.createElement("div");
+            s.style.cssText="position:fixed;left:50%;top:50%;font-size:50px;pointer-events:none;z-index:9140;";
+            s.textContent="👟";
+            document.body.appendChild(s);
+            const a=Math.random()*Math.PI*2, d=Math.random()*1200+300;
+            s.animate([
+                {transform:"translate(-50%,-50%) scale(0.3) rotate(0deg)",opacity:1},
+                {transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px) scale(1.8) rotate(${(Math.random()-0.5)*720}deg)`,opacity:0}
+            ],{duration:2200,easing:"cubic-bezier(.1,.8,.2,1)"});
+            setTimeout(()=>s.remove(),2200);
+        }
+    },1600);
+
+    // フラッシュ（ピンク）
+    setTimeout(()=>{
+        const f=document.createElement("div");
+        f.style.cssText="position:fixed;inset:0;background:#ff69b4;opacity:0;pointer-events:none;z-index:9200;";
+        document.body.appendChild(f);
+        f.animate([{opacity:0},{opacity:0.8},{opacity:0}],{duration:700,easing:"ease-out"});
+        setTimeout(()=>f.remove(),700);
+    },2800);
+
+    // 最終表示
+    setTimeout(()=>{
+        blackout.style.transition="none"; blackout.style.opacity="1";
+        finalDiv.style.transition="1.8s cubic-bezier(.1,.8,.2,1)";
+        finalDiv.style.opacity="1";
+        finalDiv.style.transform="translate(-50%,-50%) scale(1)";
+    },3600);
+
+    // 復帰
+    setTimeout(()=>{
+        blackout.style.transition="2.5s"; blackout.style.opacity="0";
+        setTimeout(()=>{ blackout.remove(); finalDiv.remove(); }, 2500);
+        addLog("AI","👟 検査機が原因不明の靴を検出。おにぎり工場に靴が混入しました。");
+        _shoesEventActive = false;
+    },6200);
+}
+
+function triggerDiscEvent(){
+    if(_discEventActive) return;
+    _discEventActive = true;
+
+    const blackout = document.createElement("div");
+    blackout.style.cssText = "position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:9100;transition:0s;";
+    document.body.appendChild(blackout);
+
+    const finalDiv = document.createElement("div");
+    finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.4);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
+    finalDiv.innerHTML = `<div style="font-size:180px;filter:drop-shadow(0 0 25px cyan) drop-shadow(0 0 60px #0088ff);">💿</div><div style="margin-top:-10px;font-size:36px;letter-spacing:6px;color:#aef;text-shadow:0 0 10px cyan,0 0 30px #0088ff;">never gonna give you up.</div>`;
+    document.body.appendChild(finalDiv);
+
+    // 暗転
+    setTimeout(()=>{ blackout.style.transition="0.8s"; blackout.style.opacity="1"; }, 100);
+
+    // 揺れ
+    setTimeout(()=>{
+        let n=0; const sh=setInterval(()=>{
+            n++;
+            blackout.style.transform=`translate(${(Math.random()-0.5)*12}px,${(Math.random()-0.5)*12}px)`;
+            if(n>30){ clearInterval(sh); blackout.style.transform=""; }
+        },40);
+    }, 600);
+
+    // リング（シアン）
+    for(let i=0;i<5;i++) setTimeout(()=>{
+        const r=document.createElement("div");
+        r.style.cssText="position:fixed;width:80px;height:80px;left:50%;top:50%;border-radius:50%;border:5px solid cyan;z-index:9130;";
+        document.body.appendChild(r);
+        r.animate([{transform:"translate(-50%,-50%) scale(0)",opacity:1},{transform:"translate(-50%,-50%) scale(20)",opacity:0}],{duration:1800,easing:"cubic-bezier(.1,.8,.2,1)"});
+        setTimeout(()=>r.remove(),1800);
+    }, 1000+i*150);
+
+    // DISCを回転させながら飛ばす
+    setTimeout(()=>{
+        for(let i=0;i<40;i++){
+            const d=document.createElement("div");
+            d.style.cssText="position:fixed;left:50%;top:50%;font-size:55px;pointer-events:none;z-index:9140;";
+            d.textContent="💿";
+            document.body.appendChild(d);
+            const a=Math.random()*Math.PI*2, dist=Math.random()*1200+300;
+            d.animate([
+                {transform:"translate(-50%,-50%) scale(0.3) rotate(0deg)",opacity:1},
+                {transform:`translate(${Math.cos(a)*dist}px,${Math.sin(a)*dist}px) scale(2) rotate(${Math.random()*1440}deg)`,opacity:0}
+            ],{duration:2400,easing:"cubic-bezier(.1,.8,.2,1)"});
+            setTimeout(()=>d.remove(),2400);
+        }
+    },1600);
+
+    // フラッシュ（シアン）
+    setTimeout(()=>{
+        const f=document.createElement("div");
+        f.style.cssText="position:fixed;inset:0;background:cyan;opacity:0;pointer-events:none;z-index:9200;";
+        document.body.appendChild(f);
+        f.animate([{opacity:0},{opacity:0.7},{opacity:0}],{duration:700,easing:"ease-out"});
+        setTimeout(()=>f.remove(),700);
+    },2800);
+
+    // 最終表示
+    setTimeout(()=>{
+        blackout.style.transition="none"; blackout.style.opacity="1";
+        finalDiv.style.transition="1.8s cubic-bezier(.1,.8,.2,1)";
+        finalDiv.style.opacity="1";
+        finalDiv.style.transform="translate(-50%,-50%) scale(1)";
+    },3600);
+
+    // 復帰
+    setTimeout(()=>{
+        blackout.style.transition="2.5s"; blackout.style.opacity="0";
+        setTimeout(()=>{ blackout.remove(); finalDiv.remove(); }, 2500);
+        addLog("AI","💿 生産ライン最終検査でDVDが検出されました。Never gonna give you up.");
+        _discEventActive = false;
+    },6200);
 }
 
 function payOrBorrow(amount){
@@ -1851,11 +2169,6 @@ setInterval(()=>{
     }
 
     // バナナイースターエッグ: 400%から基本1%、700%超で1.5%ごとに+1%
-    if(!powerGrid.isBroken && powerGrid.level > 400){
-        let bananaPct = 0.04;
-        if(powerGrid.level > 700) bananaPct += Math.floor((powerGrid.level - 700) / 1.5) * 0.02;
-        if(Math.random() < bananaPct) triggerBananaEvent();
-    }
 
     // 電圧不安定ブレーカー判定（確率を大幅低下: 200%以上で1%/秒, 300%で3%/秒）
     if(!powerGrid.isBroken && powerGrid.level > 100){
