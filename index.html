@@ -75,7 +75,16 @@ h2{margin-top:0; color:#ffd166; border-bottom:1px solid #333; padding-bottom:5px
     transition:.15s;
     position: relative;
 }
-.card.selected{outline:4px solid #ffd166}
+.card.selected{outline:4px solid #ffd166;}
+.card.rarity-common{border-color:#888;}
+.card.rarity-uncommon{border-color:#5edc88; box-shadow:0 0 6px #5edc8855;}
+.card.rarity-rare{border-color:#55aaff; box-shadow:0 0 8px #55aaff66;}
+.card.rarity-epic{border-color:#c86cff; box-shadow:0 0 10px #c86cff55;}
+.card.rarity-legend{border-color:#ffbf47; box-shadow:0 0 12px #ffbf4766;}
+.card.rarity-mythical{border-color:#ff77aa; box-shadow:0 0 16px #ff77aa77; animation:mythicalPulse 2s infinite;}
+.card.rarity-secret{border-color:#fff; box-shadow:0 0 20px #ffffff99; animation:secretPulse 1.5s infinite;}
+@keyframes secretPulse{0%,100%{box-shadow:0 0 20px #ffffff66;border-color:#fff;}50%{box-shadow:0 0 40px #ffffffcc;border-color:#aef;}}
+@keyframes mythicalPulse{0%,100%{box-shadow:0 0 16px #ff77aa77;}50%{box-shadow:0 0 28px #ff77aacc;}}
 .card.transporting{opacity:.5}
 
 /* 通過時に光るクラス */
@@ -163,6 +172,26 @@ input,select{
     border-radius:8px;
     font-weight:bold;
 }
+#topNotice{
+    position:fixed;
+    left:50%;
+    top:20px;
+    transform:translateX(-50%);
+    background:#ff3333;
+    color:#fff;
+    padding:14px 28px;
+    border-radius:14px;
+    font-weight:bold;
+    font-size:15px;
+    opacity:0;
+    transition:.3s;
+    pointer-events:none;
+    z-index:9050;
+    text-align:center;
+    max-width:80vw;
+    box-shadow:0 4px 20px rgba(255,0,0,0.4);
+}
+#topNotice.show{opacity:1}
 #toast{
     position:fixed;
     left:50%;
@@ -323,7 +352,7 @@ input,select{
     border:1px solid #222;
     color: #4af626;
 }
-.dangerBadge {
+.rarityBadge {
     position: absolute;
     top: 5px;
     right: 5px;
@@ -331,12 +360,7 @@ input,select{
     padding: 2px 6px;
     border-radius: 4px;
     font-weight: bold;
-    color: black;
 }
-.danger-low { background: #888; }
-.danger-mid { background: #ff9f1c; }
-.danger-high { background: #ff3333; color: white; }
-.danger-ex { background: #000; color: #ff3333; border: 1px solid #ff3333; }
 
 .status-grid {
     display: grid;
@@ -348,6 +372,7 @@ input,select{
 </style>
 </head>
 <body>
+<div id="topNotice"></div>
 <div id="toast"></div>
 
 <div id="codeBox">
@@ -442,7 +467,7 @@ input,select{
         </div>
 
         <div class="panel">
-            <h2>📖 危険食品アーカイブ (<span id="dictCount">0</span>/10)</h2>
+            <h2>📖 おにぎり図鑑 (<span id="dictCount">0</span>種類)</h2>
             <div id="dictionaryArea" style="font-size:12px; max-height:200px; overflow-y:auto; color:#bbb;">
                 未発見
             </div>
@@ -478,8 +503,8 @@ let brokenMachines = []; // { id, stageIndex, stageName, stageIcon }
 let autoRepairOwned = false;
 let _machineIdCtr = 0;
 let _bananaEventActive = false;
-let _shoesEventActive = false;
-let _discEventActive = false;
+let _djEventActive = false;
+let _errorEventActive = false;
 const REPAIR_COST = 100000;
 const BREAKABLE_STAGES = new Set(["精米","炊飯","具材","成形","海苔","包装","検査"]);
 let earnLog = [];
@@ -616,6 +641,14 @@ function addLog(type, text) {
     logBox.scrollTop = logBox.scrollHeight;
 }
 
+function showTopNotice(text, duration=4000){
+    const el = document.getElementById("topNotice");
+    el.textContent = text;
+    el.classList.add("show");
+    clearTimeout(el._timer);
+    el._timer = setTimeout(()=>el.classList.remove("show"), duration);
+}
+
 function showToast(text){
     const toast = document.getElementById("toast");
     toast.textContent = text;
@@ -650,7 +683,9 @@ function productNameHtml(name, rarityClass){
     if(name.length > 12) size = 18;
     if(name.length > 18) size = 14;
     const color = RARITY_COLORS[rarityClass] || "#fff";
-    return `<div class="scrollName" style="font-size:${size}px; color:${color};">${name}</div>`;
+    const label = RARITY_LABELS[rarityClass] || "";
+    const badge = label ? `<span style="font-size:9px;padding:1px 4px;border-radius:3px;background:${color}22;color:${color};border:1px solid ${color}44;margin-left:4px;">${label}</span>` : "";
+    return `<div class="scrollName" style="font-size:${size}px; color:${color};">${name}${badge}</div>`;
 }
 
 function getQualityMultiplier(quality){ return 0.5 + (quality / 100) * 2.5; }
@@ -831,9 +866,13 @@ function buildLineDOM(line){
     line.domReady = true;
 }
 
+const RARITY_LABELS = {
+    common: "Common", uncommon: "Uncommon", rare: "Rare",
+    epic: "Epic", legend: "Legend", mythical: "Mythical", secret: "SECRET"
+};
 const RARITY_COLORS = {
     common: "#888", uncommon: "#5edc88", rare: "#55aaff",
-    epic: "#c86cff", legend: "#ffbf47", mythical: "#ff77aa"
+    epic: "#c86cff", legend: "#ffbf47", mythical: "#ff77aa", secret: "#ffffff"
 };
 
 // 変異テキスト "⬛ 普通の海苔" → レア度色でラップ（アイコン含む）
@@ -850,15 +889,15 @@ function calcBaseOdds(itemName){
     // 激レア特別おにぎり
     const specials = {
         "🍌バナナおにぎり": "1/∞",
-        "👟シューズおにぎり": "1/∞",
-        "💿DISCおにぎり": "1/∞",
+        "🎧DJおにぎり": "1/∞",
+        "❌Errorおにぎり": "1/∞",
     };
     for(const [key, val] of Object.entries(specials)){
         if(itemName.includes(key.replace(/^[^\w]/,'').split('お')[0]) || itemName === key) return val;
     }
     if(itemName.includes("バナナ")) return "1/∞";
-    if(itemName.includes("シューズ")) return "1/∞";
-    if(itemName.includes("DISC")) return "1/∞";
+    if(itemName.includes("DJ")) return "1/∞";
+    if(itemName.includes("Error")) return "1/∞";
     const total = onigiris.reduce((s,o)=>s+o.chance,0);
     const o = onigiris.find(o => itemName === o.name || itemName.includes(o.name));
     if(!o) return null;
@@ -963,7 +1002,7 @@ function updateMachines(line){
 
 function tickLines(now){
     // バナナ演出中はライン停止
-    if(_bananaEventActive || _shoesEventActive || _discEventActive){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); return; }
+    if(_bananaEventActive || _djEventActive || _errorEventActive){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); return; }
     const anyActive = lines.some(l=>l.items.some(it=>!it.done));
     if(!anyActive){ lineRafId=null; lastLineTime=0; return; }
     if(!lastLineTime) lastLineTime=now;
@@ -1031,31 +1070,30 @@ function tickLines(now){
                             }, _textDur);
                         }
                     }
-                    // 具材(8)→バナナ、海苔(11)→シューズ、検査(16)→DISCの激レア判定
-                    if(!powerGrid.isBroken && powerGrid.level > 400 && (s===8||s===11||s===16)){
+                    // 具材ステージ(s=8)で激レアおにぎり判定
+                    if(s===8 && !powerGrid.isBroken && powerGrid.level > 400){
                         const rarePct = powerGrid.level < 700
                             ? (powerGrid.level - 400) / 300000
                             : 0.001 + (powerGrid.level - 700) / 100000;
-                        if(s===8 && !_bananaEventActive && Math.random() < rarePct){
+                        const roll = Math.random();
+                        if(!_bananaEventActive && roll < rarePct){
                             it.process.name = "🍌バナナおにぎり";
                             it.process.emoji = "🍌";
                             it.process.base = {...it.process.base, name:"バナナおにぎり", emoji:"🍌", price:99999};
-                            it.process.class = "mythical";
+                            it.process.class = "secret";
                             triggerBananaEvent();
-                        }
-                        if(s===11 && !_shoesEventActive && Math.random() < rarePct){
-                            it.process.name = "👟シューズおにぎり";
-                            it.process.emoji = "👟";
-                            it.process.base = {...it.process.base, name:"シューズおにぎり", emoji:"👟", price:88888};
-                            it.process.class = "mythical";
-                            triggerShoesEvent();
-                        }
-                        if(s===16 && !_discEventActive && Math.random() < rarePct){
-                            it.process.name = "💿DISCおにぎり";
-                            it.process.emoji = "💿";
-                            it.process.base = {...it.process.base, name:"DISCおにぎり", emoji:"💿", price:77777};
-                            it.process.class = "mythical";
-                            triggerDiscEvent();
+                        } else if(!_djEventActive && roll < rarePct * 2){
+                            it.process.name = "🎧DJおにぎり";
+                            it.process.emoji = "🎧";
+                            it.process.base = {...it.process.base, name:"DJおにぎり", emoji:"🎧", price:88888};
+                            it.process.class = "secret";
+                            triggerDjEvent();
+                        } else if(!_errorEventActive && roll < rarePct * 3){
+                            it.process.name = "❌Errorおにぎり";
+                            it.process.emoji = "❌";
+                            it.process.base = {...it.process.base, name:"Errorおにぎり", emoji:"❌", price:77777};
+                            it.process.class = "secret";
+                            triggerErrorEvent();
                         }
                     }
                     // トラック通過 → ボタン解放
@@ -1082,7 +1120,7 @@ function tickLines(now){
                     `⚙️ 精米: 品質${p.quality}%`,
                     `🥢 具材: ${p.filling.name} (x${p.filling.multi})`,
                     `⬛ 海苔: ${p.nori.name}`,
-                    `⚠️ 危険度: [${p.dangerText}]`
+
                 ];
                 if(p.accidents.length) muts.push(`💥 異常: ${p.accidents.join(",")}`);
                 if(trend!==1.0) muts.push(`📈 トレンド補正: x${trend}`);
@@ -1099,7 +1137,7 @@ function tickLines(now){
                 const na=document.getElementById(`ln_name_${line.id}`);
                 const pa=document.getElementById(`ln_price_${line.id}`);
                 const ma=document.getElementById(`ln_muts_${line.id}`);
-                if(na) na.innerHTML=`${productNameHtml(p.name,p.class)}<span class="dangerBadge ${p.dangerBadgeClass}">危険度:${p.dangerText}</span>`;
+                if(na) na.innerHTML=`${productNameHtml(p.name,p.class)}<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:${RARITY_COLORS[p.class]||'#888'}22;color:${RARITY_COLORS[p.class]||'#888'};border:1px solid ${RARITY_COLORS[p.class]||'#888'}44;">${RARITY_LABELS[p.class]||p.class}</span>`;
                 if(pa) pa.innerHTML=`<span class="money" style="color:${RARITY_COLORS[p.class]||'#fff'};">${Math.floor(total).toLocaleString()}円</span>`;
                 if(ma) ma.innerHTML=muts.map(m=>colorMutation(m)).join("<br>");
             }
@@ -1192,8 +1230,8 @@ function renderInventory(){
     inventory.forEach(item=>{
         const remain = item.transporting ? Math.max(0, Math.ceil((item.transportEnd-Date.now())/1000)) : 0;
         inv.innerHTML += `
-            <div data-item-id="${item.id}" class="card ${item.class} ${selectedItems.includes(item.id) ? "selected":""} ${item.transporting ? "transporting":""}" draggable="${!item.transporting}" onclick="selectItem(event,${item.id})" ondragstart="dragItem(event,${item.id})">
-                <span class="dangerBadge ${item.dangerBadgeClass}">危険度:${item.dangerText}</span>
+            <div data-item-id="${item.id}" class="card rarity-${item.class} ${selectedItems.includes(item.id) ? "selected":""} ${item.transporting ? "transporting":""}" draggable="${!item.transporting}" onclick="selectItem(event,${item.id})" ondragstart="dragItem(event,${item.id})">
+                <span class="rarityBadge" style="background:${RARITY_COLORS[item.class]||'#888'}22;color:${RARITY_COLORS[item.class]||'#888'};border:1px solid ${RARITY_COLORS[item.class]||'#888'}55;">${RARITY_LABELS[item.class]||''}</span>
                 <div style="font-size:40px; margin-top:10px;">${item.emoji}</div>
                 <h4 style="margin:5px 0; color:${RARITY_COLORS[item.class]||'#fff'};">${item.name}${(()=>{const o=calcBaseOdds(item.name);return o?` <span style="font-size:10px;color:#888;">${o}</span>`:''})()}</h4>
                 <div class="money" style="font-size:16px; color:${RARITY_COLORS[item.class]||'#fff'};">${item.finalPrice.toLocaleString()}円</div>
@@ -1484,6 +1522,7 @@ function triggerBlackout(reason){
     // アイテムは消さない（復旧後に再開できるよう保持）
     if(lineRafId){ cancelAnimationFrame(lineRafId); lineRafId=null; lastLineTime=0; }
     addLog("危険", `⚠️警告: ${reason}送電グリッドが崩壊。ブレーカーが落ちました！`);
+    showTopNotice("⚡ ブレーカーが落ちました！生産停止中");
     renderHackArea();
 }
 
@@ -1638,157 +1677,153 @@ function triggerBananaEvent(){
 }
 
 
-function triggerShoesEvent(){
-    if(_shoesEventActive) return;
-    _shoesEventActive = true;
+function triggerDjEvent(){
+    if(_djEventActive) return;
+    _djEventActive = true;
 
     const blackout = document.createElement("div");
-    blackout.style.cssText = "position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:9100;transition:0s;";
+    blackout.style.cssText = "position:fixed;inset:0;background:#0a0018;opacity:0;pointer-events:none;z-index:9100;transition:0s;";
     document.body.appendChild(blackout);
 
     const finalDiv = document.createElement("div");
     finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.4);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
-    finalDiv.innerHTML = `<div style="font-size:180px;filter:drop-shadow(0 0 25px #ff69b4) drop-shadow(0 0 60px #ff1493);">👟</div><div style="margin-top:-10px;font-size:36px;letter-spacing:6px;color:#ffb6d9;text-shadow:0 0 10px #ff69b4,0 0 30px #ff1493;">wait why is there a shoe.</div>`;
+    finalDiv.innerHTML = `<div style="font-size:180px;filter:drop-shadow(0 0 25px #a855f7) drop-shadow(0 0 60px #7c3aed);">🎧</div><div style="margin-top:-10px;font-size:36px;letter-spacing:8px;color:#d8b4fe;text-shadow:0 0 10px #a855f7,0 0 30px #7c3aed;">DJ Onigiri.</div>`;
     document.body.appendChild(finalDiv);
 
-    // 暗転
     setTimeout(()=>{ blackout.style.transition="0.8s"; blackout.style.opacity="1"; }, 100);
 
-    // 揺れ
-    setTimeout(()=>{
-        let n=0; const sh=setInterval(()=>{
-            n++;
-            blackout.style.transform=`translate(${(Math.random()-0.5)*12}px,${(Math.random()-0.5)*12}px)`;
-            if(n>30){ clearInterval(sh); blackout.style.transform=""; }
-        },40);
-    }, 600);
+    // ビート感ある揺れ
+    let beatCount = 0;
+    const beats = [300,450,600,750,900,1050,1200,1350,1500,1650];
+    beats.forEach(t => setTimeout(()=>{
+        blackout.style.transform = `scale(${1+Math.random()*0.04}) translate(${(Math.random()-0.5)*8}px,${(Math.random()-0.5)*8}px)`;
+        setTimeout(()=>{ blackout.style.transform=""; }, 80);
+    }, t));
 
-    // リング（ピンク）
-    for(let i=0;i<5;i++) setTimeout(()=>{
+    // 紫リング
+    for(let i=0;i<6;i++) setTimeout(()=>{
         const r=document.createElement("div");
-        r.style.cssText="position:fixed;width:80px;height:80px;left:50%;top:50%;border-radius:50%;border:5px solid #ff69b4;z-index:9130;";
+        r.style.cssText="position:fixed;width:80px;height:80px;left:50%;top:50%;border-radius:50%;border:5px solid #a855f7;z-index:9130;";
         document.body.appendChild(r);
-        r.animate([{transform:"translate(-50%,-50%) scale(0)",opacity:1},{transform:"translate(-50%,-50%) scale(20)",opacity:0}],{duration:1800,easing:"cubic-bezier(.1,.8,.2,1)"});
-        setTimeout(()=>r.remove(),1800);
-    }, 1000+i*150);
+        r.animate([{transform:"translate(-50%,-50%) scale(0)",opacity:1},{transform:"translate(-50%,-50%) scale(22)",opacity:0}],{duration:2000,easing:"cubic-bezier(.1,.8,.2,1)"});
+        setTimeout(()=>r.remove(),2000);
+    }, 800+i*160);
 
-    // 靴を飛ばす
+    // 音符を飛ばす
+    const notes = ["🎵","🎶","🎧","🎵","🎶"];
     setTimeout(()=>{
-        for(let i=0;i<40;i++){
-            const s=document.createElement("div");
-            s.style.cssText="position:fixed;left:50%;top:50%;font-size:50px;pointer-events:none;z-index:9140;";
-            s.textContent="👟";
-            document.body.appendChild(s);
-            const a=Math.random()*Math.PI*2, d=Math.random()*1200+300;
-            s.animate([
+        for(let i=0;i<50;i++){
+            const n=document.createElement("div");
+            n.style.cssText="position:fixed;left:50%;top:50%;font-size:40px;pointer-events:none;z-index:9140;";
+            n.textContent=notes[i%notes.length];
+            document.body.appendChild(n);
+            const a=Math.random()*Math.PI*2, dist=Math.random()*1300+300;
+            n.animate([
                 {transform:"translate(-50%,-50%) scale(0.3) rotate(0deg)",opacity:1},
-                {transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px) scale(1.8) rotate(${(Math.random()-0.5)*720}deg)`,opacity:0}
+                {transform:`translate(${Math.cos(a)*dist}px,${Math.sin(a)*dist}px) scale(2) rotate(${(Math.random()-0.5)*360}deg)`,opacity:0}
             ],{duration:2200,easing:"cubic-bezier(.1,.8,.2,1)"});
-            setTimeout(()=>s.remove(),2200);
+            setTimeout(()=>n.remove(),2200);
         }
-    },1600);
+    },1400);
 
-    // フラッシュ（ピンク）
+    // 紫フラッシュ
     setTimeout(()=>{
         const f=document.createElement("div");
-        f.style.cssText="position:fixed;inset:0;background:#ff69b4;opacity:0;pointer-events:none;z-index:9200;";
+        f.style.cssText="position:fixed;inset:0;background:#a855f7;opacity:0;pointer-events:none;z-index:9200;";
         document.body.appendChild(f);
-        f.animate([{opacity:0},{opacity:0.8},{opacity:0}],{duration:700,easing:"ease-out"});
-        setTimeout(()=>f.remove(),700);
-    },2800);
+        f.animate([{opacity:0},{opacity:0.7},{opacity:0}],{duration:600,easing:"ease-out"});
+        setTimeout(()=>f.remove(),600);
+    },2700);
 
-    // 最終表示
     setTimeout(()=>{
         blackout.style.transition="none"; blackout.style.opacity="1";
         finalDiv.style.transition="1.8s cubic-bezier(.1,.8,.2,1)";
         finalDiv.style.opacity="1";
         finalDiv.style.transform="translate(-50%,-50%) scale(1)";
-    },3600);
+    },3500);
 
-    // 復帰
     setTimeout(()=>{
         blackout.style.transition="2.5s"; blackout.style.opacity="0";
         setTimeout(()=>{ blackout.remove(); finalDiv.remove(); }, 2500);
-        addLog("AI","👟 検査機が原因不明の靴を検出。おにぎり工場に靴が混入しました。");
-        _shoesEventActive = false;
+        addLog("AI","🎧 具材投入口からDJが検出されました。工場でビートが流れています。");
+        _djEventActive = false;
     },6200);
 }
 
-function triggerDiscEvent(){
-    if(_discEventActive) return;
-    _discEventActive = true;
+function triggerErrorEvent(){
+    if(_errorEventActive) return;
+    _errorEventActive = true;
 
     const blackout = document.createElement("div");
     blackout.style.cssText = "position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:9100;transition:0s;";
     document.body.appendChild(blackout);
 
     const finalDiv = document.createElement("div");
-    finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.4);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
-    finalDiv.innerHTML = `<div style="font-size:180px;filter:drop-shadow(0 0 25px cyan) drop-shadow(0 0 60px #0088ff);">💿</div><div style="margin-top:-10px;font-size:36px;letter-spacing:6px;color:#aef;text-shadow:0 0 10px cyan,0 0 30px #0088ff;">never gonna give you up.</div>`;
+    finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.4);opacity:0;z-index:9300;text-align:center;pointer-events:none;font-family:monospace;";
+    finalDiv.innerHTML = `<div style="font-size:160px;filter:drop-shadow(0 0 25px #ff3333) drop-shadow(0 0 60px #ff0000);">❌</div><div style="font-size:28px;color:#ff4444;text-shadow:0 0 10px #ff3333;letter-spacing:4px;">Error Onigiri<br><span style="font-size:16px;opacity:0.7;">A low-probability error has occurred.</span></div>`;
     document.body.appendChild(finalDiv);
 
-    // 暗転
-    setTimeout(()=>{ blackout.style.transition="0.8s"; blackout.style.opacity="1"; }, 100);
+    setTimeout(()=>{ blackout.style.transition="0.5s"; blackout.style.opacity="0.95"; }, 100);
 
-    // 揺れ
-    setTimeout(()=>{
-        let n=0; const sh=setInterval(()=>{
-            n++;
-            blackout.style.transform=`translate(${(Math.random()-0.5)*12}px,${(Math.random()-0.5)*12}px)`;
-            if(n>30){ clearInterval(sh); blackout.style.transform=""; }
-        },40);
-    }, 600);
+    // グリッチ的な揺れ
+    let gt=0;
+    const glitch=setInterval(()=>{
+        gt++;
+        const x=(Math.random()-0.5)*20, y=(Math.random()-0.5)*10;
+        blackout.style.transform=`translate(${x}px,${y}px)`;
+        finalDiv.style.filter=`hue-rotate(${Math.random()*360}deg)`;
+        if(gt>40){ clearInterval(glitch); blackout.style.transform=""; finalDiv.style.filter=""; }
+    },50);
 
-    // リング（シアン）
+    // 赤リング
     for(let i=0;i<5;i++) setTimeout(()=>{
         const r=document.createElement("div");
-        r.style.cssText="position:fixed;width:80px;height:80px;left:50%;top:50%;border-radius:50%;border:5px solid cyan;z-index:9130;";
+        r.style.cssText="position:fixed;width:60px;height:60px;left:50%;top:50%;border-radius:50%;border:4px solid #ff3333;z-index:9130;";
         document.body.appendChild(r);
-        r.animate([{transform:"translate(-50%,-50%) scale(0)",opacity:1},{transform:"translate(-50%,-50%) scale(20)",opacity:0}],{duration:1800,easing:"cubic-bezier(.1,.8,.2,1)"});
-        setTimeout(()=>r.remove(),1800);
-    }, 1000+i*150);
+        r.animate([{transform:"translate(-50%,-50%) scale(0)",opacity:1},{transform:"translate(-50%,-50%) scale(25)",opacity:0}],{duration:1500,easing:"cubic-bezier(.1,.8,.2,1)"});
+        setTimeout(()=>r.remove(),1500);
+    }, 600+i*180);
 
-    // DISCを回転させながら飛ばす
+    // ❌を飛ばす
     setTimeout(()=>{
-        for(let i=0;i<40;i++){
-            const d=document.createElement("div");
-            d.style.cssText="position:fixed;left:50%;top:50%;font-size:55px;pointer-events:none;z-index:9140;";
-            d.textContent="💿";
-            document.body.appendChild(d);
-            const a=Math.random()*Math.PI*2, dist=Math.random()*1200+300;
-            d.animate([
-                {transform:"translate(-50%,-50%) scale(0.3) rotate(0deg)",opacity:1},
-                {transform:`translate(${Math.cos(a)*dist}px,${Math.sin(a)*dist}px) scale(2) rotate(${Math.random()*1440}deg)`,opacity:0}
-            ],{duration:2400,easing:"cubic-bezier(.1,.8,.2,1)"});
-            setTimeout(()=>d.remove(),2400);
+        for(let i=0;i<45;i++){
+            const x=document.createElement("div");
+            x.style.cssText="position:fixed;left:50%;top:50%;font-size:45px;pointer-events:none;z-index:9140;";
+            x.textContent="❌";
+            document.body.appendChild(x);
+            const a=Math.random()*Math.PI*2, dist=Math.random()*1100+200;
+            x.animate([
+                {transform:"translate(-50%,-50%) scale(0.4)",opacity:1},
+                {transform:`translate(${Math.cos(a)*dist}px,${Math.sin(a)*dist}px) scale(1.5)`,opacity:0}
+            ],{duration:1800,easing:"cubic-bezier(.1,.8,.2,1)"});
+            setTimeout(()=>x.remove(),1800);
         }
-    },1600);
+    },1200);
 
-    // フラッシュ（シアン）
-    setTimeout(()=>{
+    // 赤フラッシュ×2
+    [2400,2900].forEach(t=>setTimeout(()=>{
         const f=document.createElement("div");
-        f.style.cssText="position:fixed;inset:0;background:cyan;opacity:0;pointer-events:none;z-index:9200;";
+        f.style.cssText="position:fixed;inset:0;background:#ff0000;opacity:0;pointer-events:none;z-index:9200;";
         document.body.appendChild(f);
-        f.animate([{opacity:0},{opacity:0.7},{opacity:0}],{duration:700,easing:"ease-out"});
-        setTimeout(()=>f.remove(),700);
-    },2800);
+        f.animate([{opacity:0},{opacity:0.6},{opacity:0}],{duration:500,easing:"ease-out"});
+        setTimeout(()=>f.remove(),500);
+    },t));
 
-    // 最終表示
     setTimeout(()=>{
         blackout.style.transition="none"; blackout.style.opacity="1";
-        finalDiv.style.transition="1.8s cubic-bezier(.1,.8,.2,1)";
+        finalDiv.style.transition="1.5s cubic-bezier(.1,.8,.2,1)";
         finalDiv.style.opacity="1";
         finalDiv.style.transform="translate(-50%,-50%) scale(1)";
-    },3600);
+    },3400);
 
-    // 復帰
     setTimeout(()=>{
         blackout.style.transition="2.5s"; blackout.style.opacity="0";
         setTimeout(()=>{ blackout.remove(); finalDiv.remove(); }, 2500);
-        addLog("AI","💿 生産ライン最終検査でDVDが検出されました。Never gonna give you up.");
-        _discEventActive = false;
+        addLog("AI","❌ 致命的エラー: 具材ラインで未定義の具材が検出されました。おにぎり.exeを再起動します。");
+        _errorEventActive = false;
     },6200);
 }
+
 
 function payOrBorrow(amount){
     if(money >= amount){
@@ -1853,7 +1888,7 @@ function triggerTruckAccident(type){
     if(truckAccidentPenalty < 1.0) return; // すでに事故中
     truckAccidentPenalty = 0.5;
     truckAccidentEnd = Date.now() + 5 * 60 * 1000; // 5分
-    showToast("🚛💥 トラック事故！5分間おにぎり価格が半減します");
+    showTopNotice("🚛💥 トラック事故発生！5分間販売価格が半額になります", 5000);
     addLog("危険", `📺 速報: ${type}のトラック事故がSNSで拡散。おにぎり忌避ムードで5分間価格が50%減。`);
 }
 
@@ -2064,14 +2099,57 @@ function runAutoTransport(){
 
 function renderDictionary() {
     const area = document.getElementById("dictionaryArea");
-    document.getElementById("dictCount").textContent = discoveredOnigiris.size;
-    if(discoveredOnigiris.size === 0) {
-        area.innerHTML = "出荷実績なし";
-        return;
-    }
-    area.innerHTML = Array.from(discoveredOnigiris).map(name => {
-        return `<div style="padding:2px 0; border-bottom:1px solid #222;">🔬 ${name}</div>`;
-    }).join("");
+    const found = discoveredOnigiris.size;
+    const total = onigiris.length + 3; // +バナナ+DJ+Error
+    document.getElementById("dictCount").textContent = `${found}/${total}`;
+
+    // 通常おにぎりの図鑑
+    const regularRows = onigiris.map(base => {
+        const unlocked = Array.from(discoveredOnigiris).some(n => n.includes(base.name));
+        const color = RARITY_COLORS[base.class] || "#888";
+        const label = RARITY_LABELS[base.class] || base.class;
+        if(unlocked){
+            return `<div style="padding:3px 0;border-bottom:1px solid #222;display:flex;align-items:center;gap:6px;">
+                <span>${base.emoji}</span>
+                <span style="flex:1;color:${color};">${base.name}</span>
+                <span style="font-size:10px;padding:1px 5px;border-radius:3px;background:${color}22;color:${color};border:1px solid ${color}55;">${label}</span>
+            </div>`;
+        } else {
+            return `<div style="padding:3px 0;border-bottom:1px solid #222;display:flex;align-items:center;gap:6px;opacity:0.4;">
+                <span>❓</span>
+                <span style="flex:1;color:#555;">???</span>
+                <span style="font-size:10px;padding:1px 5px;border-radius:3px;background:#33333355;color:#555;border:1px solid #44444455;">${label}</span>
+            </div>`;
+        }
+    });
+
+    // シークレットおにぎり（バナナ・DJ・Error）
+    const secrets = [
+        {name:"バナナおにぎり", emoji:"🍌"},
+        {name:"DJおにぎり", emoji:"🎧"},
+        {name:"Errorおにぎり", emoji:"❌"},
+    ];
+    const secretRows = secrets.map(s => {
+        const unlocked = Array.from(discoveredOnigiris).some(n => n.includes(s.name));
+        const color = RARITY_COLORS["secret"] || "#fff";
+        if(unlocked){
+            return `<div style="padding:3px 0;border-bottom:1px solid #222;display:flex;align-items:center;gap:6px;">
+                <span>${s.emoji}</span>
+                <span style="flex:1;color:${color};">${s.name}</span>
+                <span style="font-size:10px;padding:1px 5px;border-radius:3px;background:${color}22;color:${color};border:1px solid ${color}55;">SECRET</span>
+            </div>`;
+        } else {
+            return `<div style="padding:3px 0;border-bottom:1px solid #222;display:flex;align-items:center;gap:6px;opacity:0.35;">
+                <span>🔒</span>
+                <span style="flex:1;color:#555;">???</span>
+                <span style="font-size:10px;padding:1px 5px;border-radius:3px;background:#ffffff11;color:#666;border:1px solid #ffffff22;">SECRET</span>
+            </div>`;
+        }
+    });
+
+    area.innerHTML = regularRows.join("") +
+        `<div style="margin:6px 0 2px;color:#aaa;font-size:10px;letter-spacing:2px;">─ SECRET ─</div>` +
+        secretRows.join("");
 }
 
 function updateFactoryStatusText() {
@@ -2148,15 +2226,30 @@ setInterval(()=>{
         }
     }
 
-    // 物流トラック事故チェック（毎秒0.02%）
+    // 物流トラック事故（0.2%/秒）・納品拒否（3%/秒）チェック
     for(let si=0; si<shops.length; si++){
         const sh = shops[si];
         if(!sh.busy || !sh.saleId) continue;
-        if(Math.random() < 0.0002){
+
+        // 納品拒否（3%/秒）: おにぎりが廃棄・価格半減なし
+        if(Math.random() < 0.03){
+            const lost = inventory.filter(it=>it.saleId===sh.saleId).map(it=>it.name).slice(0,2).join("、");
+            inventory = inventory.filter(it=>it.saleId!==sh.saleId);
+            sh.busy=false; sh.saleId=null; sh.endTime=0;
+            const msg = `🚫 ${sh.name}が納品を拒否！${lost||"積荷"}が廃棄されました。`;
+            addLog("危険", msg);
+            showTopNotice(`🚫 ${sh.name}が納品拒否！積荷廃棄`);
+            renderInventory(); renderShops();
+            continue;
+        }
+
+        // トラック事故（0.2%/秒）: 積荷消滅・5分価格半減
+        if(Math.random() < 0.002){
             const lost = inventory.filter(it=>it.saleId===sh.saleId).map(it=>it.name).slice(0,3).join("、");
             inventory = inventory.filter(it=>it.saleId!==sh.saleId);
             sh.busy=false; sh.saleId=null; sh.endTime=0;
             addLog("危険", `🚛💥 ${sh.name}へのトラックが事故！${lost||"積荷"}が消滅しました。`);
+            showTopNotice("🚛💥 トラック事故！5分間販売価格が半額になります");
             triggerTruckAccident("物流");
             renderInventory(); renderShops();
         }
