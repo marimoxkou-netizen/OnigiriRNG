@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>おにぎり工場RNG 〜食品文明の崩壊〜 v5</title>
+<title>おにぎり工場RNG</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -171,6 +171,14 @@ input,select{
     padding:6px;
     border-radius:8px;
     font-weight:bold;
+}
+#lassoBox{
+    position:fixed;
+    border:2px dashed #ffd166;
+    background:rgba(255,209,102,0.08);
+    pointer-events:none;
+    z-index:200;
+    display:none;
 }
 #topNotice{
     position:fixed;
@@ -372,9 +380,25 @@ input,select{
 </style>
 </head>
 <body>
+<div id="deleteConfirmOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:10000;display:none;align-items:center;justify-content:center;">
+    <div style="background:#1a0505;border:2px solid #ff3333;border-radius:16px;padding:32px 40px;text-align:center;max-width:360px;">
+        <div style="font-size:28px;margin-bottom:12px;">⚠️</div>
+        <div style="font-size:18px;font-weight:bold;color:#ff6666;margin-bottom:8px;">本当に削除しますか？</div>
+        <div style="font-size:13px;color:#aaa;margin-bottom:20px;">この操作は取り消せません。<br>全てのセーブデータが消えます。</div>
+        <div style="margin-bottom:12px;">
+            <button id="deleteHoldBtn" style="background:#ff3333;color:#fff;border:none;border-radius:8px;padding:12px 28px;font-size:15px;font-weight:bold;cursor:pointer;user-select:none;position:relative;overflow:hidden;">
+                長押しで削除
+                <div id="deleteHoldProgress" style="position:absolute;left:0;top:0;height:100%;width:0%;background:rgba(255,255,255,0.25);pointer-events:none;transition:none;"></div>
+            </button>
+        </div>
+        <button onclick="hideDeleteConfirm()" style="background:#444;color:#ccc;border:none;border-radius:8px;padding:8px 24px;cursor:pointer;">キャンセル</button>
+    </div>
+</div>
+<div id="lassoBox"></div>
 <div id="topNotice"></div>
 <div id="toast"></div>
 
+<div id="deleteBtn" onclick="showDeleteConfirm()" style="position:fixed;top:10px;left:10px;background:#1a0505;border:1px solid #ff3333;color:#ff6666;padding:6px 12px;border-radius:8px;cursor:pointer;z-index:4;font-size:12px;font-weight:bold;">🗑️ データ削除</div>
 <div id="codeBox">
     <div>裏コード</div>
     <input id="codeInput" autocomplete="off">
@@ -449,7 +473,7 @@ input,select{
 
         <div class="panel">
             <h2>⚡ 発電所ハッキング</h2>
-            <p style="font-size:12px; color:#aaa;">動くバーを<span style="color:#5edc88; font-weight:bold;">緑のゾーン</span>で止めると電力+100%！失敗すると微増、最悪停電するぜ。<br>※100%超で電圧が不安定になり、電力が高いほど毎秒ブレーカーが落ちやすくなる。</p>
+            <p style="font-size:12px; color:#aaa;">動くバーを<span style="color:#5edc88; font-weight:bold;">緑のゾーン</span>で止めると電力上昇！失敗すると微増、最悪停電。レベルが上がると上昇量と緑ゾーンが拡大。<br>※100%超で電圧が不安定になり、電力が高いほどブレーカーが落ちやすくなる。</p>
             <div id="hackArea" class="center">
                 </div>
         </div>
@@ -517,6 +541,17 @@ let maxDangerAchieved = "低";
 
 // ハッキングミニゲーム用変数
 let hackUnlocked = false;
+let hackLevel = 0; // 0=未購入 1=基本 2=改良 3=強化 4=最大
+const MAX_HACK_LEVEL = 4;
+const HACK_LEVEL_COSTS = [500000, 2000000, 6000000, 15000000]; // 各レベルのコスト
+const HACK_LEVEL_NAMES = ["基本モジュール", "改良型", "強化型", "最大出力型"];
+// レベルごとの設定: [電力上昇量, 緑ゾーン幅%, 速度]
+const HACK_CONFIGS = [
+    {gain:10, zoneW:7,  speed:1.5}, // Lv1: +10%, 幅7%
+    {gain:30, zoneW:10, speed:1.8}, // Lv2: +30%, 幅10%
+    {gain:60, zoneW:13, speed:2.0}, // Lv3: +60%, 幅13%
+    {gain:100,zoneW:15, speed:2.2}, // Lv4: +100%, 幅15%(現行)
+];
 let hackActive = false;
 let hackPos = 0;
 let hackDir = 2.5;
@@ -532,22 +567,25 @@ const PACKAGING_UPGRADES = [
     { name:"コンテナ化", cost:5000000, next:"コンテナ", description:"100クレート入り巨大コンテナ。さらに速度1/10、価格100倍。" }
 ];
 
-const autoTransportSettings = { enabled:false, maxPrice:5000, truck:"light", shop:0 };
+const autoTransportSettings = { enabled:false, maxPrice:5000, filterMode:"price", maxRarity:"mythical", truck:"light", shop:0 };
+// filterMode: "price"=円以下, "rarity"=レア度以下
+const RARITY_ORDER = ["common","uncommon","rare","epic","legend","mythical","secret"];
 
 const trucks = {
-    light:{name:"軽トラ",speed:1,baseAmount:10,owned:true,price:0,upgradeLevel:0,maxUpgrade:5,upgradePrice:30000},
-    medium:{name:"中型トラック",speed:2,baseAmount:20,owned:false,price:50000,upgradeLevel:0,maxUpgrade:5,upgradePrice:80000},
-    large:{name:"大型トラック",speed:1.5,baseAmount:50,owned:false,price:150000,upgradeLevel:0,maxUpgrade:6,upgradePrice:180000},
-    huge:{name:"超大型トラック",speed:1.2,baseAmount:1000,owned:false,price:2000000,upgradeLevel:0,maxUpgrade:6,upgradePrice:700000}
+    light:  {name:"軽トラ",      speed:1.0, baseAmount:8,   owned:true,  price:0,       upgradeLevel:0, maxUpgrade:5, upgradePrice:20000},
+    small:  {name:"小型トラック", speed:1.2, baseAmount:18,  owned:false, price:40000,   upgradeLevel:0, maxUpgrade:5, upgradePrice:50000},
+    medium: {name:"中型トラック", speed:1.4, baseAmount:40,  owned:false, price:150000,  upgradeLevel:0, maxUpgrade:5, upgradePrice:120000},
+    large:  {name:"大型トラック", speed:1.2, baseAmount:100, owned:false, price:600000,  upgradeLevel:0, maxUpgrade:6, upgradePrice:300000},
+    huge:   {name:"超大型トラック",speed:1.0, baseAmount:280, owned:false, price:2500000, upgradeLevel:0, maxUpgrade:6, upgradePrice:800000}
 };
 
 const shops = [
-    {name:"セブンイレブン",multi:1,time:15,unlocked:true,busy:false,price:0,endTime:0,saleId:null},
-    {name:"ローソン",multi:2,time:25,unlocked:true,busy:false,price:0,endTime:0,saleId:null},
-    {name:"万代",multi:3,time:40,unlocked:false,busy:false,price:30000,endTime:0,saleId:null},
-    {name:"ライフ",multi:5,time:60,unlocked:false,busy:false,price:70000,endTime:0,saleId:null},
-    {name:"いかりスーパー",multi:10,time:120,unlocked:false,busy:false,price:150000,endTime:0,saleId:null},
-    {name:"闇通販",multi:18,time:5,unlocked:false,busy:false,price:250000,endTime:0,saleId:null}
+    {name:"セブンイレブン",multi:1.0, time:8,   unlocked:true,  busy:false, price:0,      endTime:0, saleId:null},
+    {name:"ローソン",      multi:1.4, time:15,  unlocked:false, busy:false, price:1500,   endTime:0, saleId:null},
+    {name:"万代",          multi:2.5, time:30,  unlocked:false, busy:false, price:15000,  endTime:0, saleId:null},
+    {name:"ライフ",        multi:4.0, time:50,  unlocked:false, busy:false, price:50000,  endTime:0, saleId:null},
+    {name:"いかりスーパー",multi:7.0, time:90,  unlocked:false, busy:false, price:120000, endTime:0, saleId:null},
+    {name:"闇通販",        multi:15.0,time:5,   unlocked:false, busy:false, price:200000, endTime:0, saleId:null}
 ];
 
 const onigiris = [
@@ -889,15 +927,15 @@ function calcBaseOdds(itemName){
     // 激レア特別おにぎり
     const specials = {
         "🍌バナナおにぎり": "1/∞",
-        "🎧DJおにぎり": "1/∞",
-        "❌Errorおにぎり": "1/∞",
+        "🎧DJおにぎり": "1/???",
+        "❌Errorおにぎり": "1/???",
     };
     for(const [key, val] of Object.entries(specials)){
         if(itemName.includes(key.replace(/^[^\w]/,'').split('お')[0]) || itemName === key) return val;
     }
-    if(itemName.includes("バナナ")) return "1/∞";
-    if(itemName.includes("DJ")) return "1/∞";
-    if(itemName.includes("Error")) return "1/∞";
+    if(itemName.includes("バナナ")) return "1/???";
+    if(itemName.includes("DJ")) return "1/???";
+    if(itemName.includes("Error")) return "1/???";
     const total = onigiris.reduce((s,o)=>s+o.chance,0);
     const o = onigiris.find(o => itemName === o.name || itemName.includes(o.name));
     if(!o) return null;
@@ -1130,7 +1168,10 @@ function tickLines(now){
                     kind:p.product.kind, mutations:muts, transporting:false, transportEnd:0, saleId:null,
                     class:p.class, dangerText:p.dangerText, dangerBadgeClass:p.dangerBadgeClass
                 });
-                discoveredOnigiris.add(p.name);
+                // 図鑑登録: onigirisのnameか激レア名のみ許可
+                const _allowedNames = new Set([...onigiris.map(o=>o.name), "バナナおにぎり","DJおにぎり","Errorおにぎり"]);
+                const _baseName = p.base.name;
+                if(_allowedNames.has(_baseName)) discoveredOnigiris.add(_baseName);
                 inventory.sort((a,b)=>b.finalPrice-a.finalPrice);
                 // throttled heavy renders
                 if(!_renderInvPending){ _renderInvPending=true; setTimeout(()=>{ renderInventory(); renderDictionary(); runAutoTransport(); _renderInvPending=false; },80); }
@@ -1244,6 +1285,69 @@ function renderInventory(){
 
     document.getElementById("money").textContent = Math.floor(money).toLocaleString();
     document.getElementById("itemCount").textContent = inventory.length;
+}
+
+// ラッソ選択
+let _lassoActive = false;
+let _lassoStartX = 0, _lassoStartY = 0;
+
+function lassoStart(e){
+    if(e.button !== 0) return;
+    const inv = document.getElementById("inventory");
+    if(!inv || !inv.contains(e.target)) return; // inventory内のみ
+    if(e.target.closest('[data-item-id]') && !e.shiftKey && !e.ctrlKey) return; // 通常クリックはselectItemに任せる
+    _lassoActive = false;
+    _lassoStartX = e.clientX;
+    _lassoStartY = e.clientY;
+
+    function onMove(ev){
+        const dx = ev.clientX - _lassoStartX, dy = ev.clientY - _lassoStartY;
+        if(!_lassoActive && Math.abs(dx)+Math.abs(dy) > 6){
+            _lassoActive = true;
+            const box = document.getElementById("lassoBox");
+            if(box) box.style.display = "block";
+        }
+        if(!_lassoActive) return;
+        const box = document.getElementById("lassoBox");
+        if(!box) return;
+        box.style.left   = Math.min(ev.clientX, _lassoStartX)+"px";
+        box.style.top    = Math.min(ev.clientY, _lassoStartY)+"px";
+        box.style.width  = Math.abs(dx)+"px";
+        box.style.height = Math.abs(dy)+"px";
+    }
+
+    function onUp(ev){
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        const box = document.getElementById("lassoBox");
+        if(box){ box.style.display="none"; box.style.width="0"; box.style.height="0"; }
+        if(!_lassoActive){ _lassoActive=false; return; }
+        _lassoActive = false;
+
+        const r = {
+            x1: Math.min(ev.clientX, _lassoStartX),
+            y1: Math.min(ev.clientY, _lassoStartY),
+            x2: Math.max(ev.clientX, _lassoStartX),
+            y2: Math.max(ev.clientY, _lassoStartY),
+        };
+        // カードとの交差判定
+        const cards = document.querySelectorAll("#inventory [data-item-id]");
+        const newSel = [];
+        cards.forEach(card=>{
+            const cr = card.getBoundingClientRect();
+            if(cr.right > r.x1 && cr.left < r.x2 && cr.bottom > r.y1 && cr.top < r.y2){
+                const id = Number(card.dataset.itemId);
+                const item = inventory.find(i=>i.id===id);
+                if(item && !item.transporting) newSel.push(id);
+            }
+        });
+        if(!ev.shiftKey && !ev.ctrlKey) selectedItems = newSel;
+        else selectedItems = [...new Set([...selectedItems, ...newSel])];
+        renderInventory();
+    }
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
 }
 
 function selectItem(event,id){
@@ -1435,46 +1539,57 @@ function upgradeTruck(type){
 
 function renderHackArea(){
     const area = document.getElementById("hackArea");
-    if(_recovering) return; // カウントダウン中は上書きしない
-    // isBroken を最優先チェック（hackActiveより先）
+    if(_recovering) return;
     if(powerGrid.isBroken){
         area.innerHTML = `<button onclick="recoverPower()" style="background:#5edc88; width:100%;">ブレーカー復旧 (100万円 / 5秒)</button>`;
         return;
     }
-    if(!hackUnlocked){
-        area.innerHTML = `<button onclick="buyHack()" ${money < 500000 ? "disabled":""} style="width:100%;">ハッキングモジュール解放(500,000円)</button>`;
+    if(hackLevel === 0){
+        area.innerHTML = `<button onclick="buyHack(0)" ${money < HACK_LEVEL_COSTS[0] ? "disabled":""} style="width:100%;">ハッキングモジュール解放 Lv1 (${HACK_LEVEL_COSTS[0].toLocaleString()}円)<br><span style="font-size:11px;opacity:0.7;">電力+10% / 緑ゾーン幅: 小</span></button>`;
         return;
     }
-    
+    const cfg = HACK_CONFIGS[hackLevel-1];
+    const nextCost = hackLevel < MAX_HACK_LEVEL ? HACK_LEVEL_COSTS[hackLevel] : null;
+    const upgradeBtn = nextCost
+        ? `<button onclick="buyHack(${hackLevel})" ${money < nextCost ? "disabled":""} style="font-size:11px;padding:2px 8px;margin-top:4px;">Lv${hackLevel+1}強化(${nextCost.toLocaleString()}円) +${HACK_CONFIGS[hackLevel].gain}% / 緑+</button>`
+        : `<span style="font-size:11px;color:#5edc88;">✅ 最大レベル</span>`;
+
     if(hackActive){
+        const zoneLeft = 85 - cfg.zoneW;
         area.innerHTML = `
+            <div style="font-size:11px;color:#aaa;margin-bottom:3px;">Lv${hackLevel} ${HACK_LEVEL_NAMES[hackLevel-1]} | 成功:+${cfg.gain}%</div>
             <div style="width:100%; height:30px; background:#111; position:relative; border-radius:15px; overflow:hidden; border:2px solid #444;">
-                <div style="position:absolute; left:70%; width:15%; height:100%; background:#5edc88;"></div>
+                <div style="position:absolute; left:${zoneLeft}%; width:${cfg.zoneW}%; height:100%; background:#5edc88;"></div>
                 <div id="hackCursor" style="position:absolute; left:0%; width:6px; height:100%; background:#ff3333; transform:translateX(-50%); box-shadow:0 0 10px #ff3333;"></div>
             </div>
-            <button onclick="stopHack()" style="background:#ff9f1c; width:100%; margin-top:10px;">STOP!</button>
+            <button onclick="stopHack()" style="background:#ff9f1c; width:100%; margin-top:8px;">STOP!</button>
         `;
     } else {
         area.innerHTML = `
+            <div style="font-size:11px;color:#aaa;margin-bottom:4px;">Lv${hackLevel} ${HACK_LEVEL_NAMES[hackLevel-1]} | 成功:+${cfg.gain}% | 緑ゾーン幅:${cfg.zoneW}%</div>
             <button onclick="startHack()" style="background:#ff9f1c; width:100%;">グリッド過負荷注入 (ミニゲーム開始)</button>
+            <div style="margin-top:4px;">${upgradeBtn}</div>
         `;
     }
 }
 
-function buyHack(){
-    if(money >= 500000 && !hackUnlocked){
-        money -= 500000;
-        hackUnlocked = true;
-        addLog("通知", "ハッキングモジュールを導入した。過負荷注入が可能。");
-        renderAll();
-    }
+function buyHack(level){
+    if(level >= MAX_HACK_LEVEL) return;
+    const cost = HACK_LEVEL_COSTS[level];
+    if(money < cost) return;
+    money -= cost;
+    hackLevel = level + 1;
+    hackUnlocked = true;
+    addLog("通知", `ハッキングモジュール Lv${hackLevel} [${HACK_LEVEL_NAMES[hackLevel-1]}] を導入。成功時+${HACK_CONFIGS[hackLevel-1].gain}%。`);
+    renderAll();
 }
 
 function startHack(){
-    if(hackActive) return;
+    if(hackActive || hackLevel === 0) return;
     hackActive = true;
     hackPos = 0;
-    hackDir = 1.5 + Math.random() * 2.0;
+    const _cfg = HACK_CONFIGS[Math.max(0,hackLevel-1)];
+    hackDir = _cfg.speed + Math.random() * 1.5;
     renderHackArea();
     hackLoop();
 }
@@ -1495,11 +1610,13 @@ function stopHack(){
     hackActive = false;
     cancelAnimationFrame(hackAnimId);
     
-    if(hackPos >= 70 && hackPos <= 85){
-        powerGrid.level += 100;
+    const cfg = HACK_CONFIGS[Math.max(0,hackLevel-1)];
+    const zoneLeft = 85 - cfg.zoneW;
+    if(hackPos >= zoneLeft && hackPos <= 85){
+        powerGrid.level += cfg.gain;
         addLog("警告", `ハッキング大成功！電力が一気に ${powerGrid.level}% に上昇！`);
     } else {
-        powerGrid.level += 10;
+        powerGrid.level += Math.max(3, Math.floor(cfg.gain * 0.1));
         addLog("通知", `ハッキング失敗...電力微増 (${powerGrid.level}%)`);
         if(Math.random() < 0.3){
             triggerBlackout("ハッキング失敗によるシステム短絡で");
@@ -1952,10 +2069,11 @@ function updateTrend() {
 
 function renderTruckInfo(){
     document.getElementById("truckInfo").innerHTML = `
-        ${renderTruckCard("light","🚚 軽トラ")}
+        ${renderTruckCard("light", "🚚 軽トラ")}
+        ${renderTruckCard("small", "🚛 小型トラック")}
         ${renderTruckCard("medium","🚛 中型トラック")}
-        ${renderTruckCard("large","🚛 大型トラック")}
-        ${renderTruckCard("huge","🚛 超大型特大コンテナ")}
+        ${renderTruckCard("large", "🚛 大型トラック")}
+        ${renderTruckCard("huge",  "🚛 超大型トラック")}
     `;
 }
 
@@ -2046,13 +2164,18 @@ function renderAutoTransport(){
         area.innerHTML = `
             <div class="controlRow" style="font-size:12px;">
                 <label><input type="checkbox" id="atEnabled"> 自動出荷を承認する</label>
-                | <span>安全閾値: 単価 <input type="number" id="atMaxPrice" style="width:80px;" min="0"> 円以下を出荷</span>
+                <br>
+                フィルタ: <button id="atFilterToggle" onclick="toggleAtFilter()" style="font-size:11px;padding:2px 8px;margin:2px 0;"></button>
+                <span id="atPriceArea"> 単価 <input type="number" id="atMaxPrice" style="width:80px;" min="0"> 円以下を出荷</span>
+                <span id="atRarityArea" style="display:none;"> <select id="atMaxRarity"></select> 以下を出荷</span>
                 <br>
                 配備車両: <select id="atTruck"></select>
                 ➜ 納品先目標: <select id="atShop"></select>
             </div>`;
         document.getElementById("atEnabled").onchange  = e => { autoTransportSettings.enabled = e.target.checked; };
         document.getElementById("atMaxPrice").onchange = e => { autoTransportSettings.maxPrice = Number(e.target.value); };
+        const atMR = document.getElementById("atMaxRarity");
+        if(atMR) atMR.onchange = e => { autoTransportSettings.maxRarity = e.target.value; };
         document.getElementById("atTruck").onchange    = e => { autoTransportSettings.truck = e.target.value; };
         document.getElementById("atShop").onchange     = e => { autoTransportSettings.shop = Number(e.target.value); };
     }
@@ -2061,6 +2184,7 @@ function renderAutoTransport(){
     if(cb && cb !== document.activeElement) cb.checked = autoTransportSettings.enabled;
     const mp = document.getElementById("atMaxPrice");
     if(mp && mp !== document.activeElement) mp.value = autoTransportSettings.maxPrice;
+    updateAtFilterUI();
 
     const atTruck = document.getElementById("atTruck");
     if(atTruck && atTruck !== document.activeElement){
@@ -2072,6 +2196,77 @@ function renderAutoTransport(){
         atShop.innerHTML = shops.map((s,i)=>
             `<option value="${i}" ${autoTransportSettings.shop===i?"selected":""} ${!s.unlocked?"disabled":""}>${s.name}</option>`
         ).join("");
+    }
+}
+
+
+function showDeleteConfirm(){
+    const ov = document.getElementById("deleteConfirmOverlay");
+    ov.style.display = "flex";
+    startDeleteHold();
+}
+function hideDeleteConfirm(){
+    document.getElementById("deleteConfirmOverlay").style.display = "none";
+    stopDeleteHold();
+}
+let _deleteHoldTimer = null;
+let _deleteHoldStart = null;
+const DELETE_HOLD_MS = 2000;
+
+function startDeleteHold(){
+    const btn = document.getElementById("deleteHoldBtn");
+    const prog = document.getElementById("deleteHoldProgress");
+    if(!btn) return;
+
+    function onDown(){
+        _deleteHoldStart = Date.now();
+        prog.style.transition = `width ${DELETE_HOLD_MS}ms linear`;
+        prog.style.width = "100%";
+        _deleteHoldTimer = setTimeout(()=>{
+            hideDeleteConfirm();
+            deleteGameData();
+        }, DELETE_HOLD_MS);
+    }
+    function onUp(){
+        clearTimeout(_deleteHoldTimer);
+        prog.style.transition = "none";
+        prog.style.width = "0%";
+    }
+    btn.addEventListener("mousedown", onDown);
+    btn.addEventListener("touchstart", onDown);
+    btn.addEventListener("mouseup", onUp);
+    btn.addEventListener("mouseleave", onUp);
+    btn.addEventListener("touchend", onUp);
+}
+function stopDeleteHold(){
+    clearTimeout(_deleteHoldTimer);
+    const prog = document.getElementById("deleteHoldProgress");
+    if(prog){ prog.style.transition="none"; prog.style.width="0%"; }
+}
+
+function toggleAtFilter(){
+    autoTransportSettings.filterMode = autoTransportSettings.filterMode === "price" ? "rarity" : "price";
+    updateAtFilterUI();
+}
+function updateAtFilterUI(){
+    const btn = document.getElementById("atFilterToggle");
+    const priceArea = document.getElementById("atPriceArea");
+    const rarityArea = document.getElementById("atRarityArea");
+    if(!btn) return;
+    if(autoTransportSettings.filterMode === "price"){
+        btn.textContent = "💰 円以下モード";
+        btn.style.background="#ff9f1c"; btn.style.color="#111";
+        if(priceArea) priceArea.style.display="";
+        if(rarityArea) rarityArea.style.display="none";
+    } else {
+        btn.textContent = "⭐ レア度モード";
+        btn.style.background="#c86cff"; btn.style.color="#fff";
+        if(priceArea) priceArea.style.display="none";
+        if(rarityArea) rarityArea.style.display="";
+        const sel = document.getElementById("atMaxRarity");
+        if(sel && sel !== document.activeElement){
+            sel.innerHTML = RARITY_ORDER.map(r=>`<option value="${r}" ${autoTransportSettings.maxRarity===r?"selected":""}>${RARITY_LABELS[r]||r}</option>`).join("");
+        }
     }
 }
 
@@ -2088,7 +2283,14 @@ function runAutoTransport(){
     const targets = [];
 
     for(const item of inventory){
-        if(item.transporting || item.finalPrice > autoTransportSettings.maxPrice) continue;
+        if(item.transporting) continue;
+        if(autoTransportSettings.filterMode === "rarity"){
+            const itemRarityIdx = RARITY_ORDER.indexOf(item.class);
+            const maxRarityIdx  = RARITY_ORDER.indexOf(autoTransportSettings.maxRarity);
+            if(itemRarityIdx > maxRarityIdx) continue;
+        } else {
+            if(item.finalPrice > autoTransportSettings.maxPrice) continue;
+        }
         if(usedCapacity + item.loadSize > capacity) continue;
         usedCapacity += item.loadSize;
         targets.push(item.id);
@@ -2105,7 +2307,7 @@ function renderDictionary() {
 
     // 通常おにぎりの図鑑
     const regularRows = onigiris.map(base => {
-        const unlocked = Array.from(discoveredOnigiris).some(n => n.includes(base.name));
+        const unlocked = discoveredOnigiris.has(base.name);
         const color = RARITY_COLORS[base.class] || "#888";
         const label = RARITY_LABELS[base.class] || base.class;
         if(unlocked){
@@ -2130,7 +2332,7 @@ function renderDictionary() {
         {name:"Errorおにぎり", emoji:"❌"},
     ];
     const secretRows = secrets.map(s => {
-        const unlocked = Array.from(discoveredOnigiris).some(n => n.includes(s.name));
+        const unlocked = discoveredOnigiris.has(s.name);
         const color = RARITY_COLORS["secret"] || "#fff";
         if(unlocked){
             return `<div style="padding:3px 0;border-bottom:1px solid #222;display:flex;align-items:center;gap:6px;">
@@ -2232,7 +2434,7 @@ setInterval(()=>{
         if(!sh.busy || !sh.saleId) continue;
 
         // 納品拒否（3%/秒）: おにぎりが廃棄・価格半減なし
-        if(Math.random() < 0.03){
+        if(Math.random() < 0.001){
             const lost = inventory.filter(it=>it.saleId===sh.saleId).map(it=>it.name).slice(0,2).join("、");
             inventory = inventory.filter(it=>it.saleId!==sh.saleId);
             sh.busy=false; sh.saleId=null; sh.endTime=0;
@@ -2336,8 +2538,83 @@ setInterval(()=>{
     });
 }, 500);
 
+// ラッソ選択をwindowに登録
+window.addEventListener("mousedown", lassoStart);
+
+
+// ── セーブ・ロード ───────────────────────────
+const SAVE_KEY = "onigiriRNG_save";
+
+function getSaveData(){
+    return JSON.stringify({
+        money, debt, debtTimer, inventory, selectedItems:[],
+        speedLevel, multiRoll, mutationLevel, qualityLevel, packagingLevel,
+        autoRollOwned, autoRollEnabled, autoTransportOwned, autoTransportSettings,
+        autoRepairOwned, hackLevel, hackUnlocked,
+        powerGrid: {...powerGrid},
+        shops: shops.map(s=>({unlocked:s.unlocked, busy:false, endTime:0, saleId:null})),
+        trucks: Object.fromEntries(Object.entries(trucks).map(([k,t])=>[k,{owned:t.owned,upgradeLevel:t.upgradeLevel}])),
+        discoveredOnigiris: Array.from(discoveredOnigiris),
+        truckAccidentPenalty, truckAccidentEnd,
+        brokenMachines, maxDangerAchieved,
+        earnLog: earnLog.slice(-100),
+        savedAt: Date.now()
+    });
+}
+
+function saveGame(){
+    try {
+        localStorage.setItem(SAVE_KEY, getSaveData());
+    } catch(e){ console.warn("Save failed:", e); }
+}
+
+function loadGame(){
+    try {
+        const raw = localStorage.getItem(SAVE_KEY);
+        if(!raw) return false;
+        const d = JSON.parse(raw);
+        money = d.money ?? 0;
+        debt = d.debt ?? 0;
+        debtTimer = d.debtTimer ?? 0;
+        inventory = d.inventory ?? [];
+        speedLevel = d.speedLevel ?? 1;
+        multiRoll = d.multiRoll ?? 1;
+        mutationLevel = d.mutationLevel ?? 0;
+        qualityLevel = d.qualityLevel ?? 0;
+        packagingLevel = d.packagingLevel ?? 0;
+        autoRollOwned = d.autoRollOwned ?? false;
+        autoRollEnabled = d.autoRollEnabled ?? false;
+        autoTransportOwned = d.autoTransportOwned ?? false;
+        autoRepairOwned = d.autoRepairOwned ?? false;
+        hackLevel = d.hackLevel ?? 0;
+        hackUnlocked = d.hackUnlocked ?? false;
+        if(d.powerGrid) Object.assign(powerGrid, d.powerGrid);
+        if(d.autoTransportSettings) Object.assign(autoTransportSettings, d.autoTransportSettings);
+        if(d.shops) d.shops.forEach((s,i)=>{ if(shops[i]){ shops[i].unlocked=s.unlocked; shops[i].busy=false; shops[i].endTime=0; shops[i].saleId=null; } });
+        if(d.trucks) Object.entries(d.trucks).forEach(([k,v])=>{ if(trucks[k]){ trucks[k].owned=v.owned; trucks[k].upgradeLevel=v.upgradeLevel; } });
+        discoveredOnigiris = new Set(d.discoveredOnigiris ?? []);
+        truckAccidentPenalty = d.truckAccidentPenalty ?? 1.0;
+        truckAccidentEnd = d.truckAccidentEnd ?? 0;
+        brokenMachines = d.brokenMachines ?? [];
+        maxDangerAchieved = d.maxDangerAchieved ?? "低";
+        earnLog = d.earnLog ?? [];
+        return true;
+    } catch(e){ console.warn("Load failed:", e); return false; }
+}
+
+function deleteGameData(){
+    localStorage.removeItem(SAVE_KEY);
+    location.reload();
+}
+
+// 30秒ごとに自動セーブ
+setInterval(saveGame, 30000);
+// ページ離脱時にセーブ
+window.addEventListener("beforeunload", saveGame);
+
 // 初期起動
-addLog("AI", "🤖 おにぎり自動製造コア起動。初期シーケンス正常。コンビニへの出荷義務を果たしてください。");
+const _loaded = loadGame();
+addLog("AI", _loaded ? "🔄 セーブデータを読み込みました。" : "🤖 おにぎり自動製造コア起動。初期シーケンス正常。コンビニへの出荷義務を果たしてください。");
 updateTrend();
 renderAll();
 </script>
