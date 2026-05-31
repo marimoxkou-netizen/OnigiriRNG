@@ -2386,10 +2386,10 @@ function redeemCode(){
     if(!code || usedCodes.includes(code)) return;
 
     if(code === "Onigiri"){
-        money += 100000000;
+        money += 100000;
         usedCodes.push(code);
         addLog("AI", "🧠 外部バックドアより資金調達コードを受理。1億円がチャージされました。");
-        showToast("💰 1億円注入成功");
+        showToast("💰 10万円注入成功");
         renderAll();
     }else{
         showToast("シグナル不一致");
