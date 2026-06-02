@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>おにぎり工場RNG</title>
+<title>おにぎり工場RNG 〜食品文明の崩壊〜 v5</title>
 <style>
 *{box-sizing:border-box}
 body{
@@ -86,6 +86,10 @@ h2{margin-top:0; color:#ffd166; border-bottom:1px solid #333; padding-bottom:5px
 @keyframes secretPulse{0%,100%{box-shadow:0 0 20px #ffffff66;border-color:#fff;}50%{box-shadow:0 0 40px #ffffffcc;border-color:#aef;}}
 @keyframes mythicalPulse{0%,100%{box-shadow:0 0 16px #ff77aa77;}50%{box-shadow:0 0 28px #ff77aacc;}}
 .card.transporting{opacity:.5}
+.card.locked{outline:3px solid #ffd166; cursor:not-allowed;}
+.lockBadge{position:absolute;top:8px;left:8px;font-size:18px;text-shadow:0 0 8px #000;z-index:2;}
+.statBox.storageFullFlash{animation:storageFullFlash .45s ease-in-out 6;}
+@keyframes storageFullFlash{0%,100%{background:#222;border-color:#333;}50%{background:#5a1010;border-color:#ff3333;box-shadow:0 0 18px #ff333399;}}
 
 /* 通過時に光るクラス */
 .glow-common { border-color:#888 !important; background:#2a2a2a !important; color:#fff !important; box-shadow:0 0 5px #888 inset; }
@@ -400,9 +404,9 @@ input,select{
 
 <div id="deleteBtn" onclick="showDeleteConfirm()" style="position:fixed;top:10px;left:10px;background:#1a0505;border:1px solid #ff3333;color:#ff6666;padding:6px 12px;border-radius:8px;cursor:pointer;z-index:4;font-size:12px;font-weight:bold;">🗑️ データ削除</div>
 <div id="codeBox">
-    <div>裏コード</div>
+    <div>コード</div>
     <input id="codeInput" autocomplete="off">
-    <button onclick="redeemCode()">接続</button>
+    <button onclick="redeemCode()">使用</button>
 </div>
 
 <h1>🍙 おにぎり工場RNG 〜食品文明の崩壊〜 v5 🍙</h1>
@@ -411,8 +415,8 @@ input,select{
     <div class="left-column">
         <div class="panel">
             <div class="topStats">
-                <div class="statBox">💰 資金残高<br><br><span id="money" class="money">0</span>円<br><span id="debtDisplay" style="display:none; font-size:12px; color:#ff3333; font-weight:bold;"></span></div>
-                <div class="statBox">🎒 倉庫保管数<br><br><span id="itemCount" style="font-size:22px; font-weight:bold;">0</span></div>
+                <div class="statBox">💰 資金残高<br><br><span id="money" class="money">0</span>円<br><span id="foreignMoney" style="font-size:13px; color:#55aaff; font-weight:bold;">外貨 0</span><br><span id="debtDisplay" style="display:none; font-size:12px; color:#ff3333; font-weight:bold;"></span></div>
+                <div class="statBox" id="storageCountCard">🎒 倉庫保管数<br><br><span id="itemCount" style="font-size:22px; font-weight:bold;">0</span></div>
                 <div class="statBox">🔌 現在電力<br><br><span id="powerDisplay" style="font-size:22px; font-weight:bold; color:#ff9f1c;">100%</span><br><span id="instabilityDisplay" style="font-size:11px; color:#888;">電圧不安定度: 安定</span></div>
             </div>
         </div>
@@ -445,7 +449,7 @@ input,select{
 
         <div class="panel">
             <h2>🤖 自動輸送プロトコル</h2>
-            <button id="autoTransportBuyBtn" onclick="buyAutoTransport()">輸送AI購入(150,000円)</button>
+            <button id="autoTransportBuyBtn" onclick="buyAutoTransport()">輸送AI購入(30,000円)</button>
             <div id="autoTransportArea"></div>
         </div>
 
@@ -455,6 +459,9 @@ input,select{
                 <select id="shopSelectForSend" style="padding:6px;border-radius:8px;background:#333;color:white;border:none;"></select>
                 <select id="truckSelectForSend" style="padding:6px;border-radius:8px;background:#333;color:white;border:none;"></select>
                 <button onclick="sendSelected()" style="background:#5edc88;color:#111;">🚚 選択アイテムを輸送</button>
+                <span style="margin-left:8px;font-size:12px;color:#aaa;">並べ替え:</span>
+                <button id="sortPriceBtn" onclick="setInventorySort('price')" style="padding:4px 10px;font-size:12px;">💰 価格順</button>
+                <button id="sortRarityBtn" onclick="setInventorySort('rarity')" style="padding:4px 10px;font-size:12px;">⭐ レア度順</button>
             </div>
             <div class="grid" id="inventory"></div>
         </div>
@@ -501,6 +508,7 @@ input,select{
 
 <script>
 let money = 0;
+let foreignMoney = 0;
 let inventory = [];
 let selectedItems = [];
 let rolling = false;
@@ -512,6 +520,15 @@ let autoRollOwned = false;
 let autoRollEnabled = false;
 let autoTransportOwned = false;
 let packagingLevel = 0;
+let breakerLevel = 0;  // 0=未強化, 1〜5=強化レベル
+let expansionLimitBoostOwned = false;  // 外貨で工場拡張上限+50%
+let trafficLawOwned = false;  // 外貨で交通法規適用（事故/拒否率低減・輸送時間x1.5）
+let autoRecoverOwned = false; // 外貨で自動ブレーカー復旧
+let hackerOwned = false;      // 外貨でハッカー雇用（自動ハッキング）
+let hackerEnabled = true;     // ハッカー稼働ON/OFF
+let hackerTargetLevel = 200;  // ハッカーが目標とする電力%
+let _hackerTimer = null;      // ハッカー自動ハックタイマー
+let _hackerPhase = "idle";    // "idle"|"playing"|"waiting"
 
 let speedLevel = 1;
 let multiRoll = 1;
@@ -561,12 +578,26 @@ const MAX_SPEED_LEVEL = 15;
 const MAX_MULTI_ROLL = 10;
 const MAX_MUTATION_LEVEL = 15;
 const MAX_QUALITY_LEVEL = 10;
+const LIMIT_BOOST_MULTI = 1.5;
+const HACK_FAILURE_BLACKOUT_CHANCE = 0.3;
+const FACTORY_FIRE_CHANCE = HACK_FAILURE_BLACKOUT_CHANCE / 20;
+// ブレーカー強化コスト（外貨）: レベル1〜5
+const MAX_BREAKER_LEVEL = 5;
+const BREAKER_UPGRADE_COSTS_FOREIGN = [0.5, 2, 6, 15, 40]; // 外貨（各Lv強化コスト）
+// ブレーカーが壊れた場合の弁済コスト = 強化コストの半額
+// 工場拡張上限ブーストコスト（外貨）
+const EXPANSION_LIMIT_BOOST_COST = 30; // 外貨
+// 交通法規適用コスト（外貨）
+const TRAFFIC_LAW_COST = 8; // 外貨
+const AUTO_RECOVER_COST = 5; // 外貨（自動ブレーカー復旧）
+const HACKER_COST = 12;      // 外貨（ハッカー雇用）
 
 const PACKAGING_UPGRADES = [
-    { name:"包装", cost:50000, next:"クレート", description:"100個入りクレート梱包。速度1/10、価格100倍。" },
-    { name:"コンテナ化", cost:5000000, next:"コンテナ", description:"100クレート入り巨大コンテナ。さらに速度1/10、価格100倍。" }
+    { name:"包装", cost:5000000, next:"クレート", description:"50個入りクレート梱包。速度低下を抑えつつ価格40倍。" },
+    { name:"コンテナ化", cost:150000000, next:"コンテナ", description:"大型コンテナ輸送。価格500倍、製造はさらに重くなる。" }
 ];
 
+const STORAGE_LIMIT = 300;
 const autoTransportSettings = { enabled:false, maxPrice:5000, filterMode:"price", maxRarity:"mythical", truck:"light", shop:0 };
 // filterMode: "price"=円以下, "rarity"=レア度以下
 const RARITY_ORDER = ["common","uncommon","rare","epic","legend","mythical","secret"];
@@ -585,7 +616,8 @@ const shops = [
     {name:"万代",          multi:2.5, time:30,  unlocked:false, busy:false, price:15000,  endTime:0, saleId:null},
     {name:"ライフ",        multi:4.0, time:50,  unlocked:false, busy:false, price:50000,  endTime:0, saleId:null},
     {name:"いかりスーパー",multi:7.0, time:90,  unlocked:false, busy:false, price:120000, endTime:0, saleId:null},
-    {name:"闇通販",        multi:15.0,time:5,   unlocked:false, busy:false, price:200000, endTime:0, saleId:null}
+    {name:"闇通販",        multi:6.0, time:5,   unlocked:false, busy:false, price:2500000, endTime:0, saleId:null},
+    {name:"海外輸出",      multi:1.0, time:300, unlocked:false, busy:false, price:10000000, endTime:0, saleId:null, currency:"foreign"}
 ];
 
 const onigiris = [
@@ -598,7 +630,8 @@ const onigiris = [
     {name:"焼肉おにぎり",emoji:"🥩🍙",price:650,chance:6,class:"epic"},
     {name:"明太マヨおにぎり",emoji:"🌶️🍙",price:1000,chance:4,class:"legend"},
     {name:"イクラおにぎり",emoji:"🔴🍙",price:1800,chance:2,class:"legend"},
-    {name:"焼きおにぎり",emoji:"🔥🍙",price:4000,chance:1,class:"mythical"}
+    {name:"焼きおにぎり",emoji:"🔥🍙",price:4000,chance:1,class:"mythical"},
+    {name:"キャビアおにぎり",emoji:"⚫🍙",price:8000,chance:1,class:"mythical"}
 ];
 
 const firstMutations = [
@@ -694,6 +727,27 @@ function showToast(text){
     setTimeout(()=>toast.classList.remove("show"),2000);
 }
 
+function formatForeign(value){
+    // 表示は小数第2位まで、内部計算は完全精度で維持
+    const n = Number(value || 0);
+    if(n >= 1000) return n.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    if(n >= 1)    return n.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+    return n.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function flashStorageFull(){
+    const card = document.getElementById("storageCountCard");
+    if(!card) return;
+    card.classList.remove("storageFullFlash");
+    void card.offsetWidth;
+    card.classList.add("storageFullFlash");
+}
+
+function notifyStorageFull(){
+    showToast("倉庫がいっぱいです！");
+    flashStorageFull();
+}
+
 function weightedRandom(list, boostChance = false){
     let mutationBonus = mutationLevel * 0.5 + (powerGrid.level - 100) / 50;
     if (powerGrid.isBroken) mutationBonus += 50;
@@ -775,9 +829,9 @@ function buildProductionProcess(){
         accidents.push("異常発酵");
         dangerScore += 1;
     }
-    if (powerGrid.level >= 400 || (powerGrid.level >= 250 && Math.random() < 0.2)) {
+    if (powerGrid.level >= 900 || (powerGrid.level >= 500 && Math.random() < 0.008)) {
         accidents.push("自我の覚醒(AI倫理OFF)");
-        dangerScore += 2;
+        dangerScore += 1;
     }
 
     if (accidents.includes("自我の覚醒(AI倫理OFF)")) name = "【自我】" + name;
@@ -790,6 +844,7 @@ function buildProductionProcess(){
     } else if (nori.name !== "普通の海苔") {
         name += `(${nori.name})`;
     }
+    if(RARITY_ORDER.indexOf(nori.class) > RARITY_ORDER.indexOf(finalClass)) finalClass = nori.class;
 
     let dangerText = "低";
     let dangerBadgeClass = "danger-low";
@@ -850,14 +905,14 @@ function getCurrentState(process, i) {
 
 function formatProduct(base){
     if(packagingLevel === 0) return { name:base.name, emoji:base.emoji, priceMulti:1, count:1, loadSize:1, kind:"通常" };
-    if(packagingLevel === 1) return { name:`${base.name}クレート`, emoji:`📦`, priceMulti:100, count:100, loadSize:10, kind:"クレート" };
-    return { name:`${base.name}コンテナ`, emoji:`🚢`, priceMulti:10000, count:10000, loadSize:1000, kind:"コンテナ" };
+    if(packagingLevel === 1) return { name:`${base.name}クレート`, emoji:`📦`, priceMulti:40, count:50, loadSize:6, kind:"クレート" };
+    return { name:`${base.name}コンテナ`, emoji:`🚢`, priceMulti:500, count:1000, loadSize:60, kind:"コンテナ" };
 }
 
 function getRollDelay(){
     const powerSpeedBonus = powerGrid.level / 100;
     const baseDelay = Math.max(1600, (18000 - (speedLevel-1)*800) / powerSpeedBonus);
-    return baseDelay * Math.pow(6, packagingLevel);
+    return baseDelay * (packagingLevel === 0 ? 1 : packagingLevel === 1 ? 4 : 18);
 }
 
 function getTruckCapacity(truck){ return truck.baseAmount * Math.pow(2, truck.upgradeLevel); }
@@ -918,7 +973,7 @@ const RARITY_COLORS = {
 // getStageDetailの結果を使うのが難しいのでクラス名のキーワードマッチで色付け
 const RARITY_KEYWORDS = {
     mythical: ["神話","七輪","コシヒカリ","SuperGiant","焼きおにぎり","幻の白トリュフ","トリュフ"],
-    legend:   ["品質9","品質8"],
+    legend:   ["品質9","品質8","金箔海苔","農家直送"],
     epic:     ["棚田","羽釜","味付け海苔","Giant","焼肉","いくら","品質7"],
     rare:     ["北海道","備長炭","韓国のり","BIG","エビマヨ","ツナマヨ","明太子"],
     uncommon: ["もち木","高級炊飯","有明","鮭フレーク","梅干し"],
@@ -1162,10 +1217,15 @@ function tickLines(now){
                 ];
                 if(p.accidents.length) muts.push(`💥 異常: ${p.accidents.join(",")}`);
                 if(trend!==1.0) muts.push(`📈 トレンド補正: x${trend}`);
+                if(inventory.length >= STORAGE_LIMIT){
+                    notifyStorageFull();
+                    addLog("警告", "倉庫がいっぱいです！完成品は保管できませんでした。");
+                    continue;
+                }
                 inventory.push({
                     id:nextItemId++, ...p.base, name:p.name, emoji:p.emoji,
                     finalPrice:total, count:p.product.count, loadSize:p.product.loadSize,
-                    kind:p.product.kind, mutations:muts, transporting:false, transportEnd:0, saleId:null,
+                    kind:p.product.kind, mutations:muts, transporting:false, transportEnd:0, saleId:null, locked:false,
                     class:p.class, dangerText:p.dangerText, dangerBadgeClass:p.dangerBadgeClass
                 });
                 // 図鑑登録: onigirisのnameか激レア名のみ許可
@@ -1257,7 +1317,7 @@ function getTrendMulti(process){
 function calcTotal(process){
     let total = process.base.price * process.rice.multi * process.qualityMulti * process.cook.multi * (process.filling ? process.filling.multi : 1) * process.shape.multi * process.nori.multi;
     if (process.accidents.includes("異常発酵")) total *= 2.0;
-    if (process.accidents.includes("自我の覚醒(AI倫理OFF)")) total *= 5.0;
+    if (process.accidents.includes("自我の覚醒(AI倫理OFF)")) total *= 1.5;
     total *= getTrendMulti(process);
     total *= (1 + qualityLevel*0.15);
     total *= truckAccidentPenalty;
@@ -1267,11 +1327,18 @@ function calcTotal(process){
 function renderInventory(){
     const inv = document.getElementById("inventory");
     inv.innerHTML = "";
+    // ソートボタンのハイライト同期
+    const _bp = document.getElementById('sortPriceBtn');
+    const _br = document.getElementById('sortRarityBtn');
+    if(_bp){ _bp.style.background = inventorySortMode==='price'?'#ffd166':'#333'; _bp.style.color = inventorySortMode==='price'?'#111':'#aaa'; }
+    if(_br){ _br.style.background = inventorySortMode==='rarity'?'#ffd166':'#333'; _br.style.color = inventorySortMode==='rarity'?'#111':'#aaa'; }
 
-    inventory.forEach(item=>{
+    getSortedInventory().forEach(item=>{
         const remain = item.transporting ? Math.max(0, Math.ceil((item.transportEnd-Date.now())/1000)) : 0;
+        const isLocked = !!item.locked;
         inv.innerHTML += `
-            <div data-item-id="${item.id}" class="card rarity-${item.class} ${selectedItems.includes(item.id) ? "selected":""} ${item.transporting ? "transporting":""}" draggable="${!item.transporting}" onclick="selectItem(event,${item.id})" ondragstart="dragItem(event,${item.id})">
+            <div data-item-id="${item.id}" class="card rarity-${item.class} ${selectedItems.includes(item.id) ? "selected":""} ${item.transporting ? "transporting":""} ${isLocked ? "locked":""}" draggable="${!item.transporting && !isLocked}" onclick="selectItem(event,${item.id})" oncontextmenu="toggleItemLock(event,${item.id})" ondragstart="dragItem(event,${item.id})">
+                ${isLocked ? `<span class="lockBadge">⭐</span>` : ""}
                 <span class="rarityBadge" style="background:${RARITY_COLORS[item.class]||'#888'}22;color:${RARITY_COLORS[item.class]||'#888'};border:1px solid ${RARITY_COLORS[item.class]||'#888'}55;">${RARITY_LABELS[item.class]||''}</span>
                 <div style="font-size:40px; margin-top:10px;">${item.emoji}</div>
                 <h4 style="margin:5px 0; color:${RARITY_COLORS[item.class]||'#fff'};">${item.name}${(()=>{const o=calcBaseOdds(item.name);return o?` <span style="font-size:10px;color:#888;">${o}</span>`:''})()}</h4>
@@ -1284,25 +1351,57 @@ function renderInventory(){
     });
 
     document.getElementById("money").textContent = Math.floor(money).toLocaleString();
-    document.getElementById("itemCount").textContent = inventory.length;
+    document.getElementById("foreignMoney").textContent = `外貨 ${formatForeign(foreignMoney)}`;
+    document.getElementById("itemCount").textContent = `${inventory.length}/${STORAGE_LIMIT}`;
 }
 
 // ラッソ選択
 let _lassoActive = false;
 let _lassoStartX = 0, _lassoStartY = 0;
 
+let inventorySortMode = 'price'; // 'price' | 'rarity'
+
+function setInventorySort(mode){
+    inventorySortMode = mode;
+    const bp = document.getElementById('sortPriceBtn');
+    const br = document.getElementById('sortRarityBtn');
+    if(bp){ bp.style.background = mode==='price'?'#ffd166':'#333'; bp.style.color = mode==='price'?'#111':'#aaa'; }
+    if(br){ br.style.background = mode==='rarity'?'#ffd166':'#333'; br.style.color = mode==='rarity'?'#111':'#aaa'; }
+    renderInventory();
+}
+
+function getSortedInventory(){
+    if(inventorySortMode === 'rarity'){
+        const order = [...RARITY_ORDER].reverse(); // secret→mythical→...→common
+        return [...inventory].sort((a,b)=>{
+            const ri = order.indexOf(a.class), rj = order.indexOf(b.class);
+            if(ri !== rj) return ri - rj;
+            return b.finalPrice - a.finalPrice;
+        });
+    }
+    return [...inventory].sort((a,b)=>b.finalPrice - a.finalPrice);
+}
+
 function lassoStart(e){
     if(e.button !== 0) return;
     const inv = document.getElementById("inventory");
     if(!inv || !inv.contains(e.target)) return; // inventory内のみ
-    if(e.target.closest('[data-item-id]') && !e.shiftKey && !e.ctrlKey) return; // 通常クリックはselectItemに任せる
+
+    // カード上での通常クリック（Shift/Ctrl なし）はselectItemに任せる
+    // ただしドラッグが始まった場合はラッソに切り替える
+    const onCard = !!e.target.closest('[data-item-id]');
+    const modKey = e.shiftKey || e.ctrlKey || e.metaKey;
+
     _lassoActive = false;
     _lassoStartX = e.clientX;
     _lassoStartY = e.clientY;
+    let _lassoStarted = false; // ドラッグ判定済みフラグ
 
     function onMove(ev){
         const dx = ev.clientX - _lassoStartX, dy = ev.clientY - _lassoStartY;
-        if(!_lassoActive && Math.abs(dx)+Math.abs(dy) > 6){
+        if(!_lassoStarted && Math.abs(dx)+Math.abs(dy) > 6){
+            _lassoStarted = true;
+            // ドラッグ開始 → ラッソモードへ
             _lassoActive = true;
             const box = document.getElementById("lassoBox");
             if(box) box.style.display = "block";
@@ -1321,7 +1420,11 @@ function lassoStart(e){
         document.removeEventListener("mouseup", onUp);
         const box = document.getElementById("lassoBox");
         if(box){ box.style.display="none"; box.style.width="0"; box.style.height="0"; }
-        if(!_lassoActive){ _lassoActive=false; return; }
+        if(!_lassoActive){
+            _lassoActive = false;
+            // ドラッグなし（クリック）: カード上ならselectItemに委任済みなので何もしない
+            return;
+        }
         _lassoActive = false;
 
         const r = {
@@ -1338,7 +1441,7 @@ function lassoStart(e){
             if(cr.right > r.x1 && cr.left < r.x2 && cr.bottom > r.y1 && cr.top < r.y2){
                 const id = Number(card.dataset.itemId);
                 const item = inventory.find(i=>i.id===id);
-                if(item && !item.transporting) newSel.push(id);
+                if(item && !item.transporting && !item.locked) newSel.push(id);
             }
         });
         if(!ev.shiftKey && !ev.ctrlKey) selectedItems = newSel;
@@ -1351,8 +1454,9 @@ function lassoStart(e){
 }
 
 function selectItem(event,id){
+    if(_lassoActive) return; // ラッソドラッグ中はクリック無視
     const item = inventory.find(target=>target.id === id);
-    if(!item || item.transporting) return;
+    if(!item || item.transporting || item.locked) return;
     if(event.shiftKey || event.ctrlKey || event.metaKey){
         if(selectedItems.includes(id)) selectedItems = selectedItems.filter(itemId=>itemId!==id);
         else selectedItems.push(id);
@@ -1362,7 +1466,21 @@ function selectItem(event,id){
     renderInventory();
 }
 
+function toggleItemLock(event,id){
+    event.preventDefault();
+    event.stopPropagation();
+    const item = inventory.find(target=>target.id === id);
+    if(!item || item.transporting) return false;
+    item.locked = !item.locked;
+    if(item.locked) selectedItems = selectedItems.filter(itemId=>itemId!==id);
+    showToast(item.locked ? "⭐ 売却ロックしました" : "⭐ 売却ロックを解除しました");
+    renderInventory();
+    return false;
+}
+
 function dragItem(event,id){
+    const item = inventory.find(target=>target.id === id);
+    if(!item || item.transporting || item.locked){ event.preventDefault(); return; }
     if(!selectedItems.includes(id)) selectedItems = [id];
     event.dataTransfer.setData("text/plain",String(id));
 }
@@ -1411,7 +1529,7 @@ function renderShops(){
         div.innerHTML += `
             <div class="shop ${shop.unlocked ? "" : "locked"}" id="shop${index}" ondragover="shopHover(event,${index})" ondrop="dropSell(event,${index})" ondragleave="shopLeave(${index})">
                 <h3>${shop.name}</h3>
-                <div>市場倍率 x${shop.multi}</div>
+                <div>${shop.currency === "foreign" ? "外貨換算: 円価値÷1億" : `市場倍率 x${shop.multi}`}</div>
                 <div>輸送時間: ${shop.time}秒</div>
                 <div style="font-weight:bold; margin-top:5px;">${shop.busy ? `🚚 納品中 (${remain}秒)` : shop.unlocked ? "注文待機中" : "未開放市場"}</div>
                 ${!shop.unlocked ? `<button class="btn-shop" onclick="buyShop(${index})" ${money < shop.price ? "disabled" : ""}>市場開拓(${shop.price.toLocaleString()}円)</button>` : ""}
@@ -1442,7 +1560,7 @@ function startSell(index,forcedItems=null,forcedTruck=null){
     const capacity = getTruckCapacity(truck);
 
     for(const item of candidates){
-        if(item.transporting) continue;
+        if(item.transporting || item.locked) continue;
         if(usedCapacity + item.loadSize > capacity) continue;
         usedCapacity += item.loadSize;
         sending.push(item);
@@ -1463,7 +1581,7 @@ function startSell(index,forcedItems=null,forcedTruck=null){
     });
 
     const sentIds = sending.map(item=>item.id);
-    const time = Math.max(1, Math.floor(shop.time / truck.speed));
+    const time = Math.max(1, Math.floor(shop.time * (trafficLawOwned ? 1.5 : 1.0) / truck.speed));
     shop.busy = true;
     shop.saleId = saleId;
     shop.endTime = Date.now() + time*1000;
@@ -1489,7 +1607,18 @@ function finishSell(shopIndex,saleId,total){
         return;
     }
 
-    const profit = Math.floor(total * shop.multi);
+    let profit = Math.floor(total * shop.multi);
+    if(shop.currency === "foreign"){
+        const earnedForeign = profit / 100000000;
+        foreignMoney += earnedForeign;
+        inventory = inventory.filter(item=>item.saleId !== saleId);
+        shop.busy = false;
+        shop.saleId = null;
+        shop.endTime = 0;
+        addLog("通知", `${shop.name}への納品完了。外貨 +${formatForeign(earnedForeign)} を受領。`);
+        renderAll();
+        return;
+    }
     if(debt > 0){
         const repay = Math.min(debt, profit);
         debt = Math.max(0, debt - repay);
@@ -1541,7 +1670,10 @@ function renderHackArea(){
     const area = document.getElementById("hackArea");
     if(_recovering) return;
     if(powerGrid.isBroken){
-        area.innerHTML = `<button onclick="recoverPower()" style="background:#5edc88; width:100%;">ブレーカー復旧 (100万円 / 5秒)</button>`;
+        const autoRecoverBtn = autoRecoverOwned
+            ? `<span style="font-size:11px;color:#5edc88;margin-left:8px;">✅ 自動復旧待機中...</span>`
+            : ``;
+        area.innerHTML = `<button onclick="recoverPower()" style="background:#5edc88; width:100%;">ブレーカー復旧 (100万円 / 5秒)</button>${autoRecoverBtn}`;
         return;
     }
     if(hackLevel === 0){
@@ -1554,21 +1686,42 @@ function renderHackArea(){
         ? `<button onclick="buyHack(${hackLevel})" ${money < nextCost ? "disabled":""} style="font-size:11px;padding:2px 8px;margin-top:4px;">Lv${hackLevel+1}強化(${nextCost.toLocaleString()}円) +${HACK_CONFIGS[hackLevel].gain}% / 緑+</button>`
         : `<span style="font-size:11px;color:#5edc88;">✅ 最大レベル</span>`;
 
+    // ハッカー稼働中ラベル（hackActive中/非hackActive共通）
+    const hackerLabel = hackerOwned ? `
+        <div style="margin-top:8px;padding:6px 8px;background:#1a1a2e;border:1px solid #c86cff44;border-radius:8px;font-size:12px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="hackerEnabledCb" ${hackerEnabled?"checked":""} onchange="setHackerEnabled(this.checked)"
+                    style="width:16px;height:16px;cursor:pointer;accent-color:#c86cff;">
+                <span style="color:#c86cff;font-weight:bold;">🤖 ハッカー</span>
+                <span style="color:#aaa;">${hackerEnabled ? (powerGrid.level >= hackerTargetLevel ? "待機中（目標電力到達）" : "自動ハッキング稼働中") : "停止中"}</span>
+            </label>
+            <div style="margin-top:4px;font-size:11px;color:#aaa;">
+                目標電力:
+                <input type="number" id="hackerTargetInput" value="${hackerTargetLevel}" min="110" max="900"
+                    style="width:60px;padding:2px 4px;font-size:11px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;"
+                    onchange="setHackerTarget(this.value)"> %
+                （到達で停止・下回ると再開）
+            </div>
+        </div>` : ``;
+
     if(hackActive){
         const zoneLeft = 85 - cfg.zoneW;
+        const isAutoHack = hackerOwned && hackerEnabled && _hackerPhase === "playing";
         area.innerHTML = `
-            <div style="font-size:11px;color:#aaa;margin-bottom:3px;">Lv${hackLevel} ${HACK_LEVEL_NAMES[hackLevel-1]} | 成功:+${cfg.gain}%</div>
-            <div style="width:100%; height:30px; background:#111; position:relative; border-radius:15px; overflow:hidden; border:2px solid #444;">
+            <div style="font-size:11px;color:#aaa;margin-bottom:3px;">Lv${hackLevel} ${HACK_LEVEL_NAMES[hackLevel-1]} | 成功:+${cfg.gain}%${isAutoHack ? ' | <span style="color:#c86cff;">🤖 ハッカー自動操作中</span>' : ''}</div>
+            <div style="width:100%; height:30px; background:#111; position:relative; border-radius:15px; overflow:hidden; border:2px solid ${isAutoHack ? '#c86cff' : '#444'};">
                 <div style="position:absolute; left:${zoneLeft}%; width:${cfg.zoneW}%; height:100%; background:#5edc88;"></div>
                 <div id="hackCursor" style="position:absolute; left:0%; width:6px; height:100%; background:#ff3333; transform:translateX(-50%); box-shadow:0 0 10px #ff3333;"></div>
             </div>
-            <button onclick="stopHack()" style="background:#ff9f1c; width:100%; margin-top:8px;">STOP!</button>
+            ${isAutoHack ? '<div style="font-size:11px;color:#c86cff;text-align:center;margin-top:4px;">自動STOP待機中...</div>' : `<button onclick="stopHack()" style="background:#ff9f1c; width:100%; margin-top:8px;">STOP!</button>`}
+            ${hackerLabel}
         `;
     } else {
         area.innerHTML = `
             <div style="font-size:11px;color:#aaa;margin-bottom:4px;">Lv${hackLevel} ${HACK_LEVEL_NAMES[hackLevel-1]} | 成功:+${cfg.gain}% | 緑ゾーン幅:${cfg.zoneW}%</div>
             <button onclick="startHack()" style="background:#ff9f1c; width:100%;">グリッド過負荷注入 (ミニゲーム開始)</button>
             <div style="margin-top:4px;">${upgradeBtn}</div>
+            ${hackerLabel}
         `;
     }
 }
@@ -1618,7 +1771,9 @@ function stopHack(){
     } else {
         powerGrid.level += Math.max(3, Math.floor(cfg.gain * 0.1));
         addLog("通知", `ハッキング失敗...電力微増 (${powerGrid.level}%)`);
-        if(Math.random() < 0.3){
+        if(Math.random() < FACTORY_FIRE_CHANCE){
+            triggerFactoryFire();
+        } else if(Math.random() < HACK_FAILURE_BLACKOUT_CHANCE){
             triggerBlackout("ハッキング失敗によるシステム短絡で");
         }
     }
@@ -1636,10 +1791,18 @@ function triggerBlackout(reason){
     rolling = false;
     pendingBatches.clear();
     hackActive = false; // ハッキング強制停止
+    _hackerPhase = "idle"; // ハッカーフェーズリセット
+    if(_hackerTimer){ clearTimeout(_hackerTimer); _hackerTimer = null; }
     // アイテムは消さない（復旧後に再開できるよう保持）
     if(lineRafId){ cancelAnimationFrame(lineRafId); lineRafId=null; lastLineTime=0; }
     addLog("危険", `⚠️警告: ${reason}送電グリッドが崩壊。ブレーカーが落ちました！`);
     showTopNotice("⚡ ブレーカーが落ちました！生産停止中");
+    checkBreakerRepayForeign();
+    // 自動ブレーカー復旧
+    if(autoRecoverOwned && !_recovering){
+        addLog("通知", "⚡ 自動ブレーカー復旧システムが起動しました。");
+        setTimeout(()=>recoverPower(), 2000); // 2秒後に自動復旧開始
+    }
     renderHackArea();
 }
 
@@ -2004,9 +2167,9 @@ function buyAutoRepair(){
 function triggerTruckAccident(type){
     if(truckAccidentPenalty < 1.0) return; // すでに事故中
     truckAccidentPenalty = 0.5;
-    truckAccidentEnd = Date.now() + 5 * 60 * 1000; // 5分
-    showTopNotice("🚛💥 トラック事故発生！5分間販売価格が半額になります", 5000);
-    addLog("危険", `📺 速報: ${type}のトラック事故がSNSで拡散。おにぎり忌避ムードで5分間価格が50%減。`);
+    truckAccidentEnd = Date.now() + 2 * 60 * 1000; // 2分
+    showTopNotice("🚛💥 トラック事故発生！2分間販売価格が半額になります", 5000);
+    addLog("危険", `📺 速報: ${type}のトラック事故がSNSで拡散。おにぎり忌避ムードで2分間価格が50%減。`);
 }
 
 function recoverPower() {
@@ -2035,6 +2198,7 @@ function recoverPower() {
             powerGrid.isBroken = false;
             if(_autoRollWasEnabled && autoRollOwned) autoRollEnabled = true;
             addLog("通知", "送電網の復旧を完了。工場は安全稼働に戻りました。");
+            if(hackerOwned && hackerEnabled) setTimeout(hackerTick, 2000);
             updateFactoryStatusText();
             renderHackArea();
             renderUpgradeArea();
@@ -2098,8 +2262,101 @@ function renderTruckCard(type,title){
     `;
 }
 
+function getEffectiveMaxSpeed(){ return expansionLimitBoostOwned ? Math.floor(MAX_SPEED_LEVEL * LIMIT_BOOST_MULTI) : MAX_SPEED_LEVEL; }
+function getEffectiveMaxMulti(){ return expansionLimitBoostOwned ? Math.floor(MAX_MULTI_ROLL * LIMIT_BOOST_MULTI) : MAX_MULTI_ROLL; }
+function getEffectiveMaxMutation(){ return expansionLimitBoostOwned ? Math.floor(MAX_MUTATION_LEVEL * LIMIT_BOOST_MULTI) : MAX_MUTATION_LEVEL; }
+function getEffectiveMaxQuality(){ return expansionLimitBoostOwned ? Math.floor(MAX_QUALITY_LEVEL * LIMIT_BOOST_MULTI) : MAX_QUALITY_LEVEL; }
+function getSpeedUpgradeCostAt(level){ return Math.floor(15000 * Math.pow(1.55, level - 1)); }
+function getMultiRollUpgradeCostAt(level){ return Math.floor(75000 * Math.pow(2.2, level - 1)); }
+function getMutationUpgradeCostAt(level){ return Math.floor(100000 * Math.pow(1.8, level)); }
+function getQualityUpgradeCostAt(level){ return Math.floor(150000 * Math.pow(2.0, level)); }
+function getSpeedUpgradeCost(){ return getSpeedUpgradeCostAt(speedLevel); }
+function getMultiRollUpgradeCost(){ return getMultiRollUpgradeCostAt(multiRoll); }
+function getMutationUpgradeCost(){ return getMutationUpgradeCostAt(mutationLevel); }
+function getQualityUpgradeCost(){ return getQualityUpgradeCostAt(qualityLevel); }
+function getFactoryFireCost(){
+    let total = 0;
+    for(let lv=1; lv<speedLevel; lv++) total += getSpeedUpgradeCostAt(lv);
+    for(let lv=1; lv<multiRoll; lv++) total += getMultiRollUpgradeCostAt(lv);
+    for(let lv=0; lv<mutationLevel; lv++) total += getMutationUpgradeCostAt(lv);
+    for(let lv=0; lv<qualityLevel; lv++) total += getQualityUpgradeCostAt(lv);
+    for(let lv=0; lv<packagingLevel; lv++) total += PACKAGING_UPGRADES[lv]?.cost || 0;
+    return total;
+}
+function downgradeFactoryForFire(shortfall){
+    const damaged = [];
+    while(shortfall > 0){
+        const options = [];
+        if(packagingLevel > 0) options.push({type:"packaging", label:"梱包", value:PACKAGING_UPGRADES[packagingLevel-1]?.cost || 0});
+        if(qualityLevel > 0) options.push({type:"quality", label:"品質", value:getQualityUpgradeCostAt(qualityLevel-1)});
+        if(mutationLevel > 0) options.push({type:"mutation", label:"変異研究", value:getMutationUpgradeCostAt(mutationLevel-1)});
+        if(multiRoll > 1) options.push({type:"multi", label:"並列ライン", value:getMultiRollUpgradeCostAt(multiRoll-1)});
+        if(speedLevel > 1) options.push({type:"speed", label:"生産速度", value:getSpeedUpgradeCostAt(speedLevel-1)});
+        if(options.length === 0) break;
+        options.sort((a,b)=>b.value-a.value);
+        const hit = options[0];
+        if(hit.type === "packaging") packagingLevel--;
+        if(hit.type === "quality") qualityLevel--;
+        if(hit.type === "mutation") mutationLevel--;
+        if(hit.type === "multi") multiRoll--;
+        if(hit.type === "speed") speedLevel--;
+        shortfall -= hit.value;
+        damaged.push(`${hit.label} -1`);
+    }
+    return damaged;
+}
+function triggerFactoryFire(){
+    const cost = getFactoryFireCost();
+    showTopNotice("🏭🔥 工場が燃えた！復旧費を請求されました", 5000);
+    if(cost <= 0){
+        addLog("危険", "🏭🔥 工場が燃えた！まだ拡張設備が少なかったため、復旧費は発生しませんでした。");
+        return;
+    }
+    if(money >= cost){
+        money -= cost;
+        addLog("危険", `🏭🔥 工場が燃えた！拡張設備の復旧費 ${cost.toLocaleString()}円を支払いました。`);
+    } else {
+        const paid = money;
+        const shortfall = cost - paid;
+        money = 0;
+        const damaged = downgradeFactoryForFire(shortfall);
+        addLog("危険", `🏭🔥 工場が燃えた！復旧費 ${cost.toLocaleString()}円のうち${paid.toLocaleString()}円しか払えず、拡張設備が損傷しました: ${damaged.join("、") || "損傷なし"}`);
+    }
+    renderAll();
+}
 function renderUpgradeArea(){
     const nextPackaging = PACKAGING_UPGRADES[packagingLevel];
+    const eMaxSpeed = getEffectiveMaxSpeed();
+    const eMaxMulti = getEffectiveMaxMulti();
+    const eMaxMut = getEffectiveMaxMutation();
+    const eMaxQual = getEffectiveMaxQuality();
+
+    // ブレーカー強化UI
+    const nextBreakerCost = breakerLevel < MAX_BREAKER_LEVEL ? BREAKER_UPGRADE_COSTS_FOREIGN[breakerLevel] : null;
+    const breakerBtn = nextBreakerCost !== null
+        ? `<button onclick="upgradeBreakerWithForeign()" ${foreignMoney < nextBreakerCost ? "disabled":""} style="padding:2px 8px;font-size:11px;background:#55aaff;color:#111;">強化 Lv${breakerLevel+1}(外貨${nextBreakerCost})</button>`
+        : `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み</span>`;
+
+    // 自動ブレーカー復旧UI
+    const autoRecoverBtn = autoRecoverOwned
+        ? `<span style="font-size:11px;color:#5edc88;">✅ 自動復旧システム稼働中</span>`
+        : `<button onclick="buyAutoRecover()" ${foreignMoney < AUTO_RECOVER_COST ? "disabled":""} style="padding:2px 8px;font-size:11px;background:#55aaff;color:#111;">購入(外貨${AUTO_RECOVER_COST})</button>`;
+
+    // ハッカー雇用UI
+    const hackerBtn = hackerOwned
+        ? `<span style="font-size:11px;color:#5edc88;">✅ ハッカー稼働中</span>`
+        : `<button onclick="buyHacker()" ${foreignMoney < HACKER_COST || hackLevel === 0 ? "disabled":""} style="padding:2px 8px;font-size:11px;background:#55aaff;color:#111;">${hackLevel === 0 ? "ハッキングモジュール要" : `雇用(外貨${HACKER_COST})`}</button>`;
+
+    // 交通法規適用UI
+    const trafficLawBtn = trafficLawOwned
+        ? `<span style="font-size:11px;color:#5edc88;">✅ 交通法規適用中（輸送時間x1.5・事故/拒否率大幅低減）</span>`
+        : `<button onclick="buyTrafficLaw()" ${foreignMoney < TRAFFIC_LAW_COST ? "disabled":""} style="padding:2px 8px;font-size:11px;background:#55aaff;color:#111;">適用(外貨${TRAFFIC_LAW_COST})</button>`;
+
+    // 工場拡張ブーストUI
+    const boostBtn = expansionLimitBoostOwned
+        ? `<span style="font-size:11px;color:#5edc88;">✅ 拡張上限+50%適用中</span>`
+        : `<button onclick="buyExpansionLimitBoost()" ${foreignMoney < EXPANSION_LIMIT_BOOST_COST ? "disabled":""} style="padding:2px 8px;font-size:11px;background:#55aaff;color:#111;">上限+50%(外貨${EXPANSION_LIMIT_BOOST_COST})</button>`;
+
     document.getElementById("upgradeArea").innerHTML = `
         <div class="controlRow" style="margin-bottom:6px;">
             🔧 自動修理システム:
@@ -2107,17 +2364,17 @@ function renderUpgradeArea(){
         </div>
         <hr style="border-color:#333;margin:4px 0 8px;">
         <div style="font-size:13px; line-height:1.8;">
-            ⚡ 生産基本速度 Lv.${speedLevel}/${MAX_SPEED_LEVEL} <span style="color:#ffd166; font-size:11px;">(x${(18000/Math.max(1600,(18000-(speedLevel-1)*800))).toFixed(2)}倍速)</span>
-            <button onclick="upgradeSpeed()" ${money < speedLevel*8000 || speedLevel >= MAX_SPEED_LEVEL ? "disabled":""} style="padding:2px 8px; font-size:11px;">強化(${(speedLevel*8000).toLocaleString()}円)</button>
-            | 🔁 同時並列ライン ${multiRoll}/${MAX_MULTI_ROLL} 
-            <button onclick="upgradeMultiRoll()" ${money < multiRoll*15000 || multiRoll >= MAX_MULTI_ROLL ? "disabled":""} style="padding:2px 8px; font-size:11px;">拡張(${(multiRoll*15000).toLocaleString()}円)</button>
+            ⚡ 生産基本速度 Lv.${speedLevel}/${eMaxSpeed} <span style="color:#ffd166; font-size:11px;">(x${(18000/Math.max(1600,(18000-(speedLevel-1)*800))).toFixed(2)}倍速)</span>
+            <button onclick="upgradeSpeed()" ${money < getSpeedUpgradeCost() || speedLevel >= eMaxSpeed ? "disabled":""} style="padding:2px 8px; font-size:11px;">強化(${getSpeedUpgradeCost().toLocaleString()}円)</button>
+            | 🔁 同時並列ライン ${multiRoll}/${eMaxMulti} 
+            <button onclick="upgradeMultiRoll()" ${money < getMultiRollUpgradeCost() || multiRoll >= eMaxMulti ? "disabled":""} style="padding:2px 8px; font-size:11px;">拡張(${getMultiRollUpgradeCost().toLocaleString()}円)</button>
             <br>
-            🧬 禁断変異誘導誘発 Lv.${mutationLevel}/${MAX_MUTATION_LEVEL} <span style="color:#c86cff; font-size:11px;">(変異ボーナス+${mutationLevel})</span>
-            <button onclick="upgradeMutation()" ${money < (mutationLevel+1)*30000 || mutationLevel >= MAX_MUTATION_LEVEL ? "disabled":""} style="padding:2px 8px; font-size:11px;">研究(${((mutationLevel+1)*30000).toLocaleString()}円)</button>
-            | ✨ 量子品質保証 Lv.${qualityLevel}/${MAX_QUALITY_LEVEL} (現在:x${(1 + qualityLevel*0.25).toFixed(2)})
-            <button onclick="upgradeQuality()" ${money < (qualityLevel+1)*50000 || qualityLevel >= MAX_QUALITY_LEVEL ? "disabled":""} style="padding:2px 8px; font-size:11px;">投資(${((qualityLevel+1)*50000).toLocaleString()}円)</button>
+            🧬 禁断変異誘導誘発 Lv.${mutationLevel}/${eMaxMut} <span style="color:#c86cff; font-size:11px;">(変異ボーナス+${mutationLevel})</span>
+            <button onclick="upgradeMutation()" ${money < getMutationUpgradeCost() || mutationLevel >= eMaxMut ? "disabled":""} style="padding:2px 8px; font-size:11px;">研究(${getMutationUpgradeCost().toLocaleString()}円)</button>
+            | ✨ 量子品質保証 Lv.${qualityLevel}/${eMaxQual} (現在:x${(1 + qualityLevel*0.15).toFixed(2)})
+            <button onclick="upgradeQuality()" ${money < getQualityUpgradeCost() || qualityLevel >= eMaxQual ? "disabled":""} style="padding:2px 8px; font-size:11px;">投資(${getQualityUpgradeCost().toLocaleString()}円)</button>
             <br>
-            📦 バルク梱包システム: <span style="color:#ffd166;">${packagingLevel === 0 ? "通常生産" : packagingLevel === 1 ? "クレート(100倍)" : "コンテナ(10000倍)"}</span>
+            📦 バルク梱包システム: <span style="color:#ffd166;">${packagingLevel === 0 ? "通常生産" : packagingLevel === 1 ? "クレート(40倍)" : "コンテナ(500倍)"}</span>
             <button onclick="upgradePackaging()" ${!nextPackaging || money < nextPackaging.cost ? "disabled":""} style="padding:2px 8px; font-size:11px;">
                 ${nextPackaging ? `${nextPackaging.next}化(${nextPackaging.cost.toLocaleString()}円)` : "最大自動化"}
             </button>
@@ -2127,24 +2384,224 @@ function renderUpgradeArea(){
             <button onclick="toggleAutoRoll()" ${!autoRollOwned ? "disabled":""} style="padding:2px 8px; font-size:11px; background:${powerGrid.isBroken ? '#444' : autoRollEnabled?'#5edc88':'#ffd166'}">
                 状態: ${powerGrid.isBroken ? "⚡ ブレーカー停止によりOFF" : autoRollEnabled ? "稼働中(ON)" : "待機中(OFF)"}
             </button>
+            <br>
+            <hr style="border-color:#334;margin:6px 0 8px;">
+            <div style="font-size:15px;font-weight:bold;color:#55aaff;margin-bottom:2px;letter-spacing:1px;">💵 外貨強化エリア <span style="font-size:13px;font-weight:normal;color:#88bbff;">（所持外貨: ${formatForeign(foreignMoney)}）</span></div>
+            <div style="font-size:12px;line-height:2;">
+            ⚡ ブレーカー強化 Lv.${breakerLevel}/${MAX_BREAKER_LEVEL}
+            <span style="font-size:11px;color:#aaa;">（落雷時に強化コストの半額外貨で維持、払えない場合ダウングレード）</span>
+            ${breakerBtn}
+            <br>
+            🏭 工場拡張上限解放: ${boostBtn}
+            <span style="font-size:11px;color:#aaa;">（全拡張上限+50%）</span>
+            <br>
+            🚦 交通法規適用: ${trafficLawBtn}
+            <span style="font-size:11px;color:#aaa;">（納品拒否・事故率を大幅低減、輸送時間は1.5倍）</span>
+            <br>
+            ⚡ 自動ブレーカー復旧: ${autoRecoverBtn}
+            <span style="font-size:11px;color:#aaa;">（停電時に円を使って自動復旧）</span>
+            <br>
+            🤖 ハッカー雇用: ${hackerBtn}
+            <span style="font-size:11px;color:#aaa;">（自動ハッキング、10%でミス。目標電力まで上昇したら停止）</span>
+            </div>
         </div>
     `;
 }
 
-function upgradeSpeed(){ if(speedLevel >= MAX_SPEED_LEVEL) return; const cost = speedLevel*8000; if(money < cost) return; speedLevel++; money -= cost; renderAll(); }
-function upgradeMultiRoll(){ if(multiRoll >= MAX_MULTI_ROLL) return; const cost = multiRoll*15000; if(money < cost) return; multiRoll++; money -= cost; renderAll(); }
+function upgradeSpeed(){ const eMax=getEffectiveMaxSpeed(); if(speedLevel >= eMax) return; const cost = getSpeedUpgradeCost(); if(money < cost) return; speedLevel++; money -= cost; renderAll(); }
+function upgradeMultiRoll(){ const eMax=getEffectiveMaxMulti(); if(multiRoll >= eMax) return; const cost = getMultiRollUpgradeCost(); if(money < cost) return; multiRoll++; money -= cost; renderAll(); }
 function upgradePackaging(){ const nextPackaging = PACKAGING_UPGRADES[packagingLevel]; if(!nextPackaging || money < nextPackaging.cost) return; money -= nextPackaging.cost; packagingLevel++; addLog("通知", `生産形態が「${nextPackaging.next}」へシフトした。`); renderAll(); }
-function upgradeMutation(){ if(mutationLevel >= MAX_MUTATION_LEVEL) return; const cost = (mutationLevel+1)*30000; if(money < cost) return; mutationLevel++; money -= cost; addLog("AI", "遺伝子組換え・変異確率の上昇を確認。"); renderAll(); }
-function upgradeQuality(){ if(qualityLevel >= MAX_QUALITY_LEVEL) return; const cost = (qualityLevel+1)*50000; if(money < cost) return; qualityLevel++; money -= cost; renderAll(); }
+function upgradeMutation(){ const eMax=getEffectiveMaxMutation(); if(mutationLevel >= eMax) return; const cost = getMutationUpgradeCost(); if(money < cost) return; mutationLevel++; money -= cost; addLog("AI", "遺伝子組換え・変異確率の上昇を確認。"); renderAll(); }
+function upgradeQuality(){ const eMax=getEffectiveMaxQuality(); if(qualityLevel >= eMax) return; const cost = getQualityUpgradeCost(); if(money < cost) return; qualityLevel++; money -= cost; renderAll(); }
 function buyAutoRoll(){ if(autoRollOwned || money < 5000) return; money -= 5000; autoRollOwned = true; addLog("AI", "自動生産パルスコアがオンラインになった。"); renderAll(); }
 function toggleAutoRoll(){ if(!autoRollOwned || powerGrid.isBroken) return; autoRollEnabled = !autoRollEnabled; renderAll(); }
-function buyAutoTransport(){ if(autoTransportOwned || money < 150000) return; money -= 150000; autoTransportOwned = true; addLog("AI", "物流自動化AIルーチンが承認された。"); renderAll(); }
+function buyAutoTransport(){ if(autoTransportOwned || money < 30000) return; money -= 30000; autoTransportOwned = true; addLog("AI", "物流自動化AIルーチンが承認された。"); renderAll(); }
+
+// ブレーカー強化（外貨）
+function upgradeBreakerWithForeign(){
+    if(breakerLevel >= MAX_BREAKER_LEVEL) return;
+    const cost = BREAKER_UPGRADE_COSTS_FOREIGN[breakerLevel];
+    if(foreignMoney < cost){ showToast(`外貨が不足しています（必要: ${cost}）`); return; }
+    foreignMoney -= cost;
+    breakerLevel++;
+    addLog("通知", `⚡ ブレーカー強化 Lv${breakerLevel} 完了。ブレーカー耐性が向上しました。`);
+    renderAll();
+}
+
+// ブレーカーが壊れた時の外貨弁済チェック
+function checkBreakerRepayForeign(){
+    if(breakerLevel <= 0) return; // 強化していない場合は無関係
+    const repayForeignCost = BREAKER_UPGRADE_COSTS_FOREIGN[breakerLevel - 1] / 2;
+    if(foreignMoney >= repayForeignCost){
+        foreignMoney -= repayForeignCost;
+        addLog("危険", `⚡ ブレーカー破損！修復費として外貨 ${formatForeign(repayForeignCost)} を支払いました。ブレーカー強化は維持されます。`);
+    } else {
+        const had = foreignMoney;
+        foreignMoney = 0;
+        breakerLevel = Math.max(0, breakerLevel - 1);
+        addLog("危険", `⚡ ブレーカー破損！修復費の外貨が不足（所持:${formatForeign(had)} / 必要:${formatForeign(repayForeignCost)}）。ブレーカー強化がダウングレード → Lv${breakerLevel}。`);
+        showTopNotice("⚡ ブレーカーダウングレード！外貨不足", 5000);
+    }
+    renderAll();
+}
+
+// 交通法規適用（外貨）
+function buyTrafficLaw(){
+    if(trafficLawOwned) return;
+    if(foreignMoney < TRAFFIC_LAW_COST){ showToast(`外貨が不足しています（必要: ${TRAFFIC_LAW_COST}）`); return; }
+    foreignMoney -= TRAFFIC_LAW_COST;
+    trafficLawOwned = true;
+    addLog("通知", `🚦 交通法規を適用しました。納品拒否率・事故率が大幅に低下します（輸送時間は1.5倍）。`);
+    renderAll();
+}
+
+// 自動ブレーカー復旧（外貨）
+function buyAutoRecover(){
+    if(autoRecoverOwned) return;
+    if(foreignMoney < AUTO_RECOVER_COST){ showToast(`外貨が不足しています（必要: ${AUTO_RECOVER_COST}）`); return; }
+    foreignMoney -= AUTO_RECOVER_COST;
+    autoRecoverOwned = true;
+    addLog("通知", `⚡ 自動ブレーカー復旧システムを導入しました。停電時に自動で復旧します（費用は円）。`);
+    renderAll();
+}
+
+// ハッカー雇用（外貨）
+function buyHacker(){
+    if(hackerOwned || hackLevel === 0) return;
+    if(foreignMoney < HACKER_COST){ showToast(`外貨が不足しています（必要: ${HACKER_COST}）`); return; }
+    foreignMoney -= HACKER_COST;
+    hackerOwned = true;
+    hackerEnabled = true;
+    addLog("通知", `🤖 ハッカーを雇用しました。自動でミニゲームを操作します（90%成功率）。`);
+    hackerTick();
+    renderAll();
+}
+
+function setHackerTarget(val){
+    hackerTargetLevel = Math.max(110, Math.min(900, Number(val) || 200));
+    // 目標変更時にすぐチェック
+    if(_hackerTimer){ clearTimeout(_hackerTimer); _hackerTimer = null; }
+    hackerTick();
+}
+
+function setHackerEnabled(val){
+    hackerEnabled = !!val;
+    if(!hackerEnabled){
+        // 停止: 進行中のハックはそのまま（手動STOPが必要）
+        if(_hackerTimer){ clearTimeout(_hackerTimer); _hackerTimer = null; }
+        _hackerPhase = "idle";
+        addLog("通知", "🤖 ハッカーを停止しました。");
+    } else {
+        addLog("通知", "🤖 ハッカーを再開しました。");
+        hackerTick();
+    }
+    renderHackArea();
+}
+
+// ハッカーのメインループ（状態マシン）
+function hackerTick(){
+    if(_hackerTimer){ clearTimeout(_hackerTimer); _hackerTimer = null; }
+    if(!hackerOwned || !hackerEnabled || hackLevel === 0) return;
+    if(powerGrid.isBroken){ _hackerPhase = "idle"; return; } // 停電中は待機
+
+    // 目標電力に達している → 監視モード（1秒ごとにチェック、下回ったら再開）
+    if(powerGrid.level >= hackerTargetLevel){
+        if(_hackerPhase !== "idle") _hackerPhase = "idle";
+        _hackerTimer = setTimeout(hackerTick, 1000);
+        return;
+    }
+
+    // ミニゲーム実行中でなければ開始
+    if(!hackActive){
+        _hackerPhase = "playing";
+        startHack(); // ミニゲーム開始（バー動作開始）
+        // バーが動いてから自動STOPをスケジュール
+        scheduleAutoStop();
+    } else {
+        // 別の理由でhackActiveなら待機
+        _hackerTimer = setTimeout(hackerTick, 500);
+    }
+}
+
+// 自動STOPをスケジュール: バーが緑ゾーンに入るタイミングを計算して止める
+// 90%で成功(緑ゾーンに入れる)、10%でミス(ランダム位置で止める)
+function scheduleAutoStop(){
+    if(!hackActive || !hackerOwned || !hackerEnabled) return;
+    const cfg = HACK_CONFIGS[Math.max(0, hackLevel-1)];
+    const zoneLeft = 85 - cfg.zoneW;
+    const zoneRight = 85;
+    const isMiss = Math.random() < 0.10;
+
+    if(isMiss){
+        // ミス: 緑ゾーン以外のランダム位置で止める（少し待ってからSTOP）
+        const delay = 400 + Math.random() * 800;
+        _hackerTimer = setTimeout(()=>{
+            if(!hackActive) return;
+            // 緑ゾーン外に強制移動してから止める
+            hackPos = Math.random() < 0.5 ? Math.random() * (zoneLeft - 5) : 88 + Math.random() * 10;
+            hackPos = Math.max(0, Math.min(99, hackPos));
+            doHackerStop(false);
+        }, delay);
+    } else {
+        // 成功: バーが緑ゾーンに入ったら止める（rAFで監視）
+        function waitForZone(){
+            if(!hackActive || !hackerOwned || !hackerEnabled){ return; }
+            if(hackPos >= zoneLeft && hackPos <= zoneRight){
+                doHackerStop(true);
+            } else {
+                requestAnimationFrame(waitForZone);
+            }
+        }
+        requestAnimationFrame(waitForZone);
+    }
+}
+
+function doHackerStop(isSuccess){
+    if(!hackActive) return;
+    hackActive = false;
+    cancelAnimationFrame(hackAnimId);
+    _hackerPhase = "waiting";
+
+    const cfg = HACK_CONFIGS[Math.max(0, hackLevel-1)];
+    if(isSuccess){
+        powerGrid.level += cfg.gain;
+        addLog("AI", `🤖 ハッカー自動ハッキング成功！電力 → ${powerGrid.level}%`);
+    } else {
+        powerGrid.level += Math.max(3, Math.floor(cfg.gain * 0.1));
+        addLog("警告", `🤖 ハッカーがミス！電力微増 → ${powerGrid.level}%`);
+        if(Math.random() < FACTORY_FIRE_CHANCE){
+            triggerFactoryFire();
+        } else if(Math.random() < HACK_FAILURE_BLACKOUT_CHANCE){
+            triggerBlackout("ハッカーミスによるシステム短絡で");
+            return;
+        }
+    }
+    updateFactoryStatusText();
+    renderHackArea();
+    // 少し間隔を置いて次のハックへ
+    _hackerTimer = setTimeout(hackerTick, 1200);
+}
+
+// startHackerLoop: ロード時の再開用
+function startHackerLoop(){
+    hackerTick();
+}
+
+// 工場拡張上限ブースト（外貨）
+function buyExpansionLimitBoost(){
+    if(expansionLimitBoostOwned) return;
+    if(foreignMoney < EXPANSION_LIMIT_BOOST_COST){ showToast(`外貨が不足しています（必要: ${EXPANSION_LIMIT_BOOST_COST}）`); return; }
+    foreignMoney -= EXPANSION_LIMIT_BOOST_COST;
+    expansionLimitBoostOwned = true;
+    addLog("AI", `🏭 工場拡張上限が+50%解放された。速度・ライン・変異・品質の最大レベルが50%増加。`);
+    renderAll();
+}
 
 function renderAutoTransport(){
     const buyBtn = document.getElementById("autoTransportBuyBtn");
-    buyBtn.disabled = !autoTransportOwned && money < 150000;
+    buyBtn.disabled = !autoTransportOwned && money < 30000;
     if(!autoTransportOwned){
-        buyBtn.textContent = "物流AIを購入(150,000円)";
+        buyBtn.textContent = "物流AIを購入(30,000円)";
     } else if(autoTransportSettings.enabled){
         buyBtn.textContent = "🤖 AI自動物流システム稼働中";
         buyBtn.style.background = "#5edc88";
@@ -2283,7 +2740,7 @@ function runAutoTransport(){
     const targets = [];
 
     for(const item of inventory){
-        if(item.transporting) continue;
+        if(item.transporting || item.locked) continue;
         if(autoTransportSettings.filterMode === "rarity"){
             const itemRarityIdx = RARITY_ORDER.indexOf(item.class);
             const maxRarityIdx  = RARITY_ORDER.indexOf(autoTransportSettings.maxRarity);
@@ -2383,16 +2840,20 @@ function updateFactoryStatusText() {
 
 function redeemCode(){
     const code = document.getElementById("codeInput").value.trim();
-    if(!code || usedCodes.includes(code)) return;
+    if(!code) return;
+    if(usedCodes.includes(code)){
+        showToast("このコードは使用済みです");
+        return;
+    }
 
     if(code === "Onigiri"){
-        money += 100000;
+        money += 50000;
         usedCodes.push(code);
-        addLog("AI", "🧠 外部バックドアより資金調達コードを受理。1億円がチャージされました。");
-        showToast("💰 10万円注入成功");
+        addLog("AI", "🧠 コードを受理。5万円がチャージされました。");
+        showToast("💰 5万円注入成功");
         renderAll();
     }else{
-        showToast("シグナル不一致");
+        showToast("このコードは存在しません");
     }
 }
 
@@ -2433,8 +2894,11 @@ setInterval(()=>{
         const sh = shops[si];
         if(!sh.busy || !sh.saleId) continue;
 
-        // 納品拒否（3%/秒）: おにぎりが廃棄・価格半減なし
-        if(Math.random() < 0.001){
+        // 納品拒否・トラック事故: 交通法規適用で大幅低減
+        const _rejectChance = trafficLawOwned ? 0.0001 : 0.001;
+        const _accidentChance = trafficLawOwned ? 0.0002 : 0.002;
+        // 納品拒否（基本0.1%/秒、交通法規で0.01%/秒）
+        if(Math.random() < _rejectChance){
             const lost = inventory.filter(it=>it.saleId===sh.saleId).map(it=>it.name).slice(0,2).join("、");
             inventory = inventory.filter(it=>it.saleId!==sh.saleId);
             sh.busy=false; sh.saleId=null; sh.endTime=0;
@@ -2445,13 +2909,13 @@ setInterval(()=>{
             continue;
         }
 
-        // トラック事故（0.2%/秒）: 積荷消滅・5分価格半減
-        if(Math.random() < 0.002){
+        // トラック事故（基本0.2%/秒、交通法規で0.02%/秒）
+        if(Math.random() < _accidentChance){
             const lost = inventory.filter(it=>it.saleId===sh.saleId).map(it=>it.name).slice(0,3).join("、");
             inventory = inventory.filter(it=>it.saleId!==sh.saleId);
             sh.busy=false; sh.saleId=null; sh.endTime=0;
             addLog("危険", `🚛💥 ${sh.name}へのトラックが事故！${lost||"積荷"}が消滅しました。`);
-            showTopNotice("🚛💥 トラック事故！5分間販売価格が半額になります");
+            showTopNotice("🚛💥 トラック事故！2分間販売価格が半額になります");
             triggerTruckAccident("物流");
             renderInventory(); renderShops();
         }
@@ -2466,9 +2930,11 @@ setInterval(()=>{
     // バナナイースターエッグ: 400%から基本1%、700%超で1.5%ごとに+1%
 
     // 電圧不安定ブレーカー判定（確率を大幅低下: 200%以上で1%/秒, 300%で3%/秒）
+    // ブレーカー強化Lv1〜5で確率を最大75%低減
     if(!powerGrid.isBroken && powerGrid.level > 100){
         const instabilityChance = Math.pow((powerGrid.level - 100) / 200, 2) * 0.012;
-        if(Math.random() < instabilityChance){
+        const breakerDampen = 1 - (breakerLevel / MAX_BREAKER_LEVEL) * 0.90;
+        if(Math.random() < instabilityChance * breakerDampen){
             const severity = powerGrid.level >= 300 ? "大規模電圧スパイク" : powerGrid.level >= 200 ? "電圧不安定" : "微小電圧変動";
             triggerBlackout(`${severity}(${powerGrid.level}%過負荷)による`);
         }
@@ -2547,10 +3013,11 @@ const SAVE_KEY = "onigiriRNG_save";
 
 function getSaveData(){
     return JSON.stringify({
-        money, debt, debtTimer, inventory, selectedItems:[],
+        money, debt, debtTimer, inventory, selectedItems:[], usedCodes,
         speedLevel, multiRoll, mutationLevel, qualityLevel, packagingLevel,
         autoRollOwned, autoRollEnabled, autoTransportOwned, autoTransportSettings,
         autoRepairOwned, hackLevel, hackUnlocked,
+        breakerLevel, expansionLimitBoostOwned, trafficLawOwned, autoRecoverOwned, hackerOwned, hackerEnabled, hackerTargetLevel, foreignMoney,
         powerGrid: {...powerGrid},
         shops: shops.map(s=>({unlocked:s.unlocked, busy:false, endTime:0, saleId:null})),
         trucks: Object.fromEntries(Object.entries(trucks).map(([k,t])=>[k,{owned:t.owned,upgradeLevel:t.upgradeLevel}])),
@@ -2558,6 +3025,7 @@ function getSaveData(){
         truckAccidentPenalty, truckAccidentEnd,
         brokenMachines, maxDangerAchieved,
         earnLog: earnLog.slice(-100),
+        usedCodes,
         savedAt: Date.now()
     });
 }
@@ -2588,6 +3056,15 @@ function loadGame(){
         autoRepairOwned = d.autoRepairOwned ?? false;
         hackLevel = d.hackLevel ?? 0;
         hackUnlocked = d.hackUnlocked ?? false;
+        breakerLevel = d.breakerLevel ?? 0;
+        expansionLimitBoostOwned = d.expansionLimitBoostOwned ?? false;
+        trafficLawOwned = d.trafficLawOwned ?? false;
+        autoRecoverOwned = d.autoRecoverOwned ?? false;
+        hackerOwned = d.hackerOwned ?? false;
+        hackerEnabled = d.hackerEnabled ?? true;
+        hackerTargetLevel = d.hackerTargetLevel ?? 200;
+        foreignMoney = d.foreignMoney ?? 0;
+        if(hackerOwned) startHackerLoop();
         if(d.powerGrid) Object.assign(powerGrid, d.powerGrid);
         if(d.autoTransportSettings) Object.assign(autoTransportSettings, d.autoTransportSettings);
         if(d.shops) d.shops.forEach((s,i)=>{ if(shops[i]){ shops[i].unlocked=s.unlocked; shops[i].busy=false; shops[i].endTime=0; shops[i].saleId=null; } });
@@ -2598,12 +3075,16 @@ function loadGame(){
         brokenMachines = d.brokenMachines ?? [];
         maxDangerAchieved = d.maxDangerAchieved ?? "低";
         earnLog = d.earnLog ?? [];
+        usedCodes = d.usedCodes ?? [];
         return true;
     } catch(e){ console.warn("Load failed:", e); return false; }
 }
 
 function deleteGameData(){
+    // beforeunloadのセーブを無効化してから削除
+    window.removeEventListener("beforeunload", saveGame);
     localStorage.removeItem(SAVE_KEY);
+    localStorage.setItem("onigiriRNG_deleted_notice", "1");
     location.reload();
 }
 
@@ -2614,9 +3095,12 @@ window.addEventListener("beforeunload", saveGame);
 
 // 初期起動
 const _loaded = loadGame();
+const _deletedNotice = localStorage.getItem("onigiriRNG_deleted_notice") === "1";
+if(_deletedNotice) localStorage.removeItem("onigiriRNG_deleted_notice");
 addLog("AI", _loaded ? "🔄 セーブデータを読み込みました。" : "🤖 おにぎり自動製造コア起動。初期シーケンス正常。コンビニへの出荷義務を果たしてください。");
 updateTrend();
 renderAll();
+if(_deletedNotice) showToast("データを削除しました");
 </script>
 </body>
 </html>
