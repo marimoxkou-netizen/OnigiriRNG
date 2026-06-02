@@ -48,6 +48,27 @@ h2{margin-top:0; color:#ffd166; border-bottom:1px solid #333; padding-bottom:5px
     grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
     gap:12px;
 }
+/* 倉庫仮想スクロール用 */
+#inventoryViewport{
+    height:640px;
+    overflow-y:auto;
+    position:relative;
+    background:#111;
+    border-radius:10px;
+    padding:0;
+}
+#inventorySpacer{
+    position:relative;
+    width:100%;
+}
+#inventoryVisible{
+    position:absolute;
+    top:0; left:0; right:0;
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+    gap:12px;
+    padding:12px;
+}
 .multiGrid{
     display:flex;
     flex-direction:column;
@@ -463,7 +484,11 @@ input,select{
                 <button id="sortPriceBtn" onclick="setInventorySort('price')" style="padding:4px 10px;font-size:12px;">💰 価格順</button>
                 <button id="sortRarityBtn" onclick="setInventorySort('rarity')" style="padding:4px 10px;font-size:12px;">⭐ レア度順</button>
             </div>
-            <div class="grid" id="inventory"></div>
+            <div id="inventoryViewport">
+                <div id="inventorySpacer">
+                    <div id="inventoryVisible"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -598,7 +623,15 @@ const PACKAGING_UPGRADES = [
 ];
 
 const STORAGE_LIMIT = 300;
-const autoTransportSettings = { enabled:false, maxPrice:5000, filterMode:"price", maxRarity:"mythical", truck:"light", shop:0 };
+// 自動プロトコル複数ルート（後方互換: 旧saveはroutes[0]にマイグレート）
+let autoTransportRoutes = [
+    { enabled:false, maxPrice:5000, filterMode:"price", maxRarity:"mythical", truck:"light", shop:0 }
+];
+// 旧コードとの互換ラッパー（単数アクセス箇所用）
+const autoTransportSettings = new Proxy({}, {
+    get(_, k){ return autoTransportRoutes[0][k]; },
+    set(_, k, v){ autoTransportRoutes[0][k] = v; return true; }
+});
 // filterMode: "price"=円以下, "rarity"=レア度以下
 const RARITY_ORDER = ["common","uncommon","rare","epic","legend","mythical","secret"];
 
@@ -611,13 +644,13 @@ const trucks = {
 };
 
 const shops = [
-    {name:"セブンイレブン",multi:1.0, time:8,   unlocked:true,  busy:false, price:0,      endTime:0, saleId:null},
-    {name:"ローソン",      multi:1.4, time:15,  unlocked:false, busy:false, price:1500,   endTime:0, saleId:null},
-    {name:"万代",          multi:2.5, time:30,  unlocked:false, busy:false, price:15000,  endTime:0, saleId:null},
-    {name:"ライフ",        multi:4.0, time:50,  unlocked:false, busy:false, price:50000,  endTime:0, saleId:null},
-    {name:"いかりスーパー",multi:7.0, time:90,  unlocked:false, busy:false, price:120000, endTime:0, saleId:null},
-    {name:"闇通販",        multi:6.0, time:5,   unlocked:false, busy:false, price:2500000, endTime:0, saleId:null},
-    {name:"海外輸出",      multi:1.0, time:300, unlocked:false, busy:false, price:10000000, endTime:0, saleId:null, currency:"foreign"}
+    {name:"セブンイレブン",multi:1.0, time:8,   unlocked:true,  busy:false, price:0,      endTime:0, saleId:null, pendingTotal:0, pendingCount:0},
+    {name:"ローソン",      multi:1.4, time:15,  unlocked:false, busy:false, price:1500,   endTime:0, saleId:null, pendingTotal:0, pendingCount:0},
+    {name:"万代",          multi:2.5, time:30,  unlocked:false, busy:false, price:15000,  endTime:0, saleId:null, pendingTotal:0, pendingCount:0},
+    {name:"ライフ",        multi:4.0, time:50,  unlocked:false, busy:false, price:50000,  endTime:0, saleId:null, pendingTotal:0, pendingCount:0},
+    {name:"いかりスーパー",multi:7.0, time:90,  unlocked:false, busy:false, price:120000, endTime:0, saleId:null, pendingTotal:0, pendingCount:0},
+    {name:"闇通販",        multi:6.0, time:5,   unlocked:false, busy:false, price:2500000, endTime:0, saleId:null, pendingTotal:0, pendingCount:0},
+    {name:"海外輸出",      multi:1.0, time:300, unlocked:false, busy:false, price:10000000, endTime:0, saleId:null, pendingTotal:0, pendingCount:0, currency:"foreign"}
 ];
 
 const onigiris = [
@@ -1325,34 +1358,46 @@ function calcTotal(process){
 }
 
 function renderInventory(){
-    const inv = document.getElementById("inventory");
-    inv.innerHTML = "";
     // ソートボタンのハイライト同期
     const _bp = document.getElementById('sortPriceBtn');
     const _br = document.getElementById('sortRarityBtn');
     if(_bp){ _bp.style.background = inventorySortMode==='price'?'#ffd166':'#333'; _bp.style.color = inventorySortMode==='price'?'#111':'#aaa'; }
     if(_br){ _br.style.background = inventorySortMode==='rarity'?'#ffd166':'#333'; _br.style.color = inventorySortMode==='rarity'?'#111':'#aaa'; }
 
-    getSortedInventory().forEach(item=>{
-        const remain = item.transporting ? Math.max(0, Math.ceil((item.transportEnd-Date.now())/1000)) : 0;
-        const isLocked = !!item.locked;
-        inv.innerHTML += `
-            <div data-item-id="${item.id}" class="card rarity-${item.class} ${selectedItems.includes(item.id) ? "selected":""} ${item.transporting ? "transporting":""} ${isLocked ? "locked":""}" draggable="${!item.transporting && !isLocked}" onclick="selectItem(event,${item.id})" oncontextmenu="toggleItemLock(event,${item.id})" ondragstart="dragItem(event,${item.id})">
-                ${isLocked ? `<span class="lockBadge">⭐</span>` : ""}
-                <span class="rarityBadge" style="background:${RARITY_COLORS[item.class]||'#888'}22;color:${RARITY_COLORS[item.class]||'#888'};border:1px solid ${RARITY_COLORS[item.class]||'#888'}55;">${RARITY_LABELS[item.class]||''}</span>
-                <div style="font-size:40px; margin-top:10px;">${item.emoji}</div>
-                <h4 style="margin:5px 0; color:${RARITY_COLORS[item.class]||'#fff'};">${item.name}${(()=>{const o=calcBaseOdds(item.name);return o?` <span style="font-size:10px;color:#888;">${o}</span>`:''})()}</h4>
-                <div class="money" style="font-size:16px; color:${RARITY_COLORS[item.class]||'#fff'};">${item.finalPrice.toLocaleString()}円</div>
-                <div style="font-size:11px; color:#aaa;">${item.kind} / 積載:${item.loadSize}枠</div>
-                <div style="font-size:10px; margin-top:5px;">${item.mutations.map(m=>colorMutation(m)).join("<br>")}</div>
-                ${item.transporting ? `<div class="transportBadge">🚚 輸送中 (${remain}s)</div>` : ""}
-            </div>
-        `;
-    });
+    vsSchedule(); // 仮想スクロールに描画を委譲
 
     document.getElementById("money").textContent = Math.floor(money).toLocaleString();
     document.getElementById("foreignMoney").textContent = `外貨 ${formatForeign(foreignMoney)}`;
     document.getElementById("itemCount").textContent = `${inventory.length}/${STORAGE_LIMIT}`;
+}
+
+function showTransportDetail(saleId){
+    const items = inventory.filter(it=>it.saleId===saleId && it.transporting);
+    if(!items.length) return;
+    const shop = shops.find(s=>s.saleId===saleId);
+    const shopName = shop ? shop.name : "輸送先";
+    const remain = Math.max(0, Math.ceil((items[0].transportEnd - Date.now()) / 1000));
+    const total = items.reduce((s,it)=>s+it.finalPrice, 0);
+
+    const rows = items.map(item=>`
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;border-bottom:1px solid #222;">
+            <span style="font-size:22px;">${item.emoji}</span>
+            <div style="flex:1;">
+                <div style="color:${RARITY_COLORS[item.class]||'#fff'};font-size:12px;font-weight:bold;">${item.name}</div>
+                <div style="font-size:11px;color:#ffd166;">${item.finalPrice.toLocaleString()}円</div>
+                <div style="font-size:10px;color:#aaa;">${item.mutations.map(m=>colorMutation(m)).join(" / ")||"変異なし"}</div>
+            </div>
+        </div>`).join("");
+
+    const modal = document.getElementById("transportDetailModal");
+    document.getElementById("tdmTitle").textContent = `🚚 輸送中 ×${items.length} → ${shopName}`;
+    document.getElementById("tdmSub").textContent = `合計: ${total.toLocaleString()}円 ／ 残り ${remain}s`;
+    document.getElementById("tdmBody").innerHTML = rows;
+    modal.style.display = "flex";
+}
+
+function closeTransportDetail(){
+    document.getElementById("transportDetailModal").style.display = "none";
 }
 
 // ラッソ選択
@@ -1360,6 +1405,110 @@ let _lassoActive = false;
 let _lassoStartX = 0, _lassoStartY = 0;
 
 let inventorySortMode = 'price'; // 'price' | 'rarity'
+
+// 仮想スクロール状態
+const VS = {
+    CARD_H: 280,      // カード推定高さ(px) ※gap込み
+    OVERSCAN: 2,      // 上下余分に描画する行数
+    cols: 1,          // 現在の列数（resize時に更新）
+    scrollTop: 0,
+    _raf: null,
+    _dirty: false,
+};
+
+function vsUpdateCols(){
+    const vp = document.getElementById('inventoryViewport');
+    if(!vp) return;
+    // 利用可能な幅からauto-fillの列数を計算
+    const w = vp.clientWidth - 24; // padding 12px*2
+    VS.cols = Math.max(1, Math.floor((w + 12) / (260 + 12)));
+}
+
+function vsRender(){
+    VS._dirty = false;
+    const vp = document.getElementById('inventoryViewport');
+    const spacer = document.getElementById('inventorySpacer');
+    const visible = document.getElementById('inventoryVisible');
+    if(!vp || !spacer || !visible) return;
+
+    vsUpdateCols();
+
+    // 輸送まとめカード + 通常カードのリストを作る
+    const transportGroups = new Map();
+    for(const item of inventory){
+        if(!item.transporting) continue;
+        if(!transportGroups.has(item.saleId)) transportGroups.set(item.saleId, []);
+        transportGroups.get(item.saleId).push(item);
+    }
+    const normalItems = getSortedInventory().filter(it => !it.transporting);
+
+    // 全カードの仮想リスト（transport groups first, then normal）
+    const allCards = [];
+    for(const [saleId, items] of transportGroups){
+        allCards.push({ type:'transport', saleId, items });
+    }
+    for(const item of normalItems){
+        allCards.push({ type:'item', item });
+    }
+
+    const totalCards = allCards.length;
+    const totalRows = Math.ceil(totalCards / VS.cols);
+    const totalH = totalRows * VS.CARD_H + 24; // +padding
+    spacer.style.height = totalH + 'px';
+
+    const scrollTop = vp.scrollTop;
+    const vpH = vp.clientHeight;
+
+    const firstRow = Math.max(0, Math.floor(scrollTop / VS.CARD_H) - VS.OVERSCAN);
+    const lastRow  = Math.min(totalRows - 1, Math.ceil((scrollTop + vpH) / VS.CARD_H) + VS.OVERSCAN);
+
+    const firstIdx = firstRow * VS.cols;
+    const lastIdx  = Math.min(totalCards - 1, (lastRow + 1) * VS.cols - 1);
+
+    const offsetY = firstRow * VS.CARD_H;
+    visible.style.top = offsetY + 'px';
+
+    // 表示範囲のカードをHTMLで生成
+    let html = '';
+    for(let i = firstIdx; i <= lastIdx; i++){
+        const card = allCards[i];
+        if(!card) break;
+        if(card.type === 'transport'){
+            const { saleId, items } = card;
+            const remain = Math.max(0, Math.ceil((items[0].transportEnd - Date.now()) / 1000));
+            const total = items.reduce((s,it)=>s+it.finalPrice, 0);
+            const shop = shops.find(s=>s.saleId===saleId);
+            const shopName = shop ? shop.name : '輸送先';
+            html += `<div class="card" style="border:2px solid #55aaff44;background:#0d1a2a;cursor:default;">
+                <div style="font-size:28px;margin-top:8px;">🚚</div>
+                <h4 style="margin:4px 0;color:#55aaff;font-size:13px;">輸送中 ×${items.length}</h4>
+                <div style="font-size:11px;color:#aaa;">➜ ${shopName}</div>
+                <div style="font-size:13px;color:#ffd166;margin:2px 0;">${total.toLocaleString()}円</div>
+                <div style="font-size:12px;color:#55aaff;">⏱ ${remain}s</div>
+                <button onclick="showTransportDetail(${saleId})" style="margin-top:6px;padding:2px 8px;font-size:11px;background:#1a2a3a;color:#88ccff;border:1px solid #55aaff55;border-radius:4px;cursor:pointer;">詳細を確認</button>
+            </div>`;
+        } else {
+            const item = card.item;
+            const isLocked = !!item.locked;
+            html += `<div data-item-id="${item.id}" class="card rarity-${item.class} ${selectedItems.includes(item.id)?"selected":""} ${isLocked?"locked":""}" draggable="${!isLocked}" onclick="selectItem(event,${item.id})" oncontextmenu="toggleItemLock(event,${item.id})" ondragstart="dragItem(event,${item.id})">
+                ${isLocked?`<span class="lockBadge">⭐</span>`:""}
+                <span class="rarityBadge" style="background:${RARITY_COLORS[item.class]||'#888'}22;color:${RARITY_COLORS[item.class]||'#888'};border:1px solid ${RARITY_COLORS[item.class]||'#888'}55;">${RARITY_LABELS[item.class]||''}</span>
+                <div style="font-size:40px;margin-top:10px;">${item.emoji}</div>
+                <h4 style="margin:5px 0;color:${RARITY_COLORS[item.class]||'#fff'};">${item.name}${(()=>{const o=calcBaseOdds(item.name);return o?` <span style="font-size:10px;color:#888;">${o}</span>`:''})()}</h4>
+                <div class="money" style="font-size:16px;color:${RARITY_COLORS[item.class]||'#fff'};">${item.finalPrice.toLocaleString()}円</div>
+                <div style="font-size:11px;color:#aaa;">${item.kind} / 積載:${item.loadSize}枠</div>
+                <div style="font-size:10px;margin-top:5px;">${item.mutations.map(m=>colorMutation(m)).join("<br>")}</div>
+            </div>`;
+        }
+    }
+    visible.innerHTML = html;
+}
+
+function vsSchedule(){
+    if(VS._dirty) return;
+    VS._dirty = true;
+    VS._raf = requestAnimationFrame(vsRender);
+}
 
 function setInventorySort(mode){
     inventorySortMode = mode;
@@ -1384,7 +1533,7 @@ function getSortedInventory(){
 
 function lassoStart(e){
     if(e.button !== 0) return;
-    const inv = document.getElementById("inventory");
+    const inv = document.getElementById("inventoryViewport");
     if(!inv || !inv.contains(e.target)) return; // inventory内のみ
 
     // カード上での通常クリック（Shift/Ctrl なし）はselectItemに任せる
@@ -1434,7 +1583,7 @@ function lassoStart(e){
             y2: Math.max(ev.clientY, _lassoStartY),
         };
         // カードとの交差判定
-        const cards = document.querySelectorAll("#inventory [data-item-id]");
+        const cards = document.querySelectorAll("#inventoryVisible [data-item-id]");
         const newSel = [];
         cards.forEach(card=>{
             const cr = card.getBoundingClientRect();
@@ -1531,7 +1680,7 @@ function renderShops(){
                 <h3>${shop.name}</h3>
                 <div>${shop.currency === "foreign" ? "外貨換算: 円価値÷1億" : `市場倍率 x${shop.multi}`}</div>
                 <div>輸送時間: ${shop.time}秒</div>
-                <div style="font-weight:bold; margin-top:5px;">${shop.busy ? `🚚 納品中 (${remain}秒)` : shop.unlocked ? "注文待機中" : "未開放市場"}</div>
+                <div style="font-weight:bold; margin-top:5px;">${shop.busy ? `🚚 納品中 ${shop.pendingCount||""}個 (${remain}秒)` : shop.unlocked ? "注文待機中" : "未開放市場"}</div>
                 ${!shop.unlocked ? `<button class="btn-shop" onclick="buyShop(${index})" ${money < shop.price ? "disabled" : ""}>市場開拓(${shop.price.toLocaleString()}円)</button>` : ""}
             </div>
         `;
@@ -1571,50 +1720,58 @@ function startSell(index,forcedItems=null,forcedTruck=null){
         return;
     }
 
+    // 合計金額を1回だけ計算してpendingTotalに保存（内部では個別に足し算しない）
+    const total = sending.reduce((s, item) => s + item.finalPrice, 0);
     const saleId = nextSaleId++;
-    let total = 0;
+    const time = Math.max(1, Math.floor(shop.time * (trafficLawOwned ? 1.5 : 1.0) / truck.speed));
 
+    // アイテムはinventoryに残してtransportingフラグだけ立てる（表示用）
+    const sentIds = new Set(sending.map(item=>item.id));
     sending.forEach(item=>{
         item.transporting = true;
         item.saleId = saleId;
-        total += item.finalPrice;
+        item.transportEnd = Date.now() + time*1000;
     });
+    selectedItems = selectedItems.filter(id => !sentIds.has(id));
 
-    const sentIds = sending.map(item=>item.id);
-    const time = Math.max(1, Math.floor(shop.time * (trafficLawOwned ? 1.5 : 1.0) / truck.speed));
     shop.busy = true;
     shop.saleId = saleId;
     shop.endTime = Date.now() + time*1000;
+    shop.pendingTotal = total;   // ← 合計をここで確定
+    shop.pendingCount = sending.length;
 
-    inventory.forEach(item=>{
-        if(item.saleId === saleId) item.transportEnd = shop.endTime;
-    });
-
-    selectedItems = selectedItems.filter(id=>!sentIds.includes(id));
     renderInventory();
     renderShops();
 
-    setTimeout(()=>finishSell(index,saleId,total), time*1000);
+    // finishSellにはpendingTotalを渡すだけ（個別アイテムのループなし）
+    setTimeout(()=>finishSell(index,saleId), time*1000);
 }
 
-function finishSell(shopIndex,saleId,total){
+function finishSell(shopIndex,saleId){
     const shop = shops[shopIndex];
-    if(!shop || shop.saleId !== saleId){ 
-        // stale call: cleanup if stuck
+    if(!shop || shop.saleId !== saleId){
+        // stale call
         if(shop && shop.busy && shop.endTime > 0 && Date.now() > shop.endTime + 5000){
-            shop.busy=false; shop.saleId=null; shop.endTime=0;
+            inventory.forEach(it=>{ if(it.saleId===saleId){ it.transporting=false; it.saleId=null; } });
+            shop.busy=false; shop.saleId=null; shop.endTime=0; shop.pendingTotal=0; shop.pendingCount=0;
         }
         return;
     }
 
+    // pendingTotalを使って計算（アイテムを個別にループしない）
+    const total = shop.pendingTotal;
     let profit = Math.floor(total * shop.multi);
+    // inventoryからtransportingアイテムを削除 & フラグ解除
+    inventory = inventory.filter(it => it.saleId !== saleId);
+    shop.busy = false;
+    shop.saleId = null;
+    shop.endTime = 0;
+    shop.pendingTotal = 0;
+    shop.pendingCount = 0;
+
     if(shop.currency === "foreign"){
         const earnedForeign = profit / 100000000;
         foreignMoney += earnedForeign;
-        inventory = inventory.filter(item=>item.saleId !== saleId);
-        shop.busy = false;
-        shop.saleId = null;
-        shop.endTime = 0;
         addLog("通知", `${shop.name}への納品完了。外貨 +${formatForeign(earnedForeign)} を受領。`);
         renderAll();
         return;
@@ -1627,12 +1784,7 @@ function finishSell(shopIndex,saleId,total){
         renderDebtDisplay();
     }
     money += profit;
-    earnLog.push({t: Date.now(), v: profit + (debt > 0 ? 0 : 0)});
-    inventory = inventory.filter(item=>item.saleId !== saleId);
-
-    shop.busy = false;
-    shop.saleId = null;
-    shop.endTime = 0;
+    earnLog.push({t: Date.now(), v: profit});
 
     addLog("通知", `${shop.name}への納品完了。利益 +${profit.toLocaleString()}円 を受領。`);
     renderAll();
@@ -2597,63 +2749,104 @@ function buyExpansionLimitBoost(){
     renderAll();
 }
 
+function addAtRoute(){
+    if(autoTransportRoutes.length >= 8) return; // 最大8ルート
+    autoTransportRoutes.push({ enabled:false, maxPrice:5000, filterMode:"price", maxRarity:"mythical", truck:"light", shop:0 });
+    renderAutoTransport();
+}
+
+function removeAtRoute(ri){
+    if(autoTransportRoutes.length <= 1) return;
+    autoTransportRoutes.splice(ri, 1);
+    renderAutoTransport();
+}
+
+function isDuplicateAtRoute(ri){
+    const r = autoTransportRoutes[ri];
+    return autoTransportRoutes.some((other, i) => {
+        if(i === ri) return false;
+        return other.filterMode === r.filterMode &&
+            other.truck === r.truck &&
+            other.shop === r.shop &&
+            (r.filterMode === "price" ? other.maxPrice === r.maxPrice : other.maxRarity === r.maxRarity);
+    });
+}
+
+function renderAtRoute(ri){
+    const route = autoTransportRoutes[ri];
+    const isDup = isDuplicateAtRoute(ri);
+    const canDelete = autoTransportRoutes.length > 1;
+
+    // ルート行のコンテナ
+    let html = `<div id="atRoute_${ri}" style="border:1px solid ${isDup?'#ff3333':'#334'};border-radius:8px;padding:8px;margin-bottom:6px;background:${isDup?'#1a0000':'#1a1a2a'};">`;
+    html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">`;
+    html += `<span style="font-size:12px;font-weight:bold;color:#55aaff;">ルート ${ri+1}</span>`;
+    html += `<label style="font-size:12px;"><input type="checkbox" id="atEnabled_${ri}" ${route.enabled?"checked":""}> 稼働</label>`;
+    if(isDup) html += `<span style="font-size:11px;color:#ff3333;">⚠ 重複設定</span>`;
+    if(canDelete) html += `<button onclick="removeAtRoute(${ri})" style="margin-left:auto;padding:1px 7px;font-size:11px;background:#ff3333;color:#fff;border:none;border-radius:4px;cursor:pointer;">✕ 削除</button>`;
+    html += `</div>`;
+    html += `<div style="font-size:12px;line-height:1.8;">`;
+    html += `フィルタ: <button id="atFilterToggle_${ri}" onclick="toggleAtFilter(${ri})" style="font-size:11px;padding:2px 8px;margin:2px 0;"></button>`;
+    html += `<span id="atPriceArea_${ri}"> 単価 <input type="number" id="atMaxPrice_${ri}" value="${route.maxPrice}" style="width:80px;" min="0"> 円以下を出荷</span>`;
+    html += `<span id="atRarityArea_${ri}" style="display:none;"> <select id="atMaxRarity_${ri}">${RARITY_ORDER.map(r=>`<option value="${r}" ${route.maxRarity===r?"selected":""}>${RARITY_LABELS[r]||r}</option>`).join("")}</select> 以下を出荷</span>`;
+    html += `<br>配備車両: <select id="atTruck_${ri}">${Object.entries(trucks).filter(([,t])=>t.owned).map(([k,t])=>`<option value="${k}" ${route.truck===k?"selected":""}>${t.name}</option>`).join("")}</select>`;
+    html += ` ➜ 納品先目標: <select id="atShop_${ri}">${shops.map((s,i)=>`<option value="${i}" ${route.shop===i?"selected":""} ${!s.unlocked?"disabled":""}>${s.name}</option>`).join("")}</select>`;
+    html += `</div></div>`;
+    return html;
+}
+
+function bindAtRoute(ri){
+    const route = autoTransportRoutes[ri];
+    const get = id => document.getElementById(id);
+
+    get(`atEnabled_${ri}`).onchange = e => { route.enabled = e.target.checked; checkAtDuplicates(); };
+    get(`atMaxPrice_${ri}`).onchange = e => { route.maxPrice = Number(e.target.value); checkAtDuplicates(); };
+    const mr = get(`atMaxRarity_${ri}`);
+    if(mr) mr.onchange = e => { route.maxRarity = e.target.value; checkAtDuplicates(); };
+    get(`atTruck_${ri}`).onchange = e => { route.truck = e.target.value; checkAtDuplicates(); };
+    get(`atShop_${ri}`).onchange = e => { route.shop = Number(e.target.value); checkAtDuplicates(); };
+
+    updateAtFilterUI(ri);
+}
+
+function checkAtDuplicates(){
+    // 重複があればルートのボーダーを更新
+    for(let i=0;i<autoTransportRoutes.length;i++){
+        const el = document.getElementById(`atRoute_${i}`);
+        if(!el) continue;
+        const isDup = isDuplicateAtRoute(i);
+        el.style.borderColor = isDup ? '#ff3333' : '#334';
+        el.style.background = isDup ? '#1a0000' : '#1a1a2a';
+        const dupWarn = el.querySelector('.dup-warn');
+        if(dupWarn) dupWarn.style.display = isDup ? '' : 'none';
+    }
+}
+
 function renderAutoTransport(){
     const buyBtn = document.getElementById("autoTransportBuyBtn");
     buyBtn.disabled = !autoTransportOwned && money < 30000;
+    const anyEnabled = autoTransportRoutes.some(r=>r.enabled);
     if(!autoTransportOwned){
         buyBtn.textContent = "物流AIを購入(30,000円)";
-    } else if(autoTransportSettings.enabled){
+        buyBtn.style.background = ""; buyBtn.style.color = "";
+    } else if(anyEnabled){
         buyBtn.textContent = "🤖 AI自動物流システム稼働中";
-        buyBtn.style.background = "#5edc88";
-        buyBtn.style.color = "#111";
+        buyBtn.style.background = "#5edc88"; buyBtn.style.color = "#111";
     } else {
         buyBtn.textContent = "⏸ AI自動物流システム待機中";
-        buyBtn.style.background = "#555";
-        buyBtn.style.color = "#aaa";
+        buyBtn.style.background = "#555"; buyBtn.style.color = "#aaa";
     }
 
     const area = document.getElementById("autoTransportArea");
     if(!autoTransportOwned){ area.innerHTML = "物流コア未接続"; return; }
 
-    // 初回だけDOMを構築。以降はvalueとoptionだけ更新（selectがフォーカス中でも壊れない）
-    if(!area.dataset.built){
-        area.dataset.built = "1";
-        area.innerHTML = `
-            <div class="controlRow" style="font-size:12px;">
-                <label><input type="checkbox" id="atEnabled"> 自動出荷を承認する</label>
-                <br>
-                フィルタ: <button id="atFilterToggle" onclick="toggleAtFilter()" style="font-size:11px;padding:2px 8px;margin:2px 0;"></button>
-                <span id="atPriceArea"> 単価 <input type="number" id="atMaxPrice" style="width:80px;" min="0"> 円以下を出荷</span>
-                <span id="atRarityArea" style="display:none;"> <select id="atMaxRarity"></select> 以下を出荷</span>
-                <br>
-                配備車両: <select id="atTruck"></select>
-                ➜ 納品先目標: <select id="atShop"></select>
-            </div>`;
-        document.getElementById("atEnabled").onchange  = e => { autoTransportSettings.enabled = e.target.checked; };
-        document.getElementById("atMaxPrice").onchange = e => { autoTransportSettings.maxPrice = Number(e.target.value); };
-        const atMR = document.getElementById("atMaxRarity");
-        if(atMR) atMR.onchange = e => { autoTransportSettings.maxRarity = e.target.value; };
-        document.getElementById("atTruck").onchange    = e => { autoTransportSettings.truck = e.target.value; };
-        document.getElementById("atShop").onchange     = e => { autoTransportSettings.shop = Number(e.target.value); };
-    }
+    // 毎回再構築（ルート数が変わるため）
+    let html = autoTransportRoutes.map((_,ri)=>renderAtRoute(ri)).join("");
+    html += `<button onclick="addAtRoute()" ${autoTransportRoutes.length>=8?"disabled":""} style="margin-top:4px;padding:3px 14px;font-size:13px;background:#334;color:#aaa;border:1px solid #556;border-radius:6px;cursor:pointer;">＋ ルート追加</button>`;
+    area.innerHTML = html;
 
-    const cb = document.getElementById("atEnabled");
-    if(cb && cb !== document.activeElement) cb.checked = autoTransportSettings.enabled;
-    const mp = document.getElementById("atMaxPrice");
-    if(mp && mp !== document.activeElement) mp.value = autoTransportSettings.maxPrice;
-    updateAtFilterUI();
-
-    const atTruck = document.getElementById("atTruck");
-    if(atTruck && atTruck !== document.activeElement){
-        atTruck.innerHTML = Object.entries(trucks).filter(([,t])=>t.owned)
-            .map(([k,t])=>`<option value="${k}" ${autoTransportSettings.truck===k?"selected":""}>${t.name}</option>`).join("");
-    }
-    const atShop = document.getElementById("atShop");
-    if(atShop && atShop !== document.activeElement){
-        atShop.innerHTML = shops.map((s,i)=>
-            `<option value="${i}" ${autoTransportSettings.shop===i?"selected":""} ${!s.unlocked?"disabled":""}>${s.name}</option>`
-        ).join("");
-    }
+    // イベント紐付け
+    for(let ri=0;ri<autoTransportRoutes.length;ri++) bindAtRoute(ri);
 }
 
 
@@ -2701,16 +2894,17 @@ function stopDeleteHold(){
     if(prog){ prog.style.transition="none"; prog.style.width="0%"; }
 }
 
-function toggleAtFilter(){
-    autoTransportSettings.filterMode = autoTransportSettings.filterMode === "price" ? "rarity" : "price";
-    updateAtFilterUI();
+function toggleAtFilter(ri){
+    autoTransportRoutes[ri].filterMode = autoTransportRoutes[ri].filterMode === "price" ? "rarity" : "price";
+    updateAtFilterUI(ri);
 }
-function updateAtFilterUI(){
-    const btn = document.getElementById("atFilterToggle");
-    const priceArea = document.getElementById("atPriceArea");
-    const rarityArea = document.getElementById("atRarityArea");
+function updateAtFilterUI(ri){
+    const route = autoTransportRoutes[ri];
+    const btn = document.getElementById(`atFilterToggle_${ri}`);
+    const priceArea = document.getElementById(`atPriceArea_${ri}`);
+    const rarityArea = document.getElementById(`atRarityArea_${ri}`);
     if(!btn) return;
-    if(autoTransportSettings.filterMode === "price"){
+    if(route.filterMode === "price"){
         btn.textContent = "💰 円以下モード";
         btn.style.background="#ff9f1c"; btn.style.color="#111";
         if(priceArea) priceArea.style.display="";
@@ -2720,40 +2914,40 @@ function updateAtFilterUI(){
         btn.style.background="#c86cff"; btn.style.color="#fff";
         if(priceArea) priceArea.style.display="none";
         if(rarityArea) rarityArea.style.display="";
-        const sel = document.getElementById("atMaxRarity");
+        const sel = document.getElementById(`atMaxRarity_${ri}`);
         if(sel && sel !== document.activeElement){
-            sel.innerHTML = RARITY_ORDER.map(r=>`<option value="${r}" ${autoTransportSettings.maxRarity===r?"selected":""}>${RARITY_LABELS[r]||r}</option>`).join("");
+            sel.innerHTML = RARITY_ORDER.map(r=>`<option value="${r}" ${route.maxRarity===r?"selected":""}>${RARITY_LABELS[r]||r}</option>`).join("");
         }
     }
 }
 
 function runAutoTransport(){
-    if(!autoTransportOwned || !autoTransportSettings.enabled) return;
-    const shopIndex = autoTransportSettings.shop;
-    const shop = shops[shopIndex];
-    const truckKey = autoTransportSettings.truck;
-    const truck = trucks[truckKey] || trucks.light;
-    if(!shop || !shop.unlocked || shop.busy || !truck.owned) return;
+    if(!autoTransportOwned) return;
+    for(const route of autoTransportRoutes){
+        if(!route.enabled) continue;
+        const shop = shops[route.shop];
+        const truck = trucks[route.truck] || trucks.light;
+        if(!shop || !shop.unlocked || shop.busy || !truck.owned) continue;
 
-    const capacity = getTruckCapacity(truck);
-    let usedCapacity = 0;
-    const targets = [];
+        const capacity = getTruckCapacity(truck);
+        let usedCapacity = 0;
+        const targets = [];
 
-    for(const item of inventory){
-        if(item.transporting || item.locked) continue;
-        if(autoTransportSettings.filterMode === "rarity"){
-            const itemRarityIdx = RARITY_ORDER.indexOf(item.class);
-            const maxRarityIdx  = RARITY_ORDER.indexOf(autoTransportSettings.maxRarity);
-            if(itemRarityIdx > maxRarityIdx) continue;
-        } else {
-            if(item.finalPrice > autoTransportSettings.maxPrice) continue;
+        for(const item of inventory){
+            if(item.transporting || item.locked) continue;
+            if(route.filterMode === "rarity"){
+                const itemRarityIdx = RARITY_ORDER.indexOf(item.class);
+                const maxRarityIdx  = RARITY_ORDER.indexOf(route.maxRarity);
+                if(itemRarityIdx > maxRarityIdx) continue;
+            } else {
+                if(item.finalPrice > route.maxPrice) continue;
+            }
+            if(usedCapacity + item.loadSize > capacity) continue;
+            usedCapacity += item.loadSize;
+            targets.push(item.id);
         }
-        if(usedCapacity + item.loadSize > capacity) continue;
-        usedCapacity += item.loadSize;
-        targets.push(item.id);
+        if(targets.length > 0) startSell(route.shop, targets, route.truck);
     }
-    if(targets.length <= 0) return;
-    startSell(shopIndex, targets, truckKey);
 }
 
 function renderDictionary() {
@@ -2876,16 +3070,14 @@ let slowTimer = 0;
 setInterval(()=>{
     // 輸送カウントダウン・ボタン状態は毎秒更新
     renderShops();
-    if(inventory.some(it=>it.transporting)){
-        renderInventory();
-    }
+    if(inventory.some(it=>it.transporting)) vsSchedule(); // 輸送カウントダウン更新
 
     // stuck shop 強制リセット（endTimeを5秒超過してもbusyのまま）
     for(const sh of shops){
         if(sh.busy && sh.endTime > 0 && Date.now() > sh.endTime + 5000){
-            sh.busy=false; sh.saleId=null; sh.endTime=0;
-            inventory = inventory.filter(it=>it.transporting===false || (it.transporting && it.transportEnd < Date.now()-5000));
-            inventory.forEach(it=>{ if(it.transportEnd < Date.now()-5000){ it.transporting=false; it.saleId=null; } });
+            const sid = sh.saleId;
+            inventory.forEach(it=>{ if(it.saleId===sid){ it.transporting=false; it.saleId=null; } });
+            sh.busy=false; sh.saleId=null; sh.endTime=0; sh.pendingTotal=0; sh.pendingCount=0;
         }
     }
 
@@ -2897,24 +3089,24 @@ setInterval(()=>{
         // 納品拒否・トラック事故: 交通法規適用で大幅低減
         const _rejectChance = trafficLawOwned ? 0.0001 : 0.001;
         const _accidentChance = trafficLawOwned ? 0.0002 : 0.002;
-        // 納品拒否（基本0.1%/秒、交通法規で0.01%/秒）
+        // 納品拒否（積荷は没収済み・損失のみ）
         if(Math.random() < _rejectChance){
-            const lost = inventory.filter(it=>it.saleId===sh.saleId).map(it=>it.name).slice(0,2).join("、");
-            inventory = inventory.filter(it=>it.saleId!==sh.saleId);
-            sh.busy=false; sh.saleId=null; sh.endTime=0;
-            const msg = `🚫 ${sh.name}が納品を拒否！${lost||"積荷"}が廃棄されました。`;
-            addLog("危険", msg);
+            const sid = sh.saleId;
+            const lostCount = sh.pendingCount || "複数";
+            inventory = inventory.filter(it => it.saleId !== sid);
+            sh.busy=false; sh.saleId=null; sh.endTime=0; sh.pendingTotal=0; sh.pendingCount=0;
+            addLog("危険", `🚫 ${sh.name}が納品を拒否！${lostCount}個の積荷が廃棄されました。`);
             showTopNotice(`🚫 ${sh.name}が納品拒否！積荷廃棄`);
             renderInventory(); renderShops();
             continue;
         }
 
-        // トラック事故（基本0.2%/秒、交通法規で0.02%/秒）
         if(Math.random() < _accidentChance){
-            const lost = inventory.filter(it=>it.saleId===sh.saleId).map(it=>it.name).slice(0,3).join("、");
-            inventory = inventory.filter(it=>it.saleId!==sh.saleId);
-            sh.busy=false; sh.saleId=null; sh.endTime=0;
-            addLog("危険", `🚛💥 ${sh.name}へのトラックが事故！${lost||"積荷"}が消滅しました。`);
+            const sid = sh.saleId;
+            const lostCount = sh.pendingCount || "複数";
+            inventory = inventory.filter(it => it.saleId !== sid);
+            sh.busy=false; sh.saleId=null; sh.endTime=0; sh.pendingTotal=0; sh.pendingCount=0;
+            addLog("危険", `🚛💥 ${sh.name}へのトラックが事故！${lostCount}個の積荷が消滅しました。`);
             showTopNotice("🚛💥 トラック事故！2分間販売価格が半額になります");
             triggerTruckAccident("物流");
             renderInventory(); renderShops();
@@ -3007,6 +3199,16 @@ setInterval(()=>{
 // ラッソ選択をwindowに登録
 window.addEventListener("mousedown", lassoStart);
 
+// 仮想スクロール: スクロール & リサイズ
+(function(){
+    const vp = document.getElementById('inventoryViewport');
+    if(vp){
+        vp.addEventListener('scroll', ()=>{ vsSchedule(); }, {passive:true});
+    }
+    window.addEventListener('resize', ()=>{ vsSchedule(); }, {passive:true});
+    vsSchedule(); // 初期描画
+})();
+
 
 // ── セーブ・ロード ───────────────────────────
 const SAVE_KEY = "onigiriRNG_save";
@@ -3015,7 +3217,7 @@ function getSaveData(){
     return JSON.stringify({
         money, debt, debtTimer, inventory, selectedItems:[], usedCodes,
         speedLevel, multiRoll, mutationLevel, qualityLevel, packagingLevel,
-        autoRollOwned, autoRollEnabled, autoTransportOwned, autoTransportSettings,
+        autoRollOwned, autoRollEnabled, autoTransportOwned, autoTransportRoutes,
         autoRepairOwned, hackLevel, hackUnlocked,
         breakerLevel, expansionLimitBoostOwned, trafficLawOwned, autoRecoverOwned, hackerOwned, hackerEnabled, hackerTargetLevel, foreignMoney,
         powerGrid: {...powerGrid},
@@ -3044,7 +3246,7 @@ function loadGame(){
         money = d.money ?? 0;
         debt = d.debt ?? 0;
         debtTimer = d.debtTimer ?? 0;
-        inventory = d.inventory ?? [];
+        inventory = (d.inventory ?? []).map(it => it.transporting ? {...it, transporting:false, saleId:null, transportEnd:0} : it);
         speedLevel = d.speedLevel ?? 1;
         multiRoll = d.multiRoll ?? 1;
         mutationLevel = d.mutationLevel ?? 0;
@@ -3066,7 +3268,12 @@ function loadGame(){
         foreignMoney = d.foreignMoney ?? 0;
         if(hackerOwned) startHackerLoop();
         if(d.powerGrid) Object.assign(powerGrid, d.powerGrid);
-        if(d.autoTransportSettings) Object.assign(autoTransportSettings, d.autoTransportSettings);
+        if(d.autoTransportRoutes){
+            autoTransportRoutes = d.autoTransportRoutes;
+        } else if(d.autoTransportSettings){
+            // 旧セーブデータのマイグレート
+            autoTransportRoutes = [Object.assign({ enabled:false, maxPrice:5000, filterMode:"price", maxRarity:"mythical", truck:"light", shop:0 }, d.autoTransportSettings)];
+        }
         if(d.shops) d.shops.forEach((s,i)=>{ if(shops[i]){ shops[i].unlocked=s.unlocked; shops[i].busy=false; shops[i].endTime=0; shops[i].saleId=null; } });
         if(d.trucks) Object.entries(d.trucks).forEach(([k,v])=>{ if(trucks[k]){ trucks[k].owned=v.owned; trucks[k].upgradeLevel=v.upgradeLevel; } });
         discoveredOnigiris = new Set(d.discoveredOnigiris ?? []);
@@ -3102,5 +3309,18 @@ updateTrend();
 renderAll();
 if(_deletedNotice) showToast("データを削除しました");
 </script>
+    <!-- 輸送中詳細モーダル -->
+    <div id="transportDetailModal" style="display:none;position:fixed;inset:0;background:#000a;z-index:9500;align-items:center;justify-content:center;" onclick="if(event.target===this)closeTransportDetail()">
+        <div style="background:#1a1a2a;border:1px solid #55aaff55;border-radius:12px;padding:16px;width:380px;max-width:95vw;max-height:80vh;display:flex;flex-direction:column;gap:8px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                    <div id="tdmTitle" style="font-size:14px;font-weight:bold;color:#55aaff;"></div>
+                    <div id="tdmSub" style="font-size:11px;color:#aaa;margin-top:2px;"></div>
+                </div>
+                <button onclick="closeTransportDetail()" style="background:#333;color:#aaa;border:none;border-radius:6px;padding:2px 10px;cursor:pointer;font-size:14px;">✕</button>
+            </div>
+            <div id="tdmBody" style="overflow-y:auto;max-height:55vh;flex:1;"></div>
+        </div>
+    </div>
 </body>
 </html>
