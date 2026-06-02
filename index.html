@@ -443,7 +443,7 @@ input,select{
         </div>
 
         <div class="panel center">
-            <h2>🏭 生産ライン（通過時に変異確定）</h2>
+            <h2>🏭 生産ライン（通過時に変異確定）<button id="toggleLineBtn" onclick="toggleProductionLines()" style="margin-left:12px;padding:3px 10px;font-size:12px;background:#333;color:#aaa;border:1px solid #555;border-radius:6px;cursor:pointer;">非表示</button></h2>
             <div id="brokenMachinePanel" style="display:none;background:#2a1a0a;border:1px solid #ff9f1c;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;"></div>
             <div class="multiGrid" id="multiRollDisplay"></div>
             <div style="margin-top:10px;">
@@ -622,10 +622,15 @@ const PACKAGING_UPGRADES = [
     { name:"コンテナ化", cost:150000000, next:"コンテナ", description:"大型コンテナ輸送。価格500倍、製造はさらに重くなる。" }
 ];
 
-const STORAGE_LIMIT = 300;
+const STORAGE_LIMIT_BASE = 300;
+const STORAGE_LIMIT_MAX = 1000;
+let storageExpansionLevel = 0; // 0〜7 (各+100で最大1000)
+const STORAGE_EXPANSION_COST = [500000, 1500000, 4000000, 10000000, 25000000, 60000000, 150000000]; // 各レベル
+function getStorageLimit(){ return Math.min(STORAGE_LIMIT_MAX, STORAGE_LIMIT_BASE + storageExpansionLevel * 100); }
+const STORAGE_LIMIT = STORAGE_LIMIT_BASE; // 後方互換参照用
 // 自動プロトコル複数ルート（後方互換: 旧saveはroutes[0]にマイグレート）
 let autoTransportRoutes = [
-    { enabled:false, maxPrice:5000, filterMode:"price", maxRarity:"mythical", truck:"light", shop:0 }
+    { enabled:false, maxPrice:5000, filterMode:"price", maxRarity:"mythical", truck:"light", shop:0, minCount:0 }
 ];
 // 旧コードとの互換ラッパー（単数アクセス箇所用）
 const autoTransportSettings = new Proxy({}, {
@@ -1129,6 +1134,8 @@ function updateMachines(line){
 function tickLines(now){
     // バナナ演出中はライン停止
     if(_bananaEventActive || _djEventActive || _errorEventActive){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); return; }
+    // ブレーカー停止中はRafを止める
+    if(powerGrid.isBroken){ lineRafId=null; lastLineTime=0; return; }
     const anyActive = lines.some(l=>l.items.some(it=>!it.done));
     if(!anyActive){ lineRafId=null; lastLineTime=0; return; }
     if(!lastLineTime) lastLineTime=now;
@@ -1198,9 +1205,9 @@ function tickLines(now){
                     }
                     // 具材ステージ(s=8)で激レアおにぎり判定
                     if(s===8 && !powerGrid.isBroken && powerGrid.level > 400){
-                        const rarePct = powerGrid.level < 700
+                        const rarePct = (powerGrid.level < 700
                             ? (powerGrid.level - 400) / 300000
-                            : 0.001 + (powerGrid.level - 700) / 100000;
+                            : 0.001 + (powerGrid.level - 700) / 100000) / 10;
                         const roll = Math.random();
                         if(!_bananaEventActive && roll < rarePct){
                             it.process.name = "🍌バナナおにぎり";
@@ -1250,16 +1257,27 @@ function tickLines(now){
                 ];
                 if(p.accidents.length) muts.push(`💥 異常: ${p.accidents.join(",")}`);
                 if(trend!==1.0) muts.push(`📈 トレンド補正: x${trend}`);
-                if(inventory.length >= STORAGE_LIMIT){
-                    notifyStorageFull();
-                    addLog("警告", "倉庫がいっぱいです！完成品は保管できませんでした。");
+                if(inventory.length >= getStorageLimit()){
+                    // SECRETの場合は特別UI
+                    if(p.class === "secret"){
+                        const cheapest = [...inventory].filter(it=>!it.locked && !it.transporting).sort((a,b)=>a.finalPrice-b.finalPrice)[0];
+                        if(cheapest){
+                            showSecretStorageFullDialog(p, cheapest);
+                        } else {
+                            notifyStorageFull();
+                            addLog("警告", "倉庫がいっぱいで、かつ放棄可能なアイテムがありません。SECRETを保管できませんでした。");
+                        }
+                    } else {
+                        notifyStorageFull();
+                        addLog("警告", "倉庫がいっぱいです！完成品は保管できませんでした。");
+                    }
                     continue;
                 }
                 inventory.push({
                     id:nextItemId++, ...p.base, name:p.name, emoji:p.emoji,
                     finalPrice:total, count:p.product.count, loadSize:p.product.loadSize,
                     kind:p.product.kind, mutations:muts, transporting:false, transportEnd:0, saleId:null, locked:false,
-                    class:p.class, dangerText:p.dangerText, dangerBadgeClass:p.dangerBadgeClass
+                    class: p.class === "secret" ? "secret" : p.class, dangerText:p.dangerText, dangerBadgeClass:p.dangerBadgeClass
                 });
                 // 図鑑登録: onigirisのnameか激レア名のみ許可
                 const _allowedNames = new Set([...onigiris.map(o=>o.name), "バナナおにぎり","DJおにぎり","Errorおにぎり"]);
@@ -1368,7 +1386,7 @@ function renderInventory(){
 
     document.getElementById("money").textContent = Math.floor(money).toLocaleString();
     document.getElementById("foreignMoney").textContent = `外貨 ${formatForeign(foreignMoney)}`;
-    document.getElementById("itemCount").textContent = `${inventory.length}/${STORAGE_LIMIT}`;
+    document.getElementById("itemCount").textContent = `${inventory.length}/${getStorageLimit()}`;
 }
 
 function showTransportDetail(saleId){
@@ -1391,7 +1409,11 @@ function showTransportDetail(saleId){
 
     const modal = document.getElementById("transportDetailModal");
     document.getElementById("tdmTitle").textContent = `🚚 輸送中 ×${items.length} → ${shopName}`;
-    document.getElementById("tdmSub").textContent = `合計: ${total.toLocaleString()}円 ／ 残り ${remain}s`;
+    const isForeign = shop && shop.currency === "foreign";
+    const totalLabel = isForeign
+        ? `外貨 ${formatForeign(total / 100000000)}`
+        : `${total.toLocaleString()}円`;
+    document.getElementById("tdmSub").textContent = `合計: ${totalLabel} ／ 残り ${remain}s`;
     document.getElementById("tdmBody").innerHTML = rows;
     modal.style.display = "flex";
 }
@@ -1479,18 +1501,22 @@ function vsRender(){
             const total = items.reduce((s,it)=>s+it.finalPrice, 0);
             const shop = shops.find(s=>s.saleId===saleId);
             const shopName = shop ? shop.name : '輸送先';
-            html += `<div class="card" style="border:2px solid #55aaff44;background:#0d1a2a;cursor:default;">
-                <div style="font-size:28px;margin-top:8px;">🚚</div>
+            const isForeign = shop && shop.currency === "foreign";
+            const totalDisplay = isForeign
+                ? `<span style="color:#55aaff;font-weight:bold;">外貨 ${formatForeign(total / 100000000)}</span>`
+                : `${total.toLocaleString()}円`;
+            html += `<div class="card" style="border:2px solid ${isForeign?'#55aaff88':'#55aaff44'};background:${isForeign?'#0a1a2e':'#0d1a2a'};cursor:default;">
+                <div style="font-size:28px;margin-top:8px;">${isForeign?'✈️':'🚚'}</div>
                 <h4 style="margin:4px 0;color:#55aaff;font-size:13px;">輸送中 ×${items.length}</h4>
                 <div style="font-size:11px;color:#aaa;">➜ ${shopName}</div>
-                <div style="font-size:13px;color:#ffd166;margin:2px 0;">${total.toLocaleString()}円</div>
+                <div style="font-size:13px;margin:2px 0;">${totalDisplay}</div>
                 <div style="font-size:12px;color:#55aaff;">⏱ ${remain}s</div>
                 <button onclick="showTransportDetail(${saleId})" style="margin-top:6px;padding:2px 8px;font-size:11px;background:#1a2a3a;color:#88ccff;border:1px solid #55aaff55;border-radius:4px;cursor:pointer;">詳細を確認</button>
             </div>`;
         } else {
             const item = card.item;
             const isLocked = !!item.locked;
-            html += `<div data-item-id="${item.id}" class="card rarity-${item.class} ${selectedItems.includes(item.id)?"selected":""} ${isLocked?"locked":""}" draggable="${!isLocked}" onclick="selectItem(event,${item.id})" oncontextmenu="toggleItemLock(event,${item.id})" ondragstart="dragItem(event,${item.id})">
+            html += `<div data-item-id="${item.id}" class="card rarity-${item.class} ${selectedItems.includes(item.id)?"selected":""} ${isLocked?"locked":""}" onclick="selectItem(event,${item.id})" oncontextmenu="toggleItemLock(event,${item.id})">
                 ${isLocked?`<span class="lockBadge">⭐</span>`:""}
                 <span class="rarityBadge" style="background:${RARITY_COLORS[item.class]||'#888'}22;color:${RARITY_COLORS[item.class]||'#888'};border:1px solid ${RARITY_COLORS[item.class]||'#888'}55;">${RARITY_LABELS[item.class]||''}</span>
                 <div style="font-size:40px;margin-top:10px;">${item.emoji}</div>
@@ -1678,7 +1704,7 @@ function renderShops(){
         div.innerHTML += `
             <div class="shop ${shop.unlocked ? "" : "locked"}" id="shop${index}" ondragover="shopHover(event,${index})" ondrop="dropSell(event,${index})" ondragleave="shopLeave(${index})">
                 <h3>${shop.name}</h3>
-                <div>${shop.currency === "foreign" ? "外貨換算: 円価値÷1億" : `市場倍率 x${shop.multi}`}</div>
+                <div>${shop.currency === "foreign" ? "外貨換算: 1億円=1外貨" : `市場倍率 x${shop.multi}`}</div>
                 <div>輸送時間: ${shop.time}秒</div>
                 <div style="font-weight:bold; margin-top:5px;">${shop.busy ? `🚚 納品中 ${shop.pendingCount||""}個 (${remain}秒)` : shop.unlocked ? "注文待機中" : "未開放市場"}</div>
                 ${!shop.unlocked ? `<button class="btn-shop" onclick="buyShop(${index})" ${money < shop.price ? "disabled" : ""}>市場開拓(${shop.price.toLocaleString()}円)</button>` : ""}
@@ -1934,6 +1960,83 @@ function stopHack(){
     renderHackArea();
 }
 
+// SECRET出現時・倉庫満杯ダイアログ
+function showSecretStorageFullDialog(secretProcess, cheapestItem){
+    const existing = document.getElementById("secretStorageFullOverlay");
+    if(existing) existing.remove();
+
+    const ov = document.createElement("div");
+    ov.id = "secretStorageFullOverlay";
+    ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9600;display:flex;align-items:center;justify-content:center;";
+    ov.innerHTML = `
+        <div style="background:#0d0d1a;border:2px solid #fff;border-radius:16px;padding:28px 32px;text-align:center;max-width:400px;box-shadow:0 0 40px #ffffff66;">
+            <div style="font-size:36px;animation:secretPulse 1.5s infinite;">⭐</div>
+            <div style="font-size:18px;font-weight:bold;color:#fff;margin:10px 0 4px;">倉庫がいっぱいです！</div>
+            <div style="font-size:14px;color:#aef;margin-bottom:8px;">しかし <span style="color:#fff;font-weight:bold;">SECRET</span> が出現しました！</div>
+            <div style="font-size:13px;color:#aaa;margin-bottom:16px;">一番安いアイテムを放棄してSECRETを保管しますか？</div>
+            <div style="background:#1a1a2a;border:1px solid #333;border-radius:8px;padding:10px;margin-bottom:16px;font-size:13px;">
+                <div style="color:#ff9999;font-weight:bold;">放棄予定アイテム:</div>
+                <div style="color:${RARITY_COLORS[cheapestItem.class]||'#888'};margin-top:4px;">${cheapestItem.emoji} ${cheapestItem.name}</div>
+                <div style="color:#ffd166;font-size:12px;">${cheapestItem.finalPrice.toLocaleString()}円</div>
+            </div>
+            <div style="display:flex;gap:10px;justify-content:center;">
+                <button onclick="confirmSecretStorageReplace()" style="background:#fff;color:#111;padding:10px 20px;border-radius:8px;font-weight:bold;font-size:14px;">✅ 放棄してSECRETを保管</button>
+                <button onclick="cancelSecretStorage()" style="background:#333;color:#aaa;padding:10px 20px;border-radius:8px;font-size:14px;">❌ SECRETを諦める</button>
+            </div>
+        </div>`;
+    document.body.appendChild(ov);
+    // データを一時保存
+    ov._secretProcess = secretProcess;
+    ov._cheapestItem = cheapestItem;
+}
+
+function confirmSecretStorageReplace(){
+    const ov = document.getElementById("secretStorageFullOverlay");
+    if(!ov) return;
+    const p = ov._secretProcess;
+    const cheapest = ov._cheapestItem;
+    ov.remove();
+    // 一番安いアイテムを削除
+    inventory = inventory.filter(it=>it.id !== cheapest.id);
+    addLog("警告", `⭐ ${cheapest.name}(${cheapest.finalPrice.toLocaleString()}円)を放棄してSECRETを保管しました！`);
+    // SECRETをinventoryに追加
+    const total = calcTotal(p);
+    const muts = [
+        `🌾 米: ${p.rice.name} (x${p.rice.multi})`,
+        `⚙️ 精米: 品質${p.quality}%`,
+        `🥢 具材: ${p.filling.name} (x${p.filling.multi})`,
+        `⬛ 海苔: ${p.nori.name}`,
+    ];
+    if(p.accidents.length) muts.push(`💥 異常: ${p.accidents.join(",")}`);
+    inventory.push({
+        id:nextItemId++, ...p.base, name:p.name, emoji:p.emoji,
+        finalPrice:total, count:p.product.count, loadSize:p.product.loadSize,
+        kind:p.product.kind, mutations:muts, transporting:false, transportEnd:0, saleId:null, locked:false,
+        class:"secret", dangerText:p.dangerText, dangerBadgeClass:p.dangerBadgeClass
+    });
+    const _allowedNames = new Set([...onigiris.map(o=>o.name),"バナナおにぎり","DJおにぎり","Errorおにぎり"]);
+    if(_allowedNames.has(p.base.name)) discoveredOnigiris.add(p.base.name);
+    inventory.sort((a,b)=>b.finalPrice-a.finalPrice);
+    renderInventory(); renderDictionary();
+}
+
+function cancelSecretStorage(){
+    const ov = document.getElementById("secretStorageFullOverlay");
+    if(ov) ov.remove();
+    addLog("警告", "倉庫がいっぱいのためSECRETを保管できませんでした。");
+}
+
+// 工場拡張（倉庫上限）
+function buyStorageExpansion(){
+    if(storageExpansionLevel >= STORAGE_EXPANSION_COST.length) return;
+    const cost = STORAGE_EXPANSION_COST[storageExpansionLevel];
+    if(money < cost){ showToast(`資金不足（必要: ${cost.toLocaleString()}円）`); return; }
+    money -= cost;
+    storageExpansionLevel++;
+    addLog("通知", `🏭 工場拡張完了！倉庫上限が ${getStorageLimit()} に拡張されました。`);
+    renderAll();
+}
+
 function triggerBlackout(reason){
     powerGrid.level = 0;
     powerGrid.status = "ブラックアウト(全機能停止)";
@@ -2098,7 +2201,7 @@ function triggerBananaEvent(){
                 bananaProcess.name = "🍌バナナおにぎり";
                 bananaProcess.emoji = "🍌";
                 bananaProcess.base = {...bananaProcess.base, name:"バナナおにぎり", emoji:"🍌", price:99999};
-                bananaProcess.class = "mythical";
+                bananaProcess.class = "secret";
                 targetLine.items.push({process:bananaProcess, pos:0, done:false, completedOnce:false, needsInitFlash:true});
                 if(!lineRafId){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); }
             }
@@ -2541,17 +2644,23 @@ function renderUpgradeArea(){
             <div style="font-size:15px;font-weight:bold;color:#55aaff;margin-bottom:2px;letter-spacing:1px;">💵 外貨強化エリア <span style="font-size:13px;font-weight:normal;color:#88bbff;">（所持外貨: ${formatForeign(foreignMoney)}）</span></div>
             <div style="font-size:12px;line-height:2;">
             ⚡ ブレーカー強化 Lv.${breakerLevel}/${MAX_BREAKER_LEVEL}
-            <span style="font-size:11px;color:#aaa;">（落雷時に強化コストの半額外貨で維持、払えない場合ダウングレード）</span>
+            <span style="font-size:11px;color:#aaa;">（ブレーカーが落ちた時に強化コストの半額外貨で維持、払えない場合ダウングレード）</span>
             ${breakerBtn}
             <br>
             🏭 工場拡張上限解放: ${boostBtn}
             <span style="font-size:11px;color:#aaa;">（全拡張上限+50%）</span>
             <br>
+            🏭 倉庫拡張 現在上限:${getStorageLimit()}/${STORAGE_LIMIT_MAX}個
+            ${storageExpansionLevel < STORAGE_EXPANSION_COST.length
+                ? `<button onclick="buyStorageExpansion()" ${money < STORAGE_EXPANSION_COST[storageExpansionLevel] ? "disabled":""} style="padding:2px 8px;font-size:11px;">拡張+100(${STORAGE_EXPANSION_COST[storageExpansionLevel].toLocaleString()}円)</button>`
+                : `<span style="font-size:11px;color:#5edc88;">✅ 最大拡張済み(${STORAGE_LIMIT_MAX}個)</span>`
+            }
+            <br>
             🚦 交通法規適用: ${trafficLawBtn}
             <span style="font-size:11px;color:#aaa;">（納品拒否・事故率を大幅低減、輸送時間は1.5倍）</span>
             <br>
             ⚡ 自動ブレーカー復旧: ${autoRecoverBtn}
-            <span style="font-size:11px;color:#aaa;">（停電時に円を使って自動復旧）</span>
+            <span style="font-size:11px;color:#aaa;">（ブレーカーが落ちた時に円を使って自動復旧）</span>
             <br>
             🤖 ハッカー雇用: ${hackerBtn}
             <span style="font-size:11px;color:#aaa;">（自動ハッキング、10%でミス。目標電力まで上昇したら停止）</span>
@@ -2751,7 +2860,7 @@ function buyExpansionLimitBoost(){
 
 function addAtRoute(){
     if(autoTransportRoutes.length >= 8) return; // 最大8ルート
-    autoTransportRoutes.push({ enabled:false, maxPrice:5000, filterMode:"price", maxRarity:"mythical", truck:"light", shop:0 });
+    autoTransportRoutes.push({ enabled:false, maxPrice:5000, filterMode:"price", maxRarity:"mythical", truck:"light", shop:0, minCount:0 });
     renderAutoTransport();
 }
 
@@ -2789,6 +2898,7 @@ function renderAtRoute(ri){
     html += `フィルタ: <button id="atFilterToggle_${ri}" onclick="toggleAtFilter(${ri})" style="font-size:11px;padding:2px 8px;margin:2px 0;"></button>`;
     html += `<span id="atPriceArea_${ri}"> 単価 <input type="number" id="atMaxPrice_${ri}" value="${route.maxPrice}" style="width:80px;" min="0"> 円以下を出荷</span>`;
     html += `<span id="atRarityArea_${ri}" style="display:none;"> <select id="atMaxRarity_${ri}">${RARITY_ORDER.map(r=>`<option value="${r}" ${route.maxRarity===r?"selected":""}>${RARITY_LABELS[r]||r}</option>`).join("")}</select> 以下を出荷</span>`;
+    html += `<br>最低輸送数: <input type="number" id="atMinCount_${ri}" value="${route.minCount||0}" style="width:60px;" min="0" title="この個数に達するまで輸送しない（0=制限なし）"> 個以上で出荷</span>`;
     html += `<br>配備車両: <select id="atTruck_${ri}">${Object.entries(trucks).filter(([,t])=>t.owned).map(([k,t])=>`<option value="${k}" ${route.truck===k?"selected":""}>${t.name}</option>`).join("")}</select>`;
     html += ` ➜ 納品先目標: <select id="atShop_${ri}">${shops.map((s,i)=>`<option value="${i}" ${route.shop===i?"selected":""} ${!s.unlocked?"disabled":""}>${s.name}</option>`).join("")}</select>`;
     html += `</div></div>`;
@@ -2805,6 +2915,8 @@ function bindAtRoute(ri){
     if(mr) mr.onchange = e => { route.maxRarity = e.target.value; checkAtDuplicates(); };
     get(`atTruck_${ri}`).onchange = e => { route.truck = e.target.value; checkAtDuplicates(); };
     get(`atShop_${ri}`).onchange = e => { route.shop = Number(e.target.value); checkAtDuplicates(); };
+    const mc = get(`atMinCount_${ri}`);
+    if(mc) mc.onchange = e => { route.minCount = Math.max(0, Number(e.target.value)||0); };
 
     updateAtFilterUI(ri);
 }
@@ -2946,7 +3058,7 @@ function runAutoTransport(){
             usedCapacity += item.loadSize;
             targets.push(item.id);
         }
-        if(targets.length > 0) startSell(route.shop, targets, route.truck);
+        if(targets.length > 0 && (!(route.minCount > 0) || targets.length >= route.minCount)) startSell(route.shop, targets, route.truck);
     }
 }
 
@@ -3048,6 +3160,19 @@ function redeemCode(){
         renderAll();
     }else{
         showToast("このコードは存在しません");
+    }
+}
+
+let _productionLinesHidden = false;
+function toggleProductionLines(){
+    _productionLinesHidden = !_productionLinesHidden;
+    const el = document.getElementById("multiRollDisplay");
+    const btn = document.getElementById("toggleLineBtn");
+    if(el) el.style.display = _productionLinesHidden ? "none" : "";
+    if(btn){
+        btn.textContent = _productionLinesHidden ? "表示" : "非表示";
+        btn.style.background = _productionLinesHidden ? "#ffd166" : "#333";
+        btn.style.color = _productionLinesHidden ? "#111" : "#aaa";
     }
 }
 
@@ -3219,7 +3344,7 @@ function getSaveData(){
         speedLevel, multiRoll, mutationLevel, qualityLevel, packagingLevel,
         autoRollOwned, autoRollEnabled, autoTransportOwned, autoTransportRoutes,
         autoRepairOwned, hackLevel, hackUnlocked,
-        breakerLevel, expansionLimitBoostOwned, trafficLawOwned, autoRecoverOwned, hackerOwned, hackerEnabled, hackerTargetLevel, foreignMoney,
+        breakerLevel, expansionLimitBoostOwned, trafficLawOwned, autoRecoverOwned, hackerOwned, hackerEnabled, hackerTargetLevel, foreignMoney, storageExpansionLevel,
         powerGrid: {...powerGrid},
         shops: shops.map(s=>({unlocked:s.unlocked, busy:false, endTime:0, saleId:null})),
         trucks: Object.fromEntries(Object.entries(trucks).map(([k,t])=>[k,{owned:t.owned,upgradeLevel:t.upgradeLevel}])),
@@ -3266,6 +3391,7 @@ function loadGame(){
         hackerEnabled = d.hackerEnabled ?? true;
         hackerTargetLevel = d.hackerTargetLevel ?? 200;
         foreignMoney = d.foreignMoney ?? 0;
+        storageExpansionLevel = d.storageExpansionLevel ?? 0;
         if(hackerOwned) startHackerLoop();
         if(d.powerGrid) Object.assign(powerGrid, d.powerGrid);
         if(d.autoTransportRoutes){
