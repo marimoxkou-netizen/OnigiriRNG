@@ -571,6 +571,13 @@ let _machineIdCtr = 0;
 let _bananaEventActive = false;
 let _djEventActive = false;
 let _errorEventActive = false;
+let _glowEventActive = false;
+let _matchaAnkoEventActive = false;
+let _illegalVoltageEventActive = false;
+let _compressedEventActive = false;
+let _smugglingEventActive = false;
+let _bribeEventActive = false;
+let _unknownEventActive = false;
 const REPAIR_COST = 100000;
 const BREAKABLE_STAGES = new Set(["精米","炊飯","具材","成形","海苔","包装","検査"]);
 let earnLog = [];
@@ -659,17 +666,60 @@ const shops = [
 ];
 
 const onigiris = [
-    {name:"塩おにぎり",emoji:"🍙",price:100,chance:55,class:"common"},
-    {name:"梅おにぎり",emoji:"🔴🍙",price:130,chance:45,class:"common"},
-    {name:"鮭おにぎり",emoji:"🐟🍙",price:180,chance:30,class:"uncommon"},
-    {name:"明太子おにぎり",emoji:"🌶️🍙",price:240,chance:25,class:"uncommon"},
-    {name:"ツナマヨ",emoji:"🐟🍙",price:320,chance:14,class:"rare"},
-    {name:"エビマヨ",emoji:"🦐🍙",price:450,chance:10,class:"rare"},
-    {name:"焼肉おにぎり",emoji:"🥩🍙",price:650,chance:6,class:"epic"},
-    {name:"明太マヨおにぎり",emoji:"🌶️🍙",price:1000,chance:4,class:"legend"},
-    {name:"イクラおにぎり",emoji:"🔴🍙",price:1800,chance:2,class:"legend"},
-    {name:"焼きおにぎり",emoji:"🔥🍙",price:4000,chance:1,class:"mythical"},
-    {name:"キャビアおにぎり",emoji:"⚫🍙",price:8000,chance:1,class:"mythical"}
+    // Common (80〜200円)
+    {name:"塩おにぎり",emoji:"🍙",price:80,chance:6.667,class:"common"},
+    {name:"梅おにぎり",emoji:"🔴🍙",price:90,chance:6.667,class:"common"},
+    {name:"昆布おにぎり",emoji:"🟫🍙",price:100,chance:6.667,class:"common"},
+    {name:"おかかおにぎり",emoji:"🟤🍙",price:110,chance:6.667,class:"common"},
+    {name:"高菜おにぎり",emoji:"🥬🍙",price:130,chance:6.667,class:"common"},
+    {name:"わかめおにぎり",emoji:"🌿🍙",price:140,chance:6.667,class:"common"},
+    {name:"しそおにぎり",emoji:"🍃🍙",price:155,chance:6.667,class:"common"},
+    {name:"ひじきおにぎり",emoji:"⚫🍙",price:170,chance:6.667,class:"common"},
+    {name:"しらすおにぎり",emoji:"🐠🍙",price:200,chance:6.667,class:"common"},
+
+    // Uncommon (230〜500円)
+    {name:"鮭おにぎり",emoji:"🐟🍙",price:230,chance:3.125,class:"uncommon"},
+    {name:"明太子おにぎり",emoji:"🌶️🍙",price:270,chance:3.125,class:"uncommon"},
+    {name:"チーズおにぎり",emoji:"🧀🍙",price:310,chance:3.125,class:"uncommon"},
+    {name:"赤飯おにぎり",emoji:"🫘🍙",price:350,chance:3.125,class:"uncommon"},
+    {name:"キムチおにぎり",emoji:"🌶️🔥🍙",price:390,chance:3.125,class:"uncommon"},
+    {name:"ガーリックおにぎり",emoji:"🧄🍙",price:420,chance:3.125,class:"uncommon"},
+    {name:"鶏そぼろおにぎり",emoji:"🐔🍙",price:460,chance:3.125,class:"uncommon"},
+    {name:"オムレツおにぎり",emoji:"🥚🍙",price:500,chance:3.125,class:"uncommon"},
+
+    // Rare (570〜1200円)
+    {name:"ツナマヨ",emoji:"🥫🍙",price:570,chance:1.25,class:"rare"},
+    {name:"エビマヨ",emoji:"🦐🍙",price:650,chance:1.25,class:"rare"},
+    {name:"牛カルビおにぎり",emoji:"🥩🔥🍙",price:750,chance:1.25,class:"rare"},
+    {name:"角煮おにぎり",emoji:"🍖🍙",price:850,chance:1.25,class:"rare"},
+    {name:"ホタテおにぎり",emoji:"🐚🍙",price:950,chance:1.25,class:"rare"},
+    {name:"うなぎおにぎり",emoji:"🐍🍙",price:1050,chance:1.25,class:"rare"},
+    {name:"カニおにぎり",emoji:"🦀🍙",price:1130,chance:1.25,class:"rare"},
+    {name:"焼肉おにぎり",emoji:"🍢🍙",price:1200,chance:1.25,class:"rare"},
+
+    // Epic (1400〜2600円)
+    {name:"はちみつおにぎり",emoji:"🍯🍙",price:1400,chance:0.5,class:"epic"},
+    {name:"金箔おにぎり",emoji:"✨🍙",price:1600,chance:0.5,class:"epic"},
+    {name:"イクラおにぎり",emoji:"🟠🍙",price:1800,chance:0.5,class:"epic"},
+    {name:"明太マヨおにぎり",emoji:"🌋🍙",price:2000,chance:0.5,class:"epic"},
+    {name:"うにおにぎり",emoji:"🌞🍙",price:2100,chance:0.5,class:"epic"},
+    {name:"松茸おにぎり",emoji:"🍄🍙",price:2350,chance:0.5,class:"epic"},
+    {name:"のどぐろおにぎり",emoji:"⚫🐟🍙",price:2600,chance:0.5,class:"epic"},
+
+    // Legend (3000〜5500円)
+    {name:"和牛おにぎり",emoji:"🐄👑🍙",price:3000,chance:0.2,class:"legend"},
+    {name:"飛騨牛おにぎり",emoji:"🏔️🍙",price:3500,chance:0.2,class:"legend"},
+    {name:"神戸牛おにぎり",emoji:"💎🍙",price:4000,chance:0.2,class:"legend"},
+    {name:"毛ガニおにぎり",emoji:"🦀👑🍙",price:4400,chance:0.2,class:"legend"},
+    {name:"天然クエおにぎり",emoji:"🐡🍙",price:4800,chance:0.2,class:"legend"},
+    {name:"伊勢海老おにぎり",emoji:"🦞🍙",price:5500,chance:0.2,class:"legend"},
+
+    // Mythical (6500〜10000円)
+    {name:"焼きおにぎり",emoji:"🔥🍙🔥",price:6500,chance:0.06,class:"mythical"},
+    {name:"キャビアおにぎり",emoji:"⚫⚫🍙",price:7200,chance:0.06,class:"mythical"},
+    {name:"白トリュフおにぎり",emoji:"🤍🍙",price:8000,chance:0.06,class:"mythical"},
+    {name:"フォアグラおにぎり",emoji:"🦆🍙",price:9000,chance:0.06,class:"mythical"},
+    {name:"フカヒレおにぎり",emoji:"🦈🍙",price:10000,chance:0.06,class:"mythical"}
 ];
 
 const firstMutations = [
@@ -1017,18 +1067,9 @@ const RARITY_KEYWORDS = {
     uncommon: ["もち木","高級炊飯","有明","鮭フレーク","梅干し"],
 };
 function calcBaseOdds(itemName){
-    // 激レア特別おにぎり
-    const specials = {
-        "🍌バナナおにぎり": "1/∞",
-        "🎧DJおにぎり": "1/???",
-        "❌Errorおにぎり": "1/???",
-    };
-    for(const [key, val] of Object.entries(specials)){
-        if(itemName.includes(key.replace(/^[^\w]/,'').split('お')[0]) || itemName === key) return val;
-    }
-    if(itemName.includes("バナナ")) return "1/???";
-    if(itemName.includes("DJ")) return "1/???";
-    if(itemName.includes("Error")) return "1/???";
+    // 激レア特別おにぎり（全SECRET共通で1/???）
+    const secretKeywords = ["バナナ","DJ","Error","発光","抹茶あんこ","違法電圧","圧縮","密輸","賄賂","???"];
+    if(secretKeywords.some(k => itemName.includes(k))) return "1/???";
     const total = onigiris.reduce((s,o)=>s+o.chance,0);
     const o = onigiris.find(o => itemName === o.name || itemName.includes(o.name));
     if(!o) return null;
@@ -1133,7 +1174,7 @@ function updateMachines(line){
 
 function tickLines(now){
     // バナナ演出中はライン停止
-    if(_bananaEventActive || _djEventActive || _errorEventActive){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); return; }
+    if(_bananaEventActive || _djEventActive || _errorEventActive || _glowEventActive || _matchaAnkoEventActive || _illegalVoltageEventActive || _compressedEventActive || _smugglingEventActive || _bribeEventActive || _unknownEventActive){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); return; }
     // ブレーカー停止中はRafを止める
     if(powerGrid.isBroken){ lineRafId=null; lastLineTime=0; return; }
     const anyActive = lines.some(l=>l.items.some(it=>!it.done));
@@ -1204,29 +1245,36 @@ function tickLines(now){
                         }
                     }
                     // 具材ステージ(s=8)で激レアおにぎり判定
-                    if(s===8 && !powerGrid.isBroken && powerGrid.level > 400){
-                        const rarePct = (powerGrid.level < 700
-                            ? (powerGrid.level - 400) / 300000
-                            : 0.001 + (powerGrid.level - 700) / 100000) / 10;
+                    // 電力700%以上で合計0.01%（0.0001）
+                    // 各確率: バナナ0.00180%, DJ0.00162%, Error0.00148%, 発光0.00130%, 抹茶あんこ0.00112%,
+                    //         違法電圧0.00090%, 圧縮0.00076%, 密輸0.00061%, 賄賂0.00050%, ???0.00065%  合計0.01074%→正規化済み
+                    if(s===8 && !powerGrid.isBroken && powerGrid.level >= 700){
                         const roll = Math.random();
-                        if(!_bananaEventActive && roll < rarePct){
-                            it.process.name = "🍌バナナおにぎり";
-                            it.process.emoji = "🍌";
-                            it.process.base = {...it.process.base, name:"バナナおにぎり", emoji:"🍌", price:99999};
-                            it.process.class = "secret";
-                            triggerBananaEvent();
-                        } else if(!_djEventActive && roll < rarePct * 2){
-                            it.process.name = "🎧DJおにぎり";
-                            it.process.emoji = "🎧";
-                            it.process.base = {...it.process.base, name:"DJおにぎり", emoji:"🎧", price:88888};
-                            it.process.class = "secret";
-                            triggerDjEvent();
-                        } else if(!_errorEventActive && roll < rarePct * 3){
-                            it.process.name = "❌Errorおにぎり";
-                            it.process.emoji = "❌";
-                            it.process.base = {...it.process.base, name:"Errorおにぎり", emoji:"❌", price:77777};
-                            it.process.class = "secret";
-                            triggerErrorEvent();
+                        // 各値は累積閾値（合計ちょうど0.0001 = 0.01%）
+                        const SECRETS = [
+                            { check: ()=>!_bananaEventActive,         threshold: 0.0000167598, name:"🍌バナナおにぎり",    emoji:"🍌", price:99999, trigger: triggerBananaEvent },
+                            { check: ()=>!_djEventActive,             threshold: 0.0000318436, name:"🎧DJおにぎり",        emoji:"🎧", price:95000, trigger: triggerDjEvent },
+                            { check: ()=>!_errorEventActive,          threshold: 0.0000456238, name:"❌Errorおにぎり",     emoji:"❌", price:88888, trigger: triggerErrorEvent },
+                            { check: ()=>!_glowEventActive,           threshold: 0.0000577281, name:"✨発光おにぎり",      emoji:"✨", price:85000, trigger: triggerGlowEvent },
+                            { check: ()=>!_matchaAnkoEventActive,     threshold: 0.0000681564, name:"🍵抹茶あんこおにぎり",emoji:"🍵", price:80000, trigger: triggerMatchaAnkoEvent },
+                            { check: ()=>!_illegalVoltageEventActive, threshold: 0.0000765363, name:"⚡違法電圧おにぎり",  emoji:"⚡", price:77777, trigger: triggerIllegalVoltageEvent },
+                            { check: ()=>!_compressedEventActive,     threshold: 0.0000836127, name:"📦圧縮おにぎり",      emoji:"📦", price:75000, trigger: triggerCompressedEvent },
+                            { check: ()=>!_smugglingEventActive,      threshold: 0.0000892924, name:"🚢密輸おにぎり",      emoji:"🚢", price:72000, trigger: triggerSmugglingEvent },
+                            { check: ()=>!_bribeEventActive,          threshold: 0.0000939479, name:"💴賄賂おにぎり",      emoji:"💴", price:70000, trigger: triggerBribeEvent },
+                            { check: ()=>!_unknownEventActive,        threshold: 0.0001000000, name:"❓???おにぎり",       emoji:"❓", price:99999, trigger: triggerUnknownEvent },
+                        ];
+                        let cumulative = 0;
+                        for(const sec of SECRETS){
+                            const prev = cumulative;
+                            cumulative = sec.threshold;
+                            if(sec.check() && roll >= prev && roll < sec.threshold){
+                                it.process.name = sec.name;
+                                it.process.emoji = sec.emoji;
+                                it.process.base = {...it.process.base, name: sec.name.replace(/^.{1,2}/,""), emoji: sec.emoji, price: sec.price};
+                                it.process.class = "secret";
+                                sec.trigger();
+                                break;
+                            }
                         }
                     }
                     // トラック通過 → ボタン解放
@@ -1280,7 +1328,7 @@ function tickLines(now){
                     class: p.class === "secret" ? "secret" : p.class, dangerText:p.dangerText, dangerBadgeClass:p.dangerBadgeClass
                 });
                 // 図鑑登録: onigirisのnameか激レア名のみ許可
-                const _allowedNames = new Set([...onigiris.map(o=>o.name), "バナナおにぎり","DJおにぎり","Errorおにぎり"]);
+                const _allowedNames = new Set([...onigiris.map(o=>o.name), "バナナおにぎり","DJおにぎり","Errorおにぎり","発光おにぎり","抹茶あんこおにぎり","違法電圧おにぎり","圧縮おにぎり","密輸おにぎり","賄賂おにぎり","???おにぎり"]);
                 const _baseName = p.base.name;
                 if(_allowedNames.has(_baseName)) discoveredOnigiris.add(_baseName);
                 inventory.sort((a,b)=>b.finalPrice-a.finalPrice);
@@ -2014,7 +2062,7 @@ function confirmSecretStorageReplace(){
         kind:p.product.kind, mutations:muts, transporting:false, transportEnd:0, saleId:null, locked:false,
         class:"secret", dangerText:p.dangerText, dangerBadgeClass:p.dangerBadgeClass
     });
-    const _allowedNames = new Set([...onigiris.map(o=>o.name),"バナナおにぎり","DJおにぎり","Errorおにぎり"]);
+    const _allowedNames = new Set([...onigiris.map(o=>o.name),"バナナおにぎり","DJおにぎり","Errorおにぎり","発光おにぎり","抹茶あんこおにぎり","違法電圧おにぎり","圧縮おにぎり","密輸おにぎり","賄賂おにぎり","???おにぎり"]);
     if(_allowedNames.has(p.base.name)) discoveredOnigiris.add(p.base.name);
     inventory.sort((a,b)=>b.finalPrice-a.finalPrice);
     renderInventory(); renderDictionary();
@@ -2059,6 +2107,445 @@ function triggerBlackout(reason){
         setTimeout(()=>recoverPower(), 2000); // 2秒後に自動復旧開始
     }
     renderHackArea();
+}
+
+// SECRETおにぎりをラインに注入するヘルパー
+function injectSecretProcess(name, emoji, price){
+    const targetLine = lines.find(l=>l.domReady) || null;
+    if(targetLine){
+        const p = buildProductionProcess();
+        if(p){
+            p.name = emoji + name;
+            p.emoji = emoji;
+            p.base = {...p.base, name: name, emoji: emoji, price: price};
+            p.class = "secret";
+            targetLine.items.push({process:p, pos:0, done:false, completedOnce:false, needsInitFlash:true});
+            if(!lineRafId){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); }
+        }
+    }
+}
+
+function triggerGlowEvent(){
+    if(_glowEventActive) return;
+    _glowEventActive = true;
+
+    const blackout = document.createElement("div");
+    blackout.style.cssText = "position:fixed;inset:0;background:#fffbe6;opacity:0;pointer-events:none;z-index:9100;transition:0s;";
+    document.body.appendChild(blackout);
+
+    const aura = document.createElement("div");
+    aura.style.cssText = "position:fixed;left:50%;top:50%;width:240px;height:240px;border-radius:50%;transform:translate(-50%,-50%) scale(0);opacity:0;z-index:9120;background:radial-gradient(circle,rgba(255,255,180,1),rgba(255,235,120,0.35),transparent 72%);filter:blur(2px);";
+    document.body.appendChild(aura);
+
+    const finalDiv = document.createElement("div");
+    finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.4);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
+    finalDiv.innerHTML = `<div style="font-size:180px;filter:drop-shadow(0 0 18px #fff) drop-shadow(0 0 50px gold);">✨</div><div style="margin-top:-8px;font-size:40px;letter-spacing:6px;color:#fff7c8;text-shadow:0 0 12px #fff,0 0 28px gold;">GLLOW ONIGIRI.</div>`;
+    document.body.appendChild(finalDiv);
+
+    setTimeout(()=>{ blackout.style.transition = "0.12s"; blackout.style.opacity = "0.65"; blackout.style.transform = "scale(1.02)"; }, 80);
+    setTimeout(()=>{ aura.style.transition = "0.5s"; aura.style.opacity = "1"; aura.style.transform = "translate(-50%,-50%) scale(1)"; }, 280);
+
+    let pulse = 0;
+    const pulseTimer = setInterval(()=>{
+        pulse++;
+        aura.style.transform = `translate(-50%,-50%) scale(${1 + pulse * 0.1})`;
+        if(pulse > 7){ clearInterval(pulseTimer); }
+    }, 140);
+
+    for(let i=0;i<10;i++){
+        setTimeout(()=>{
+            const ring = document.createElement("div");
+            ring.style.cssText = "position:fixed;left:50%;top:50%;width:80px;height:80px;border-radius:50%;border:5px solid rgba(255,245,170,0.95);transform:translate(-50%,-50%) scale(0);opacity:1;z-index:9130;";
+            document.body.appendChild(ring);
+            ring.animate([{transform:"translate(-50%,-50%) scale(0)",opacity:1},{transform:"translate(-50%,-50%) scale(18)",opacity:0}],{duration:1600,easing:"cubic-bezier(.1,.8,.2,1)"});
+            setTimeout(()=>ring.remove(),1600);
+        }, 500 + i*120);
+    }
+
+    setTimeout(()=>{
+        for(let i=0;i<70;i++){
+            const star = document.createElement("div");
+            star.style.cssText = "position:fixed;left:50%;top:50%;font-size:24px;pointer-events:none;z-index:9140;filter:drop-shadow(0 0 10px #fff8bf);";
+            star.textContent = ["✨","⭐","💫"][i%3];
+            document.body.appendChild(star);
+            const a = Math.random()*Math.PI*2, d = Math.random()*1200 + 150;
+            star.animate([{transform:"translate(-50%,-50%) scale(0.6)",opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px) scale(1.6)`,opacity:0}],{duration:1800,easing:"ease-out"});
+            setTimeout(()=>star.remove(),1800);
+        }
+    }, 900);
+
+    setTimeout(()=>{ finalDiv.style.transition = "1.6s cubic-bezier(.1,.8,.2,1)"; finalDiv.style.opacity = "1"; finalDiv.style.transform = "translate(-50%,-50%) scale(1)"; }, 1800);
+
+    setTimeout(()=>{
+        blackout.style.transition = "2.2s"; blackout.style.opacity = "0";
+        setTimeout(()=>{ blackout.remove(); aura.remove(); finalDiv.remove(); }, 2200);
+        injectSecretProcess("発光おにぎり", "✨", 99999);
+        addLog("AI", "✨ 発光反応を確認。おにぎりが勝手に自己発光しています。");
+        _glowEventActive = false;
+    }, 4200);
+}
+
+function triggerMatchaAnkoEvent(){
+    if(_matchaAnkoEventActive) return;
+    _matchaAnkoEventActive = true;
+
+    const blackout = document.createElement("div");
+    blackout.style.cssText = "position:fixed;inset:0;background:#081b10;opacity:0;pointer-events:none;z-index:9100;transition:0s;";
+    document.body.appendChild(blackout);
+
+    const finalDiv = document.createElement("div");
+    finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.35);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
+    finalDiv.innerHTML = `<div style="font-size:180px;filter:drop-shadow(0 0 20px #86efac) drop-shadow(0 0 45px #f5d0fe);">🍵</div><div style="margin-top:-6px;font-size:34px;letter-spacing:6px;color:#d9f99d;text-shadow:0 0 10px #86efac,0 0 28px #f5d0fe;">MATCHA ANKO.</div>`;
+    document.body.appendChild(finalDiv);
+
+    setTimeout(()=>{ blackout.style.transition = "0.7s"; blackout.style.opacity = "1"; }, 80);
+
+    setTimeout(()=>{
+        const sweep = document.createElement("div");
+        sweep.style.cssText = "position:fixed;left:-20%;top:50%;width:140%;height:180px;transform:translateY(-50%) rotate(-8deg);background:linear-gradient(90deg,transparent,rgba(134,239,172,0.25),rgba(244,114,182,0.2),transparent);z-index:9120;pointer-events:none;";
+        document.body.appendChild(sweep);
+        sweep.animate([{transform:"translateX(-18%) translateY(-50%) rotate(-8deg)",opacity:0},{transform:"translateX(18%) translateY(-50%) rotate(-8deg)",opacity:1},{transform:"translateX(48%) translateY(-50%) rotate(-8deg)",opacity:0}],{duration:2200,easing:"ease-in-out"});
+        setTimeout(()=>sweep.remove(),2200);
+    }, 350);
+
+    for(let i=0;i<8;i++){
+        setTimeout(()=>{
+            const puff = document.createElement("div");
+            puff.style.cssText = "position:fixed;left:50%;top:50%;width:90px;height:90px;border-radius:50%;border:4px solid rgba(255,255,255,0.35);transform:translate(-50%,-50%) scale(0);opacity:1;z-index:9130;";
+            document.body.appendChild(puff);
+            puff.animate([{transform:"translate(-50%,-50%) scale(0)",opacity:0.95},{transform:"translate(-50%,-50%) scale(20)",opacity:0}],{duration:2000,easing:"cubic-bezier(.1,.8,.2,1)"});
+            setTimeout(()=>puff.remove(),2000);
+        }, 700 + i*140);
+    }
+
+    setTimeout(()=>{
+        for(let i=0;i<55;i++){
+            const m = document.createElement("div");
+            m.style.cssText = "position:fixed;left:50%;top:50%;font-size:34px;pointer-events:none;z-index:9140;";
+            m.textContent = i%2===0 ? "🍵" : "🍡";
+            document.body.appendChild(m);
+            const a = Math.random()*Math.PI*2, d = Math.random()*900 + 180;
+            m.animate([{transform:"translate(-50%,-50%) scale(0.5)",opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px) scale(1.5)`,opacity:0}],{duration:2000,easing:"cubic-bezier(.1,.8,.2,1)"});
+            setTimeout(()=>m.remove(),2000);
+        }
+    }, 1100);
+
+    setTimeout(()=>{ finalDiv.style.transition = "1.4s cubic-bezier(.1,.8,.2,1)"; finalDiv.style.opacity = "1"; finalDiv.style.transform = "translate(-50%,-50%) scale(1)"; }, 2000);
+
+    setTimeout(()=>{
+        blackout.style.transition = "2s"; blackout.style.opacity = "0";
+        setTimeout(()=>{ blackout.remove(); finalDiv.remove(); }, 2000);
+        injectSecretProcess("抹茶あんこおにぎり", "🍵", 99999);
+        addLog("AI", "🍵 甘味と苦味のバランスが暴走。抹茶あんこが具材投入口で結合しました。");
+        _matchaAnkoEventActive = false;
+    }, 4600);
+}
+
+function triggerIllegalVoltageEvent(){
+    if(_illegalVoltageEventActive) return;
+    _illegalVoltageEventActive = true;
+
+    const blackout = document.createElement("div");
+    blackout.style.cssText = "position:fixed;inset:0;background:#090014;opacity:0;pointer-events:none;z-index:9100;transition:0s;";
+    document.body.appendChild(blackout);
+
+    const finalDiv = document.createElement("div");
+    finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.35);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
+    finalDiv.innerHTML = `<div style="font-size:170px;filter:drop-shadow(0 0 24px #a855f7) drop-shadow(0 0 60px #facc15);">⚡</div><div style="margin-top:-8px;font-size:34px;letter-spacing:5px;color:#f5d0fe;text-shadow:0 0 12px #a855f7,0 0 30px #facc15;">ILLEGAL VOLTAGE.</div>`;
+    document.body.appendChild(finalDiv);
+
+    setTimeout(()=>{ blackout.style.transition = "0.2s"; blackout.style.opacity = "1"; }, 80);
+
+    const flickers = [120,160,220,280,340,420,560,680,820,980];
+    flickers.forEach(t => setTimeout(()=>{
+        blackout.style.background = (Math.random() < 0.5) ? "#f5d0fe" : "#090014";
+        finalDiv.style.filter = `hue-rotate(${Math.random()*60-30}deg) contrast(${1+Math.random()*0.6})`;
+        setTimeout(()=>{ blackout.style.background = "#090014"; finalDiv.style.filter = ""; }, 35);
+    }, t));
+
+    for(let i=0;i<9;i++){
+        setTimeout(()=>{
+            const ring = document.createElement("div");
+            ring.style.cssText = "position:fixed;left:50%;top:50%;width:70px;height:70px;border-radius:50%;border:4px solid #a855f7;z-index:9130;pointer-events:none;";
+            document.body.appendChild(ring);
+            ring.animate([{transform:"translate(-50%,-50%) scale(0)",opacity:1},{transform:"translate(-50%,-50%) scale(24)",opacity:0}],{duration:1400,easing:"cubic-bezier(.1,.8,.2,1)"});
+            setTimeout(()=>ring.remove(),1400);
+        }, 500 + i*110);
+    }
+
+    setTimeout(()=>{
+        for(let i=0;i<60;i++){
+            const z = document.createElement("div");
+            z.style.cssText = "position:fixed;left:50%;top:50%;font-size:28px;pointer-events:none;z-index:9140;filter:drop-shadow(0 0 10px #c084fc);";
+            z.textContent = "⚡";
+            document.body.appendChild(z);
+            const a = Math.random()*Math.PI*2, d = Math.random()*1500 + 200;
+            z.animate([{transform:"translate(-50%,-50%) scale(0.4) rotate(0deg)",opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px) scale(1.6) rotate(${(Math.random()-0.5)*720}deg)`,opacity:0}],{duration:1700,easing:"ease-out"});
+            setTimeout(()=>z.remove(),1700);
+        }
+    }, 900);
+
+    setTimeout(()=>{
+        const flash = document.createElement("div");
+        flash.style.cssText = "position:fixed;inset:0;background:#f5d0fe;opacity:0;pointer-events:none;z-index:9200;";
+        document.body.appendChild(flash);
+        flash.animate([{opacity:0},{opacity:0.9},{opacity:0}],{duration:500,easing:"ease-out"});
+        setTimeout(()=>flash.remove(),500);
+    }, 1700);
+
+    setTimeout(()=>{ finalDiv.style.transition = "1.4s cubic-bezier(.1,.8,.2,1)"; finalDiv.style.opacity = "1"; finalDiv.style.transform = "translate(-50%,-50%) scale(1)"; }, 2400);
+
+    setTimeout(()=>{
+        blackout.style.transition = "2.3s"; blackout.style.opacity = "0";
+        setTimeout(()=>{ blackout.remove(); finalDiv.remove(); }, 2300);
+        injectSecretProcess("違法電圧おにぎり", "⚡", 99999);
+        addLog("AI", "⚡ 電圧規格違反を検出。工場が法定上限を超えて発火しています。");
+        _illegalVoltageEventActive = false;
+    }, 5200);
+}
+
+function triggerCompressedEvent(){
+    if(_compressedEventActive) return;
+    _compressedEventActive = true;
+
+    const blackout = document.createElement("div");
+    blackout.style.cssText = "position:fixed;inset:0;background:#0b1020;opacity:0;pointer-events:none;z-index:9100;transition:0s;";
+    document.body.appendChild(blackout);
+
+    const finalDiv = document.createElement("div");
+    finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.25);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
+    finalDiv.innerHTML = `<div style="font-size:170px;filter:drop-shadow(0 0 18px #93c5fd) drop-shadow(0 0 40px #2563eb);">📦</div><div style="margin-top:-6px;font-size:34px;letter-spacing:5px;color:#bfdbfe;text-shadow:0 0 12px #93c5fd,0 0 30px #2563eb;">COMPRESSED ONIGIRI.</div>`;
+    document.body.appendChild(finalDiv);
+
+    setTimeout(()=>{ blackout.style.transition = "0.15s"; blackout.style.opacity = "1"; }, 60);
+
+    let squish = 0;
+    const squishTimer = setInterval(()=>{
+        squish++;
+        const sx = 1 - Math.min(0.62, squish * 0.03);
+        const sy = 1 + Math.min(0.18, squish * 0.01);
+        finalDiv.style.transform = `translate(-50%,-50%) scale(1) scaleX(${sx}) scaleY(${sy})`;
+        if(squish > 18){ clearInterval(squishTimer); finalDiv.style.transform = "translate(-50%,-50%) scale(0.2)"; }
+    }, 80);
+
+    for(let i=0;i<7;i++){
+        setTimeout(()=>{
+            const box = document.createElement("div");
+            box.style.cssText = "position:fixed;left:50%;top:50%;width:110px;height:110px;border:4px solid rgba(147,197,253,0.8);border-radius:12px;z-index:9130;pointer-events:none;background:rgba(255,255,255,0.03);";
+            document.body.appendChild(box);
+            box.animate([{transform:"translate(-50%,-50%) scale(0.6)",opacity:0.9},{transform:"translate(-50%,-50%) scale(16)",opacity:0}],{duration:1700,easing:"cubic-bezier(.1,.8,.2,1)"});
+            setTimeout(()=>box.remove(),1700);
+        }, 350 + i*130);
+    }
+
+    setTimeout(()=>{
+        for(let i=0;i<45;i++){
+            const c = document.createElement("div");
+            c.style.cssText = "position:fixed;left:50%;top:50%;font-size:32px;pointer-events:none;z-index:9140;filter:drop-shadow(0 0 8px #93c5fd);";
+            c.textContent = "▣";
+            document.body.appendChild(c);
+            const a = Math.random()*Math.PI*2, d = Math.random()*900 + 200;
+            c.animate([{transform:"translate(-50%,-50%) scale(0.2)",opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px) scale(1)`,opacity:0}],{duration:1500,easing:"ease-out"});
+            setTimeout(()=>c.remove(),1500);
+        }
+    }, 900);
+
+    setTimeout(()=>{
+        const flash = document.createElement("div");
+        flash.style.cssText = "position:fixed;inset:0;background:#93c5fd;opacity:0;pointer-events:none;z-index:9200;";
+        document.body.appendChild(flash);
+        flash.animate([{opacity:0},{opacity:0.5},{opacity:0}],{duration:450,easing:"ease-out"});
+        setTimeout(()=>flash.remove(),450);
+    }, 1700);
+
+    setTimeout(()=>{ finalDiv.style.transition = "1.2s cubic-bezier(.1,.8,.2,1)"; finalDiv.style.opacity = "1"; finalDiv.style.transform = "translate(-50%,-50%) scale(1)"; }, 2200);
+
+    setTimeout(()=>{
+        blackout.style.transition = "2s"; blackout.style.opacity = "0";
+        setTimeout(()=>{ blackout.remove(); finalDiv.remove(); }, 2000);
+        injectSecretProcess("圧縮おにぎり", "📦", 99999);
+        addLog("AI", "📦 具材データを高圧縮化。サイズは小さいのに圧が重いです。");
+        _compressedEventActive = false;
+    }, 4700);
+}
+
+function triggerSmugglingEvent(){
+    if(_smugglingEventActive) return;
+    _smugglingEventActive = true;
+
+    const blackout = document.createElement("div");
+    blackout.style.cssText = "position:fixed;inset:0;background:#07121d;opacity:0;pointer-events:none;z-index:9100;transition:0s;";
+    document.body.appendChild(blackout);
+
+    const finalDiv = document.createElement("div");
+    finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.35);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
+    finalDiv.innerHTML = `<div style="font-size:160px;filter:drop-shadow(0 0 18px #60a5fa) drop-shadow(0 0 42px #0ea5e9);">🚢</div><div style="margin-top:-6px;font-size:34px;letter-spacing:5px;color:#bae6fd;text-shadow:0 0 12px #60a5fa,0 0 30px #0ea5e9;">SMUGGLING ONIGIRI.</div>`;
+    document.body.appendChild(finalDiv);
+
+    setTimeout(()=>{ blackout.style.transition = "0.5s"; blackout.style.opacity = "1"; }, 80);
+
+    const lane = document.createElement("div");
+    lane.style.cssText = "position:fixed;left:0;top:50%;width:100%;height:120px;transform:translateY(-50%);border-top:3px dashed rgba(96,165,250,0.25);border-bottom:3px dashed rgba(96,165,250,0.25);pointer-events:none;z-index:9110;";
+    document.body.appendChild(lane);
+
+    setTimeout(()=>{
+        for(let i=0;i<10;i++){
+            const crate = document.createElement("div");
+            crate.style.cssText = "position:fixed;left:-140px;top:50%;width:90px;height:60px;border-radius:10px;background:linear-gradient(180deg,#1e3a8a,#0f172a);border:2px solid #60a5fa;z-index:9140;pointer-events:none;box-shadow:0 0 18px rgba(96,165,250,0.45);display:flex;align-items:center;justify-content:center;color:#93c5fd;font-size:30px;";
+            crate.textContent = "■";
+            document.body.appendChild(crate);
+            const y = (Math.random()*40 - 20);
+            crate.animate([{transform:`translate(0px,${y}px)`,opacity:0.2},{transform:`translate(${window.innerWidth+260}px,${y}px)`,opacity:1}],{duration:2600,easing:"linear"});
+            setTimeout(()=>crate.remove(),2600);
+        }
+    }, 750);
+
+    setTimeout(()=>{
+        for(let i=0;i<40;i++){
+            const tag = document.createElement("div");
+            tag.style.cssText = "position:fixed;left:50%;top:50%;font-size:28px;pointer-events:none;z-index:9140;filter:drop-shadow(0 0 8px #60a5fa);";
+            tag.textContent = i%2===0 ? "📦" : "🚚";
+            document.body.appendChild(tag);
+            const a = Math.random()*Math.PI*2, d = Math.random()*1000 + 200;
+            tag.animate([{transform:"translate(-50%,-50%) scale(0.4)",opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px) scale(1.2)`,opacity:0}],{duration:1700,easing:"ease-out"});
+            setTimeout(()=>tag.remove(),1700);
+        }
+    }, 1300);
+
+    setTimeout(()=>{
+        const flash = document.createElement("div");
+        flash.style.cssText = "position:fixed;inset:0;background:#60a5fa;opacity:0;pointer-events:none;z-index:9200;";
+        document.body.appendChild(flash);
+        flash.animate([{opacity:0},{opacity:0.45},{opacity:0}],{duration:500,easing:"ease-out"});
+        setTimeout(()=>flash.remove(),500);
+    }, 2200);
+
+    setTimeout(()=>{ finalDiv.style.transition = "1.5s cubic-bezier(.1,.8,.2,1)"; finalDiv.style.opacity = "1"; finalDiv.style.transform = "translate(-50%,-50%) scale(1)"; }, 2600);
+
+    setTimeout(()=>{
+        blackout.style.transition = "2.2s"; blackout.style.opacity = "0";
+        lane.remove();
+        setTimeout(()=>{ blackout.remove(); finalDiv.remove(); }, 2200);
+        injectSecretProcess("密輸おにぎり", "🚢", 99999);
+        addLog("AI", "🚢 正規ルートを外れた輸送を確認。おにぎりが港を経由しています。");
+        _smugglingEventActive = false;
+    }, 5200);
+}
+
+function triggerBribeEvent(){
+    if(_bribeEventActive) return;
+    _bribeEventActive = true;
+
+    const blackout = document.createElement("div");
+    blackout.style.cssText = "position:fixed;inset:0;background:#1a1208;opacity:0;pointer-events:none;z-index:9100;transition:0s;";
+    document.body.appendChild(blackout);
+
+    const finalDiv = document.createElement("div");
+    finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.35);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
+    finalDiv.innerHTML = `<div style="font-size:170px;filter:drop-shadow(0 0 18px #f59e0b) drop-shadow(0 0 45px #f97316);">💴</div><div style="margin-top:-6px;font-size:34px;letter-spacing:5px;color:#fde68a;text-shadow:0 0 12px #f59e0b,0 0 30px #f97316;">BRIBE ONIGIRI.</div>`;
+    document.body.appendChild(finalDiv);
+
+    setTimeout(()=>{ blackout.style.transition = "0.6s"; blackout.style.opacity = "1"; }, 80);
+
+    setTimeout(()=>{
+        for(let i=0;i<60;i++){
+            const bill = document.createElement("div");
+            bill.style.cssText = "position:fixed;left:50%;top:50%;font-size:26px;pointer-events:none;z-index:9140;filter:drop-shadow(0 0 8px #f59e0b);";
+            bill.textContent = i%3===0 ? "💴" : "🪙";
+            document.body.appendChild(bill);
+            const a = Math.random()*Math.PI*2, d = Math.random()*1200 + 200;
+            bill.animate([{transform:"translate(-50%,-50%) scale(0.3) rotate(0deg)",opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px) scale(1.4) rotate(${(Math.random()-0.5)*720}deg)`,opacity:0}],{duration:1800,easing:"ease-out"});
+            setTimeout(()=>bill.remove(),1800);
+        }
+    }, 700);
+
+    for(let i=0;i<8;i++){
+        setTimeout(()=>{
+            const coin = document.createElement("div");
+            coin.style.cssText = "position:fixed;left:50%;top:50%;width:54px;height:54px;border-radius:50%;border:3px solid #fbbf24;background:radial-gradient(circle,#fde68a,#f59e0b);z-index:9130;pointer-events:none;";
+            document.body.appendChild(coin);
+            coin.animate([{transform:"translate(-50%,-50%) scale(0)",opacity:1},{transform:"translate(-50%,-50%) scale(14)",opacity:0}],{duration:1600,easing:"cubic-bezier(.1,.8,.2,1)"});
+            setTimeout(()=>coin.remove(),1600);
+        }, 450 + i*140);
+    }
+
+    setTimeout(()=>{
+        const flash = document.createElement("div");
+        flash.style.cssText = "position:fixed;inset:0;background:#f59e0b;opacity:0;pointer-events:none;z-index:9200;";
+        document.body.appendChild(flash);
+        flash.animate([{opacity:0},{opacity:0.55},{opacity:0}],{duration:480,easing:"ease-out"});
+        setTimeout(()=>flash.remove(),480);
+    }, 1900);
+
+    setTimeout(()=>{ finalDiv.style.transition = "1.4s cubic-bezier(.1,.8,.2,1)"; finalDiv.style.opacity = "1"; finalDiv.style.transform = "translate(-50%,-50%) scale(1)"; }, 2400);
+
+    setTimeout(()=>{
+        blackout.style.transition = "2.2s"; blackout.style.opacity = "0";
+        setTimeout(()=>{ blackout.remove(); finalDiv.remove(); }, 2200);
+        injectSecretProcess("賄賂おにぎり", "💴", 99999);
+        addLog("AI", "💴 金銭の受け渡しを確認。おにぎり工場の倫理が少し横にずれました。");
+        _bribeEventActive = false;
+    }, 5000);
+}
+
+function triggerUnknownEvent(){
+    if(_unknownEventActive) return;
+    _unknownEventActive = true;
+
+    const blackout = document.createElement("div");
+    blackout.style.cssText = "position:fixed;inset:0;background:#050505;opacity:0;pointer-events:none;z-index:9100;transition:0s;";
+    document.body.appendChild(blackout);
+
+    const noise = document.createElement("div");
+    noise.style.cssText = "position:fixed;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,0.02) 0 2px,transparent 2px 4px);mix-blend-mode:screen;opacity:0;pointer-events:none;z-index:9110;";
+    document.body.appendChild(noise);
+
+    const finalDiv = document.createElement("div");
+    finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.3);opacity:0;z-index:9300;text-align:center;pointer-events:none;font-family:monospace;";
+    finalDiv.innerHTML = `<div style="font-size:190px;filter:drop-shadow(0 0 20px #fff) drop-shadow(0 0 50px #888);">❓</div><div style="font-size:30px;color:#e5e7eb;text-shadow:0 0 8px #fff;letter-spacing:4px;">UNKNOWN ONIGIRI</div>`;
+    document.body.appendChild(finalDiv);
+
+    setTimeout(()=>{ blackout.style.transition = "0.35s"; blackout.style.opacity = "1"; noise.style.transition = "0.35s"; noise.style.opacity = "1"; }, 80);
+
+    let g = 0;
+    const glitch = setInterval(()=>{
+        g++;
+        const x = (Math.random()-0.5)*28, y = (Math.random()-0.5)*18, sc = 1 + (Math.random()-0.5)*0.08;
+        finalDiv.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) scale(${sc})`;
+        finalDiv.style.filter = `hue-rotate(${Math.random()*360}deg) contrast(${1+Math.random()*0.7})`;
+        if(g > 55){ clearInterval(glitch); finalDiv.style.transform = "translate(-50%,-50%) scale(1)"; finalDiv.style.filter = ""; }
+    }, 45);
+
+    setTimeout(()=>{
+        for(let i=0;i<80;i++){
+            const q = document.createElement("div");
+            q.style.cssText = "position:fixed;left:50%;top:50%;font-size:24px;pointer-events:none;z-index:9140;color:#fff;";
+            q.textContent = ["?","？","❓"][i%3];
+            document.body.appendChild(q);
+            const a = Math.random()*Math.PI*2, d = Math.random()*1300 + 200;
+            q.animate([{transform:"translate(-50%,-50%) scale(0.4)",opacity:1},{transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px) scale(1.4)`,opacity:0}],{duration:1600,easing:"ease-out"});
+            setTimeout(()=>q.remove(),1600);
+        }
+    }, 1000);
+
+    setTimeout(()=>{
+        const flash = document.createElement("div");
+        flash.style.cssText = "position:fixed;inset:0;background:#ffffff;opacity:0;pointer-events:none;z-index:9200;";
+        document.body.appendChild(flash);
+        flash.animate([{opacity:0},{opacity:1},{opacity:0}],{duration:520,easing:"ease-out"});
+        setTimeout(()=>flash.remove(),520);
+    }, 2100);
+
+    setTimeout(()=>{ finalDiv.style.transition = "1.5s cubic-bezier(.1,.8,.2,1)"; finalDiv.style.opacity = "1"; finalDiv.style.transform = "translate(-50%,-50%) scale(1)"; }, 2900);
+
+    setTimeout(()=>{
+        blackout.style.transition = "2.4s"; blackout.style.opacity = "0";
+        noise.style.transition = "2.4s"; noise.style.opacity = "0";
+        setTimeout(()=>{ blackout.remove(); noise.remove(); finalDiv.remove(); }, 2400);
+        injectSecretProcess("???おにぎり", "❓", 99999);
+        addLog("AI", "❓ 未知の具材反応を検出。説明不能です。たぶんロジックが勝手に夢を見てます。");
+        _unknownEventActive = false;
+    }, 5600);
 }
 
 function triggerBananaEvent(){
@@ -2640,7 +3127,12 @@ function renderUpgradeArea(){
                 状態: ${powerGrid.isBroken ? "⚡ ブレーカー停止によりOFF" : autoRollEnabled ? "稼働中(ON)" : "待機中(OFF)"}
             </button>
             <br>
-            <hr style="border-color:#334;margin:6px 0 8px;">
+            🏭 倉庫拡張 現在上限:${getStorageLimit()}/${STORAGE_LIMIT_MAX}個
+            ${storageExpansionLevel < STORAGE_EXPANSION_COST.length
+                ? `<button onclick="buyStorageExpansion()" ${money < STORAGE_EXPANSION_COST[storageExpansionLevel] ? "disabled":""} style="padding:2px 8px;font-size:11px;">拡張+100(${STORAGE_EXPANSION_COST[storageExpansionLevel].toLocaleString()}円)</button>`
+                : `<span style="font-size:11px;color:#5edc88;">✅ 最大拡張済み(${STORAGE_LIMIT_MAX}個)</span>`
+            }
+            <br>
             <div style="font-size:15px;font-weight:bold;color:#55aaff;margin-bottom:2px;letter-spacing:1px;">💵 外貨強化エリア <span style="font-size:13px;font-weight:normal;color:#88bbff;">（所持外貨: ${formatForeign(foreignMoney)}）</span></div>
             <div style="font-size:12px;line-height:2;">
             ⚡ ブレーカー強化 Lv.${breakerLevel}/${MAX_BREAKER_LEVEL}
@@ -2649,12 +3141,6 @@ function renderUpgradeArea(){
             <br>
             🏭 工場拡張上限解放: ${boostBtn}
             <span style="font-size:11px;color:#aaa;">（全拡張上限+50%）</span>
-            <br>
-            🏭 倉庫拡張 現在上限:${getStorageLimit()}/${STORAGE_LIMIT_MAX}個
-            ${storageExpansionLevel < STORAGE_EXPANSION_COST.length
-                ? `<button onclick="buyStorageExpansion()" ${money < STORAGE_EXPANSION_COST[storageExpansionLevel] ? "disabled":""} style="padding:2px 8px;font-size:11px;">拡張+100(${STORAGE_EXPANSION_COST[storageExpansionLevel].toLocaleString()}円)</button>`
-                : `<span style="font-size:11px;color:#5edc88;">✅ 最大拡張済み(${STORAGE_LIMIT_MAX}個)</span>`
-            }
             <br>
             🚦 交通法規適用: ${trafficLawBtn}
             <span style="font-size:11px;color:#aaa;">（納品拒否・事故率を大幅低減、輸送時間は1.5倍）</span>
@@ -2898,7 +3384,7 @@ function renderAtRoute(ri){
     html += `フィルタ: <button id="atFilterToggle_${ri}" onclick="toggleAtFilter(${ri})" style="font-size:11px;padding:2px 8px;margin:2px 0;"></button>`;
     html += `<span id="atPriceArea_${ri}"> 単価 <input type="number" id="atMaxPrice_${ri}" value="${route.maxPrice}" style="width:80px;" min="0"> 円以下を出荷</span>`;
     html += `<span id="atRarityArea_${ri}" style="display:none;"> <select id="atMaxRarity_${ri}">${RARITY_ORDER.map(r=>`<option value="${r}" ${route.maxRarity===r?"selected":""}>${RARITY_LABELS[r]||r}</option>`).join("")}</select> 以下を出荷</span>`;
-    html += `<br>最低輸送数: <input type="number" id="atMinCount_${ri}" value="${route.minCount||0}" style="width:60px;" min="0" title="この個数に達するまで輸送しない（0=制限なし）"> 個以上で出荷</span>`;
+    html += `<br>最低輸送数: <input type="number" id="atMinCount_${ri}" value="${route.minCount||0}" style="width:60px;" min="0" max="${Math.floor(getTruckCapacity(trucks[route.truck]||trucks.light) / (packagingLevel===2?60:packagingLevel===1?6:1))}" title="この個数に達するまで輸送しない（0=制限なし、最大値は車両積載数）"> 個以上で出荷 <span style="font-size:10px;color:#888;">（最大: ${Math.floor(getTruckCapacity(trucks[route.truck]||trucks.light) / (packagingLevel===2?60:packagingLevel===1?6:1))}）</span></span>`;
     html += `<br>配備車両: <select id="atTruck_${ri}">${Object.entries(trucks).filter(([,t])=>t.owned).map(([k,t])=>`<option value="${k}" ${route.truck===k?"selected":""}>${t.name}</option>`).join("")}</select>`;
     html += ` ➜ 納品先目標: <select id="atShop_${ri}">${shops.map((s,i)=>`<option value="${i}" ${route.shop===i?"selected":""} ${!s.unlocked?"disabled":""}>${s.name}</option>`).join("")}</select>`;
     html += `</div></div>`;
@@ -2916,7 +3402,13 @@ function bindAtRoute(ri){
     get(`atTruck_${ri}`).onchange = e => { route.truck = e.target.value; checkAtDuplicates(); };
     get(`atShop_${ri}`).onchange = e => { route.shop = Number(e.target.value); checkAtDuplicates(); };
     const mc = get(`atMinCount_${ri}`);
-    if(mc) mc.onchange = e => { route.minCount = Math.max(0, Number(e.target.value)||0); };
+    if(mc) mc.onchange = e => {
+        const truckObj = trucks[route.truck] || trucks.light;
+        const ls = packagingLevel===2 ? 60 : packagingLevel===1 ? 6 : 1;
+        const maxVal = Math.floor(getTruckCapacity(truckObj) / ls);
+        route.minCount = Math.max(0, Math.min(maxVal, Number(e.target.value)||0));
+        e.target.value = route.minCount;
+    };
 
     updateAtFilterUI(ri);
 }
@@ -3065,7 +3557,7 @@ function runAutoTransport(){
 function renderDictionary() {
     const area = document.getElementById("dictionaryArea");
     const found = discoveredOnigiris.size;
-    const total = onigiris.length + 3; // +バナナ+DJ+Error
+    const total = onigiris.length + 10; // +10種のSECRET
     document.getElementById("dictCount").textContent = `${found}/${total}`;
 
     // 通常おにぎりの図鑑
@@ -3088,11 +3580,18 @@ function renderDictionary() {
         }
     });
 
-    // シークレットおにぎり（バナナ・DJ・Error）
+    // シークレットおにぎり（10種）
     const secrets = [
-        {name:"バナナおにぎり", emoji:"🍌"},
-        {name:"DJおにぎり", emoji:"🎧"},
-        {name:"Errorおにぎり", emoji:"❌"},
+        {name:"バナナおにぎり",      emoji:"🍌"},
+        {name:"DJおにぎり",          emoji:"🎧"},
+        {name:"Errorおにぎり",       emoji:"❌"},
+        {name:"発光おにぎり",        emoji:"✨"},
+        {name:"抹茶あんこおにぎり",  emoji:"🍵"},
+        {name:"違法電圧おにぎり",    emoji:"⚡"},
+        {name:"圧縮おにぎり",        emoji:"📦"},
+        {name:"密輸おにぎり",        emoji:"🚢"},
+        {name:"賄賂おにぎり",        emoji:"💴"},
+        {name:"???おにぎり",         emoji:"❓"},
     ];
     const secretRows = secrets.map(s => {
         const unlocked = discoveredOnigiris.has(s.name);
