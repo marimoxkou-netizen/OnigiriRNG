@@ -436,7 +436,7 @@ input,select{
     <div class="left-column">
         <div class="panel">
             <div class="topStats">
-                <div class="statBox">💰 資金残高<br><br><span id="money" class="money">0</span>円<br><span id="foreignMoney" style="font-size:13px; color:#55aaff; font-weight:bold;">外貨 0</span><br><span id="debtDisplay" style="display:none; font-size:12px; color:#ff3333; font-weight:bold;"></span></div>
+                <div class="statBox">💰 資金残高<br><br><span id="money" class="money">0</span>円<br><span id="foreignMoney" style="font-size:13px; color:#55aaff; font-weight:bold; display:none;">外貨 0</span><br><span id="rpDisplay" style="font-size:13px; color:#c0a0ff; font-weight:bold; display:none;">RP 0.0</span><br><span id="debtDisplay" style="display:none; font-size:12px; color:#ff3333; font-weight:bold;"></span></div>
                 <div class="statBox" id="storageCountCard">🎒 倉庫保管数<br><br><span id="itemCount" style="font-size:22px; font-weight:bold;">0</span></div>
                 <div class="statBox">🔌 現在電力<br><br><span id="powerDisplay" style="font-size:22px; font-weight:bold; color:#ff9f1c;">100%</span><br><span id="instabilityDisplay" style="font-size:11px; color:#888;">電圧不安定度: 安定</span></div>
             </div>
@@ -449,6 +449,16 @@ input,select{
             <div style="margin-top:10px;">
                 <button id="rollButton" onclick="manualRoll()">手動パルス生産</button>
             </div>
+        </div>
+
+        <div class="panel" id="mysteryPanel" style="display:none;">
+            <h2>???</h2>
+            <div id="mysteryArea"></div>
+        </div>
+
+        <div class="panel" id="spacePanel" style="display:none;">
+            <h2>🚀 宇宙開拓</h2>
+            <div id="spaceArea"></div>
         </div>
 
         <div class="panel">
@@ -503,10 +513,10 @@ input,select{
             </div>
         </div>
 
-        <div class="panel">
+        <div class="panel" style="min-height:220px;">
             <h2>⚡ 発電所ハッキング</h2>
             <p style="font-size:12px; color:#aaa;">動くバーを<span style="color:#5edc88; font-weight:bold;">緑のゾーン</span>で止めると電力上昇！失敗すると微増、最悪停電。レベルが上がると上昇量と緑ゾーンが拡大。<br>※100%超で電圧が不安定になり、電力が高いほどブレーカーが落ちやすくなる。</p>
-            <div id="hackArea" class="center">
+            <div id="hackArea" class="center" style="min-height:240px;">
                 </div>
         </div>
 
@@ -531,9 +541,198 @@ input,select{
     </div>
 </div>
 
+<!-- 工場トラベルバー -->
+<div id="factoryTravelBar" style="position:fixed;top:0;left:0;right:0;z-index:200;background:linear-gradient(90deg,#0a1a0a,#1a3a1a);border-bottom:2px solid #5edc88;padding:6px 16px;display:none;gap:12px;align-items:center;">
+    <span style="color:#5edc88;font-weight:bold;font-size:13px;">🛸 工場トラベル</span>
+    <button onclick="travelToEarth()" id="travelEarthBtn" style="background:#1a2a1a;border:1px solid #5edc88;color:#5edc88;padding:4px 14px;border-radius:6px;font-size:12px;">🌍 地球の工場</button>
+    <button onclick="travelToQuaplanas()" id="travelQuaplanasBtn" style="background:#1a2a1a;border:1px solid #5edc88;color:#5edc88;padding:4px 14px;border-radius:6px;font-size:12px;">🌍✨ クァプラナス工場</button>
+</div>
+
+<!-- クァプラナス工場ワールド -->
+<div id="quaplanasWorld" style="display:none;padding-top:40px;">
+    <div style="background:linear-gradient(135deg,#050518 0%,#0a0a2a 30%,#0a1a20 60%,#1a0a2a 100%);min-height:100vh;padding:16px;">
+        <div style="max-width:1400px;margin:0 auto;">
+            <h1 style="color:#5edc88;font-size:20px;text-align:center;margin-bottom:12px;">🌍✨ クァプラナス工場</h1>
+            <div style="text-align:center;margin-bottom:8px;font-size:14px;color:#ffd166;">💠 クァプ: <span id="quapDisplay" style="font-weight:bold;">0</span> ｜ 💰 円: <span id="qMoneyDisplay">0</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <!-- 左カラム -->
+                <div>
+                    <div class="panel" style="background:#080818;border:1px solid #5edc8866;">
+                        <h2 style="color:#5edc88;">⚙️ 生産ライン</h2>
+                        <div id="qProductionArea" style="font-size:13px;color:#aaa;">初期化中...</div>
+                        <button id="qRollButton" onclick="quaplanasManualRoll()" style="margin-top:8px;">手動パルス生産</button>
+                    </div>
+                    <div class="panel" style="background:#080818;border:1px solid #5edc8866;margin-top:12px;">
+                        <h2 style="color:#5edc88;">⚙️ 工場拡張</h2>
+                        <div id="qUpgradeArea" style="font-size:13px;color:#aaa;"></div>
+                    </div>
+                    <div class="panel" style="background:#080818;border:1px solid #c0a0ff66;margin-top:12px;">
+                        <h2 style="color:#c0a0ff;">💠 RP研究</h2>
+                        <div id="qRPArea" style="font-size:13px;color:#aaa;">所持RP: <span id="qRPDisplay">0</span></div>
+                    </div>
+                </div>
+                <!-- 右カラム -->
+                <div>
+                    <div class="panel" style="background:#080818;border:1px solid #5edc8866;">
+                        <h2 style="color:#5edc88;">🎒 倉庫ストレージ</h2>
+                        <div id="qInventoryArea" style="font-size:13px;color:#aaa;max-height:300px;overflow-y:auto;"></div>
+                        <button onclick="qSendAll()" style="margin-top:6px;background:#5edc88;color:#111;">⚡ 全ワープ販売</button>
+                    </div>
+                    <div class="panel" style="background:#080818;border:1px solid #5edc8866;margin-top:12px;">
+                        <h2 style="color:#5edc88;">🏪 クァプラナス指定納品先市場</h2>
+                        <div id="qShopsArea" style="font-size:13px;color:#aaa;"></div>
+                    </div>
+                    <div class="panel" style="background:#080818;border:1px solid #5edc8866;margin-top:12px;">
+                        <h2 style="color:#5edc88;">📖 クァプラナスおにぎり図鑑 (<span id="qDictCount">0</span>種類)</h2>
+                        <div id="qDictionaryArea" style="font-size:12px;max-height:200px;overflow-y:auto;color:#bbb;">未発見</div>
+                    </div>
+                    <div class="panel" style="background:#080818;border:1px solid #5edc8866;margin-top:12px;">
+                        <h2 style="color:#5edc88;">📜 クァプラナスログ</h2>
+                        <div class="logBox" id="qLogBox"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="earthWorld">
+
 <script>
+// ===== クァプラナスおにぎり定義 =====
+const QUAPLANAS_ONIGIRIS = [
+    // Common
+    {name:"🐟🍙 真空サーモンおにぎり",    rarity:"common",   chance:200, price:1800},
+    {name:"🌌🍙 銀河こんぶおにぎり",      rarity:"common",   chance:180, price:1600},
+    {name:"💡🍙 発光わさびおにぎり",      rarity:"common",   chance:170, price:1700},
+    {name:"🦐🍙 浮遊エビおにぎり",        rarity:"common",   chance:160, price:1500},
+    {name:"🌿🍙 クァプラ草おにぎり",      rarity:"common",   chance:190, price:1400},
+    {name:"⭐🍙 星塩おにぎり",            rarity:"common",   chance:175, price:1600},
+    {name:"🌊🍙 青藻のりおにぎり",        rarity:"common",   chance:165, price:1500},
+    {name:"☄️🍙 小惑星しらすおにぎり",    rarity:"common",   chance:155, price:1700},
+    // Uncommon
+    {name:"🔵🍙 ルミナスイクラおにぎり",  rarity:"uncommon", chance:80,  price:4500},
+    {name:"⚡🍙 電圧タケおにぎり",        rarity:"uncommon", chance:75,  price:5000},
+    {name:"🦑🍙 レーザーイカおにぎり",    rarity:"uncommon", chance:70,  price:5200},
+    {name:"🌍🍙 重力マグロおにぎり",      rarity:"uncommon", chance:65,  price:5500},
+    {name:"✨🍙 星屑ハーブおにぎり",      rarity:"uncommon", chance:72,  price:4800},
+    {name:"🦀🍙 ネビュラガニおにぎり",    rarity:"uncommon", chance:68,  price:5300},
+    {name:"☄️🦐🍙 流星えびおにぎり",     rarity:"uncommon", chance:62,  price:5600},
+    {name:"💎🍙 結晶わかめおにぎり",     rarity:"uncommon", chance:60,  price:6000},
+    // Rare
+    {name:"☄️🍙 流星たらこおにぎり",     rarity:"rare",     chance:25,  price:15000},
+    {name:"💎🍙 結晶こんぶおにぎり",     rarity:"rare",     chance:22,  price:18000},
+    {name:"🌈🍙 オーロラサーモンおにぎり",rarity:"rare",     chance:20,  price:20000},
+    {name:"🧲🍙 磁気ツナおにぎり",       rarity:"rare",     chance:18,  price:22000},
+    {name:"🦞🍙 コスモロブスターおにぎり",rarity:"rare",     chance:15,  price:28000},
+    // Epic
+    {name:"🌑🍙 ダークケルプおにぎり",   rarity:"epic",     chance:8,   price:60000},
+    {name:"⚛️🍙 量子イクラおにぎり",     rarity:"epic",     chance:6,   price:80000},
+    {name:"🌀🍙 時空きのこおにぎり",     rarity:"epic",     chance:5,   price:100000},
+    {name:"☀️🍙 恒星しらすおにぎり",     rarity:"epic",     chance:5,   price:95000},
+    // Legendary
+    {name:"🌠🍙 星核マグロおにぎり",     rarity:"legend",   chance:2,   price:300000},
+    {name:"🕳️🍙 特異点こんぶおにぎり",   rarity:"legend",   chance:1,   price:500000},
+    // Mythical
+    {name:"⚡🐍🍙 プラズマウナギおにぎり",  rarity:"mythical", chance:0.3, price:1500000},
+    {name:"🌌💠🍙 ダークマター佃煮おにぎり",rarity:"mythical", chance:0.2, price:2000000},
+    {name:"💡🔵🍙 光子イクラおにぎり",      rarity:"mythical", chance:0.1, price:2500000},
+    // Secret
+    {name:"🛸🍙 UFOおにぎり",            rarity:"secret",   chance:0,   price:9999999},
+    {name:"⚛️🍙 量子おにぎり",           rarity:"secret",   chance:0,   price:9999999},
+];
+
+// クァプラナス工場データ初期化
+function initQuaplanasFactoryData(){
+    return {
+        speedLevel: 1, multiRoll: 1, mutationLevel: 0, qualityLevel: 0, packagingLevel: 0,
+        inventory: [], money: 0, foreignMoney: 0,
+        shops: [
+            {name:"🌌 銀河市場 α", unlocked:true, baseMulti:1.0, busy:false, saleId:null, endTime:0, pendingTotal:0, pendingCount:0},
+            {name:"⭐ 星系市場 β", unlocked:false, baseMulti:1.1, busy:false, saleId:null, endTime:0, pendingTotal:0, pendingCount:0},
+            {name:"🌀 時空市場 γ", unlocked:false, baseMulti:1.25, busy:false, saleId:null, endTime:0, pendingTotal:0, pendingCount:0},
+        ],
+        storageMax: 30,
+        lines: [], // 生産ライン
+        nextItemId: 1,
+        discoveredOnigiris: [],
+    };
+}
+
 let money = 0;
 let foreignMoney = 0;
+let foreignUnlocked = false;           // 外貨が初めて手に入ったか
+let rp = 0;                            // Research Points
+let rpUnlocked = false;                // RPが解放されたか
+let rpPerSec = 0;                      // 毎秒のRP生産量
+
+// 宇宙開拓フラグ
+let mysteryPanelUnlocked = false;
+let telescopeBought = false;
+let astronomyUnlocked = false;      // 月発見済み
+let spacePanelUnlocked = false;
+let moonUnlocked = false;           // 月カード
+let marsUnlocked = false;           // 火星カード
+let moonResearchers = 0;  // 月研究者
+let marsResearchers = 0;  // 火星研究者
+let moonResearcherBought = false;
+let marsResearcherBought = false;
+let _marsDiscoverTimer = null;
+let telescopeRPLevel = 0;
+
+// 観測進行
+let observeProgress = 0;            // 0~100 (惑星観測%)
+let observing = false;
+let _observeTimer = null;
+let currentObserveTarget = "";      // "moon" | "mars" | ...
+
+// 電波望遠鏡
+let radioTelescopeResearching = false;  // 電波望遠鏡研究中
+let radioTelescopeResearchProgress = 0;
+let _radioResearchTimer = null;
+let radioTelescopeUnlocked = false;     // 電波望遠鏡完成
+let radioObserving = false;
+let radioObserveProgress = 0;
+let _radioObserveTimer = null;
+let radioObserveTarget = "";            // 現在観測中の対象 "solar"|"blackhole"|"life"
+
+// 天体発見フラグ
+let solarSystemUnlocked = false;
+let blackholeUnlocked = false;
+let quaplanasUnlocked = false;
+let warpDeveloped = false;          // ワープエンジン開発済み
+let alienContactDone = false;       // 宇宙人と接触済み
+let ufoTechAcquired = false;        // UFO技術習得済み
+let quaplanasMission = null;       // { phase:"warp"|"secret", progress, startedAt }
+
+// クァプラナス工場・クァプ通貨
+let quaplanasResearched = false;
+let quaplanasFactory = false;
+let quap = 0;
+let currentWorld = "earth";
+let _quaplanasResearchProgress = 0;
+let _quaplanasResearchTimer = null;
+
+// ブラックホール研究
+let blackholeResearchProgress = 0;
+let blackholeResearching = false;
+let _bhResearchTimer = null;
+
+// RP工場強化
+let rpFactoryLevel = 0;             // 0~10
+const MAX_RP_FACTORY = 10;
+
+// ロケット関連
+let rocketDevelopProgress = 0;
+let rocketDeveloping = false;
+let _rocketDevTimer = null;
+// ロケットは1機のみ所持可能
+let ownedRockets = {};              // {small:0, medium:0, large:0}
+let ufoOwned = false;               // UFO所持
+let rocketMission = null;
+let rocketUnlocked = false;
+let rocketDevStarted = false;
+let telescopeBoughtAt = 0;
 let inventory = [];
 let selectedItems = [];
 let rolling = false;
@@ -574,6 +773,9 @@ let _errorEventActive = false;
 let _glowEventActive = false;
 let _matchaAnkoEventActive = false;
 let _illegalVoltageEventActive = false;
+let _midnightTensionActive = false;
+let _midnightTensionEnd = 0;
+let _midnightTensionTimer = null;
 let _compressedEventActive = false;
 let _smugglingEventActive = false;
 let _bribeEventActive = false;
@@ -662,64 +864,65 @@ const shops = [
     {name:"ライフ",        multi:4.0, time:50,  unlocked:false, busy:false, price:50000,  endTime:0, saleId:null, pendingTotal:0, pendingCount:0},
     {name:"いかりスーパー",multi:7.0, time:90,  unlocked:false, busy:false, price:120000, endTime:0, saleId:null, pendingTotal:0, pendingCount:0},
     {name:"闇通販",        multi:6.0, time:5,   unlocked:false, busy:false, price:2500000, endTime:0, saleId:null, pendingTotal:0, pendingCount:0},
-    {name:"海外輸出",      multi:1.0, time:300, unlocked:false, busy:false, price:10000000, endTime:0, saleId:null, pendingTotal:0, pendingCount:0, currency:"foreign"}
+    {name:"海外輸出",      multi:1.0, time:300, unlocked:false, busy:false, price:10000000, endTime:0, saleId:null, pendingTotal:0, pendingCount:0, currency:"foreign"},
+    {name:"海外通販",      multi:0.25, time:30,  unlocked:false, busy:false, price:0, priceForeign:10000, priceMoney:10000000000000, endTime:0, saleId:null, pendingTotal:0, pendingCount:0, currency:"foreign"}
 ];
 
 const onigiris = [
     // Common (80〜200円)
-    {name:"塩おにぎり",emoji:"🍙",price:80,chance:6.667,class:"common"},
-    {name:"梅おにぎり",emoji:"🔴🍙",price:90,chance:6.667,class:"common"},
-    {name:"昆布おにぎり",emoji:"🟫🍙",price:100,chance:6.667,class:"common"},
-    {name:"おかかおにぎり",emoji:"🟤🍙",price:110,chance:6.667,class:"common"},
-    {name:"高菜おにぎり",emoji:"🥬🍙",price:130,chance:6.667,class:"common"},
-    {name:"わかめおにぎり",emoji:"🌿🍙",price:140,chance:6.667,class:"common"},
-    {name:"しそおにぎり",emoji:"🍃🍙",price:155,chance:6.667,class:"common"},
-    {name:"ひじきおにぎり",emoji:"⚫🍙",price:170,chance:6.667,class:"common"},
-    {name:"しらすおにぎり",emoji:"🐠🍙",price:200,chance:6.667,class:"common"},
+    {name:"塩おにぎり",emoji:"🍙",price:80,chance:4.47,class:"common"},
+    {name:"梅おにぎり",emoji:"🔴🍙",price:90,chance:5.02,class:"common"},
+    {name:"昆布おにぎり",emoji:"🟫🍙",price:100,chance:5.58,class:"common"},
+    {name:"おかかおにぎり",emoji:"🟤🍙",price:110,chance:6.13,class:"common"},
+    {name:"高菜おにぎり",emoji:"🥬🍙",price:130,chance:7.24,class:"common"},
+    {name:"わかめおにぎり",emoji:"🌿🍙",price:140,chance:7.80,class:"common"},
+    {name:"しそおにぎり",emoji:"🍃🍙",price:155,chance:8.65,class:"common"},
+    {name:"ひじきおにぎり",emoji:"⚫🍙",price:170,chance:9.49,class:"common"},
+    {name:"しらすおにぎり",emoji:"🐠🍙",price:200,chance:11.17,class:"common"},
 
     // Uncommon (230〜500円)
-    {name:"鮭おにぎり",emoji:"🐟🍙",price:230,chance:3.125,class:"uncommon"},
-    {name:"明太子おにぎり",emoji:"🌶️🍙",price:270,chance:3.125,class:"uncommon"},
-    {name:"チーズおにぎり",emoji:"🧀🍙",price:310,chance:3.125,class:"uncommon"},
-    {name:"赤飯おにぎり",emoji:"🫘🍙",price:350,chance:3.125,class:"uncommon"},
-    {name:"キムチおにぎり",emoji:"🌶️🔥🍙",price:390,chance:3.125,class:"uncommon"},
-    {name:"ガーリックおにぎり",emoji:"🧄🍙",price:420,chance:3.125,class:"uncommon"},
-    {name:"鶏そぼろおにぎり",emoji:"🐔🍙",price:460,chance:3.125,class:"uncommon"},
-    {name:"オムレツおにぎり",emoji:"🥚🍙",price:500,chance:3.125,class:"uncommon"},
+    {name:"鮭おにぎり",emoji:"🐟🍙",price:230,chance:1.70,class:"uncommon"},
+    {name:"明太子おにぎり",emoji:"🌶️🍙",price:270,chance:1.99,class:"uncommon"},
+    {name:"チーズおにぎり",emoji:"🧀🍙",price:310,chance:2.28,class:"uncommon"},
+    {name:"赤飯おにぎり",emoji:"🫘🍙",price:350,chance:2.57,class:"uncommon"},
+    {name:"キムチおにぎり",emoji:"🌶️🔥🍙",price:390,chance:2.86,class:"uncommon"},
+    {name:"ガーリックおにぎり",emoji:"🧄🍙",price:420,chance:3.08,class:"uncommon"},
+    {name:"鶏そぼろおにぎり",emoji:"🐔🍙",price:460,chance:3.38,class:"uncommon"},
+    {name:"オムレツおにぎり",emoji:"🥚🍙",price:500,chance:3.67,class:"uncommon"},
 
     // Rare (570〜1200円)
-    {name:"ツナマヨ",emoji:"🥫🍙",price:570,chance:1.25,class:"rare"},
-    {name:"エビマヨ",emoji:"🦐🍙",price:650,chance:1.25,class:"rare"},
-    {name:"牛カルビおにぎり",emoji:"🥩🔥🍙",price:750,chance:1.25,class:"rare"},
-    {name:"角煮おにぎり",emoji:"🍖🍙",price:850,chance:1.25,class:"rare"},
-    {name:"ホタテおにぎり",emoji:"🐚🍙",price:950,chance:1.25,class:"rare"},
-    {name:"うなぎおにぎり",emoji:"🐍🍙",price:1050,chance:1.25,class:"rare"},
-    {name:"カニおにぎり",emoji:"🦀🍙",price:1130,chance:1.25,class:"rare"},
-    {name:"焼肉おにぎり",emoji:"🍢🍙",price:1200,chance:1.25,class:"rare"},
+    {name:"ツナマヨ",emoji:"🥫🍙",price:570,chance:0.57,class:"rare"},
+    {name:"エビマヨ",emoji:"🦐🍙",price:650,chance:0.65,class:"rare"},
+    {name:"牛カルビおにぎり",emoji:"🥩🔥🍙",price:750,chance:0.75,class:"rare"},
+    {name:"角煮おにぎり",emoji:"🍖🍙",price:850,chance:0.85,class:"rare"},
+    {name:"ホタテおにぎり",emoji:"🐚🍙",price:950,chance:0.95,class:"rare"},
+    {name:"うなぎおにぎり",emoji:"🐍🍙",price:1050,chance:1.05,class:"rare"},
+    {name:"カニおにぎり",emoji:"🦀🍙",price:1130,chance:1.13,class:"rare"},
+    {name:"焼肉おにぎり",emoji:"🍢🍙",price:1200,chance:1.20,class:"rare"},
 
     // Epic (1400〜2600円)
-    {name:"はちみつおにぎり",emoji:"🍯🍙",price:1400,chance:0.5,class:"epic"},
-    {name:"金箔おにぎり",emoji:"✨🍙",price:1600,chance:0.5,class:"epic"},
-    {name:"イクラおにぎり",emoji:"🟠🍙",price:1800,chance:0.5,class:"epic"},
-    {name:"明太マヨおにぎり",emoji:"🌋🍙",price:2000,chance:0.5,class:"epic"},
-    {name:"うにおにぎり",emoji:"🌞🍙",price:2100,chance:0.5,class:"epic"},
-    {name:"松茸おにぎり",emoji:"🍄🍙",price:2350,chance:0.5,class:"epic"},
-    {name:"のどぐろおにぎり",emoji:"⚫🐟🍙",price:2600,chance:0.5,class:"epic"},
+    {name:"はちみつおにぎり",emoji:"🍯🍙",price:1400,chance:0.18,class:"epic"},
+    {name:"金箔おにぎり",emoji:"✨🍙",price:1600,chance:0.20,class:"epic"},
+    {name:"イクラおにぎり",emoji:"🟠🍙",price:1800,chance:0.23,class:"epic"},
+    {name:"明太マヨおにぎり",emoji:"🌋🍙",price:2000,chance:0.25,class:"epic"},
+    {name:"うにおにぎり",emoji:"🌞🍙",price:2100,chance:0.26,class:"epic"},
+    {name:"松茸おにぎり",emoji:"🍄🍙",price:2350,chance:0.29,class:"epic"},
+    {name:"のどぐろおにぎり",emoji:"⚫🐟🍙",price:2600,chance:0.32,class:"epic"},
 
     // Legend (3000〜5500円)
-    {name:"和牛おにぎり",emoji:"🐄👑🍙",price:3000,chance:0.2,class:"legend"},
-    {name:"飛騨牛おにぎり",emoji:"🏔️🍙",price:3500,chance:0.2,class:"legend"},
-    {name:"神戸牛おにぎり",emoji:"💎🍙",price:4000,chance:0.2,class:"legend"},
-    {name:"毛ガニおにぎり",emoji:"🦀👑🍙",price:4400,chance:0.2,class:"legend"},
-    {name:"天然クエおにぎり",emoji:"🐡🍙",price:4800,chance:0.2,class:"legend"},
-    {name:"伊勢海老おにぎり",emoji:"🦞🍙",price:5500,chance:0.2,class:"legend"},
+    {name:"和牛おにぎり",emoji:"🐄👑🍙",price:3000,chance:0.08,class:"legend"},
+    {name:"飛騨牛おにぎり",emoji:"🏔️🍙",price:3500,chance:0.09,class:"legend"},
+    {name:"神戸牛おにぎり",emoji:"💎🍙",price:4000,chance:0.10,class:"legend"},
+    {name:"毛ガニおにぎり",emoji:"🦀👑🍙",price:4400,chance:0.11,class:"legend"},
+    {name:"天然クエおにぎり",emoji:"🐡🍙",price:4800,chance:0.12,class:"legend"},
+    {name:"伊勢海老おにぎり",emoji:"🦞🍙",price:5500,chance:0.14,class:"legend"},
 
     // Mythical (6500〜10000円)
-    {name:"焼きおにぎり",emoji:"🔥🍙🔥",price:6500,chance:0.06,class:"mythical"},
-    {name:"キャビアおにぎり",emoji:"⚫⚫🍙",price:7200,chance:0.06,class:"mythical"},
-    {name:"白トリュフおにぎり",emoji:"🤍🍙",price:8000,chance:0.06,class:"mythical"},
-    {name:"フォアグラおにぎり",emoji:"🦆🍙",price:9000,chance:0.06,class:"mythical"},
-    {name:"フカヒレおにぎり",emoji:"🦈🍙",price:10000,chance:0.06,class:"mythical"}
+    {name:"焼きおにぎり",emoji:"🔥🍙🔥",price:6500,chance:0.03,class:"mythical"},
+    {name:"キャビアおにぎり",emoji:"⚫⚫🍙",price:7200,chance:0.03,class:"mythical"},
+    {name:"白トリュフおにぎり",emoji:"🤍🍙",price:8000,chance:0.04,class:"mythical"},
+    {name:"フォアグラおにぎり",emoji:"🦆🍙",price:9000,chance:0.05,class:"mythical"},
+    {name:"フカヒレおにぎり",emoji:"🦈🍙",price:10000,chance:0.05,class:"mythical"}
 ];
 
 const firstMutations = [
@@ -749,15 +952,14 @@ const noriMutations = [
     {name:"神話の海苔",multi:4,chance:1,class:"mythical"}
 ];
 
-const fillingMutations = [
-    {name:"具なし",        multi:1.0,  chance:55, class:"common"},
-    {name:"梅干し",        multi:1.2,  chance:40, class:"common"},
-    {name:"鮭フレーク",    multi:1.5,  chance:20, class:"uncommon"},
-    {name:"ツナマヨ",      multi:1.8,  chance:14, class:"uncommon"},
-    {name:"明太子",        multi:2.2,  chance:7,  class:"rare"},
-    {name:"いくら",        multi:3.0,  chance:3,  class:"epic"},
-    {name:"トリュフ",      multi:6.0,  chance:1,  class:"mythical"},
-    {name:"幻の白トリュフ",multi:12.0, chance:1,  class:"mythical"},
+const flavorMutations = [
+    {name:"味が薄い",    multi:0.85, chance:15, class:"common"},
+    {name:"普通",        multi:1.0,  chance:40, class:"common"},
+    {name:"味が濃い",    multi:1.2,  chance:25, class:"uncommon"},
+    {name:"味が濃すぎる",multi:1.5,  chance:12, class:"rare"},
+    {name:"濃縮",        multi:2.0,  chance:5,  class:"epic"},
+    {name:"超濃縮",      multi:3.5,  chance:2,  class:"legend"},
+    {name:"血圧上昇",    multi:6.0,  chance:1,  class:"mythical"},
 ];
 
 const shapeMutations = [
@@ -788,15 +990,29 @@ const trends = [
     { name: "安定市場", targetType: "none", targetKey: "", multi: 1.0, desc: "特記事項なし" }
 ];
 
+const _logRecentMap = {}; // key: text, value: {count, firstTime}
 function addLog(type, text) {
     const logBox = document.getElementById("logBox");
+    if(!logBox) return;
+    const now = Date.now();
+    // 10秒10回制限
+    const key = text.slice(0, 60);
+    if(!_logRecentMap[key]) _logRecentMap[key] = {count:0, firstTime:now};
+    const rec = _logRecentMap[key];
+    if(now - rec.firstTime > 10000){ rec.count = 0; rec.firstTime = now; }
+    rec.count++;
+    if(rec.count > 10) return; // 10秒間に10回超えたら無視
     const time = new Date().toLocaleTimeString();
     let color = "#4af626";
     if (type === "警告") color = "#ff9f1c";
     if (type === "危険" || type === "事故") color = "#ff3333";
     if (type === "AI") color = "#55aaff";
-
-    logBox.innerHTML += `<div style="color:${color}">[${type}][${time}] ${text}</div>`;
+    const div = document.createElement("div");
+    div.style.color = color;
+    div.textContent = `[${type}][${time}] ${text}`;
+    logBox.appendChild(div);
+    // 30件超えたら古いものから削除
+    while(logBox.children.length > 30) logBox.removeChild(logBox.firstChild);
     logBox.scrollTop = logBox.scrollHeight;
 }
 
@@ -808,11 +1024,12 @@ function showTopNotice(text, duration=4000){
     el._timer = setTimeout(()=>el.classList.remove("show"), duration);
 }
 
-function showToast(text){
+function showToast(text, duration){
     const toast = document.getElementById("toast");
     toast.textContent = text;
     toast.classList.add("show");
-    setTimeout(()=>toast.classList.remove("show"),2000);
+    clearTimeout(toast._t);
+    toast._t = setTimeout(()=>toast.classList.remove("show"), duration||2000);
 }
 
 function formatForeign(value){
@@ -875,7 +1092,7 @@ function getStageDetail(process, stageName){
     if(stageName === "田んぼ") return process.rice;
     if(stageName === "精米") return process.qualityDetail;
     if(stageName === "炊飯") return process.cook;
-    if(stageName === "具材") return process.fillingDetail;
+    if(stageName === "具材") return process.flavorDetail;
     if(stageName === "成形") return process.shape;
     if(stageName === "海苔") return process.nori;
     if(stageName === "包装") return process.packagingDetail;
@@ -894,7 +1111,7 @@ function buildProductionProcess(){
     
     const qualityClass = quality >= 95 ? "mythical" : quality >= 85 ? "legend" : quality >= 70 ? "epic" : "common";
     const cook = weightedRandom(secondMutations, true);
-    const filling = weightedRandom(fillingMutations, true);
+    const flavor = weightedRandom(flavorMutations, true);
     let shape = weightedRandom(shapeMutations, true);
     let nori = weightedRandom(noriMutations, true);
     
@@ -932,22 +1149,28 @@ function buildProductionProcess(){
     } else if (nori.name !== "普通の海苔") {
         name += `(${nori.name})`;
     }
-    if(RARITY_ORDER.indexOf(nori.class) > RARITY_ORDER.indexOf(finalClass)) finalClass = nori.class;
+    if(RARITY_ORDER.indexOf(nori.class) > RARITY_ORDER.indexOf(finalClass)) {} // レア度はおにぎりの種類のみで決定
 
     let dangerText = "低";
     let dangerBadgeClass = "danger-low";
     if (dangerScore >= 4) { dangerText = "EX"; dangerBadgeClass = "danger-ex"; finalClass = "danger-ex"; }
-    else if (dangerScore === 3) { dangerText = "高"; dangerBadgeClass = "danger-high"; finalClass = "mythical"; }
-    else if (dangerScore >= 1) { dangerText = "中"; dangerBadgeClass = "danger-mid"; finalClass = "epic"; }
+    else if (dangerScore === 3) {
+        dangerText = "高"; dangerBadgeClass = "danger-high";
+        if(RARITY_ORDER.indexOf(finalClass) < RARITY_ORDER.indexOf("mythical")) finalClass = "mythical";
+    }
+    else if (dangerScore >= 1) {
+        dangerText = "中"; dangerBadgeClass = "danger-mid";
+        if(RARITY_ORDER.indexOf(finalClass) < RARITY_ORDER.indexOf("epic")) finalClass = "epic";
+    }
 
     if (dangerText === "EX" || (dangerText === "高" && maxDangerAchieved !== "EX")) maxDangerAchieved = dangerText;
 
     return {
-        base, product, rice, quality, qualityMulti, cook, filling, shape, nori, name,
+        base, product, rice, quality, qualityMulti, cook, flavor, shape, nori, name,
         emoji: accidents.includes("自我の覚醒(AI倫理OFF)") ? "👁️" : base.emoji,
         accidents, dangerText, dangerBadgeClass, class: finalClass,
         qualityDetail:{ name:`品質${quality}%`, label:`品質${quality}% x${qualityMulti.toFixed(2)}`, class:qualityClass },
-        fillingDetail:{ name:filling.name, label:`${filling.name} x${filling.multi}`, class:filling.class },
+        flavorDetail:{ name:flavor.name, label:`${flavor.name} x${flavor.multi}`, class:flavor.class },
         packagingDetail:{ name:product.kind, label:`${product.kind} / ${product.count}個`, class:packagingLevel > 0 ? "rare" : "common" },
         inspectDetail:{ name:"検査OK", label: accidents.length > 0 ? "⚠️検知回避出荷" : "AI通常検査パス", class: accidents.length > 0 ? "epic" : "uncommon" }
     };
@@ -1060,21 +1283,39 @@ const RARITY_COLORS = {
 // mutations 文字列は "🌾 米: 新潟県コシヒカリ (x3)" 形式
 // getStageDetailの結果を使うのが難しいのでクラス名のキーワードマッチで色付け
 const RARITY_KEYWORDS = {
-    mythical: ["神話","七輪","コシヒカリ","SuperGiant","焼きおにぎり","幻の白トリュフ","トリュフ"],
-    legend:   ["品質9","品質8","金箔海苔","農家直送"],
-    epic:     ["棚田","羽釜","味付け海苔","Giant","焼肉","いくら","品質7"],
-    rare:     ["北海道","備長炭","韓国のり","BIG","エビマヨ","ツナマヨ","明太子"],
-    uncommon: ["もち木","高級炊飯","有明","鮭フレーク","梅干し"],
+    mythical: ["神話","七輪","コシヒカリ","SuperGiant","焼きおにぎり","血圧上昇"],
+    legend:   ["品質9","品質8","金箔海苔","農家直送","超濃縮"],
+    epic:     ["棚田","羽釜","味付け海苔","Giant","焼肉","いくら","品質7","濃縮"],
+    rare:     ["北海道","備長炭","韓国のり","BIG","エビマヨ","ツナマヨ","明太子","味が濃すぎる"],
+    uncommon: ["もち木","高級炊飯","有明","鮭フレーク","梅干し","味が濃い"],
 };
 function calcBaseOdds(itemName){
-    // 激レア特別おにぎり（全SECRET共通で1/???）
     const secretKeywords = ["バナナ","DJ","Error","発光","抹茶あんこ","違法電圧","圧縮","密輸","賄賂","???"];
     if(secretKeywords.some(k => itemName.includes(k))) return "1/???";
-    const total = onigiris.reduce((s,o)=>s+o.chance,0);
-    const o = onigiris.find(o => itemName === o.name || itemName.includes(o.name));
-    if(!o) return null;
-    const denom = Math.round(total / o.chance);
-    return denom === 1 ? null : `1/${denom}`;
+    // ベースおにぎりを特定
+    const baseTotal = onigiris.reduce((s,o)=>s+o.chance, 0);
+    const base = onigiris.find(o => itemName.includes(o.name));
+    if(!base) return null;
+    const baseDenom = Math.round(baseTotal / base.chance);
+    // 各変異の確率を計算
+    function mutChance(list, name){
+        if(!name || name === list[0]?.name) return 1; // 最初はデフォルト
+        const total = list.reduce((s,m)=>s+m.chance,0);
+        const m = list.find(x=>itemName.includes(x.name) || name===x.name);
+        return m ? m.chance/total : 1;
+    }
+    // おおよその出現確率分母（base × 変異を掛け合わせ）
+    const allMuts = [...firstMutations, ...secondMutations, ...flavorMutations, ...shapeMutations, ...noriMutations];
+    // 変異チェック（名前に含まれるものを探す）
+    let mutFactor = 1;
+    [firstMutations, secondMutations, flavorMutations, shapeMutations, noriMutations].forEach(list=>{
+        const total = list.reduce((s,m)=>s+m.chance,0);
+        const found = list.find(m=>m.name!=="なし"&&m.name!=="通常サイズ"&&m.name!=="普通の海苔"&&itemName.includes(m.name));
+        if(found) mutFactor *= total/found.chance;
+    });
+    const finalDenom = Math.round(baseDenom * mutFactor);
+    if(finalDenom <= 1) return null;
+    return finalDenom > 9999 ? `1/${(finalDenom/10000).toFixed(1)}万` : `1/${finalDenom.toLocaleString()}`;
 }
 
 function colorMutation(text){
@@ -1252,16 +1493,16 @@ function tickLines(now){
                         const roll = Math.random();
                         // 各値は累積閾値（合計ちょうど0.0001 = 0.01%）
                         const SECRETS = [
-                            { check: ()=>!_bananaEventActive,         threshold: 0.0000167598, name:"🍌バナナおにぎり",    emoji:"🍌", price:99999, trigger: triggerBananaEvent },
-                            { check: ()=>!_djEventActive,             threshold: 0.0000318436, name:"🎧DJおにぎり",        emoji:"🎧", price:95000, trigger: triggerDjEvent },
-                            { check: ()=>!_errorEventActive,          threshold: 0.0000456238, name:"❌Errorおにぎり",     emoji:"❌", price:88888, trigger: triggerErrorEvent },
-                            { check: ()=>!_glowEventActive,           threshold: 0.0000577281, name:"✨発光おにぎり",      emoji:"✨", price:85000, trigger: triggerGlowEvent },
-                            { check: ()=>!_matchaAnkoEventActive,     threshold: 0.0000681564, name:"🍵抹茶あんこおにぎり",emoji:"🍵", price:80000, trigger: triggerMatchaAnkoEvent },
-                            { check: ()=>!_illegalVoltageEventActive, threshold: 0.0000765363, name:"⚡違法電圧おにぎり",  emoji:"⚡", price:77777, trigger: triggerIllegalVoltageEvent },
-                            { check: ()=>!_compressedEventActive,     threshold: 0.0000836127, name:"📦圧縮おにぎり",      emoji:"📦", price:75000, trigger: triggerCompressedEvent },
-                            { check: ()=>!_smugglingEventActive,      threshold: 0.0000892924, name:"🚢密輸おにぎり",      emoji:"🚢", price:72000, trigger: triggerSmugglingEvent },
-                            { check: ()=>!_bribeEventActive,          threshold: 0.0000939479, name:"💴賄賂おにぎり",      emoji:"💴", price:70000, trigger: triggerBribeEvent },
-                            { check: ()=>!_unknownEventActive,        threshold: 0.0001000000, name:"❓???おにぎり",       emoji:"❓", price:99999, trigger: triggerUnknownEvent },
+                            { check: ()=>!_bananaEventActive,         threshold: ()=>0.0000502794*(_midnightTensionActive?7.77:1), name:"🍌バナナおにぎり",    emoji:"🍌", price:99999, trigger: triggerBananaEvent },
+                            { check: ()=>!_djEventActive,             threshold: ()=>0.0000955308*(_midnightTensionActive?7.77:1), name:"🎧DJおにぎり",        emoji:"🎧", price:95000, trigger: triggerDjEvent },
+                            { check: ()=>!_errorEventActive,          threshold: ()=>0.0001368714*(_midnightTensionActive?7.77:1), name:"❌Errorおにぎり",     emoji:"❌", price:88888, trigger: triggerErrorEvent },
+                            { check: ()=>!_glowEventActive,           threshold: ()=>0.0001731843*(_midnightTensionActive?7.77:1), name:"✨発光おにぎり",      emoji:"✨", price:85000, trigger: triggerGlowEvent },
+                            { check: ()=>!_matchaAnkoEventActive,     threshold: ()=>0.0002044692*(_midnightTensionActive?7.77:1), name:"🍵抹茶あんこおにぎり",emoji:"🍵", price:80000, trigger: triggerMatchaAnkoEvent },
+                            { check: ()=>!_illegalVoltageEventActive, threshold: ()=>0.0002296089*(_midnightTensionActive?7.77:1), name:"⚡違法電圧おにぎり",  emoji:"⚡", price:77777, trigger: triggerIllegalVoltageEvent },
+                            { check: ()=>!_compressedEventActive,     threshold: ()=>0.0002508381*(_midnightTensionActive?7.77:1), name:"📦圧縮おにぎり",      emoji:"📦", price:75000, trigger: triggerCompressedEvent },
+                            { check: ()=>!_smugglingEventActive,      threshold: ()=>0.0002678772*(_midnightTensionActive?7.77:1), name:"🚢密輸おにぎり",      emoji:"🚢", price:72000, trigger: triggerSmugglingEvent },
+                            { check: ()=>!_bribeEventActive,          threshold: ()=>0.0002818437*(_midnightTensionActive?7.77:1), name:"💴賄賂おにぎり",      emoji:"💴", price:70000, trigger: triggerBribeEvent },
+                            { check: ()=>!_unknownEventActive,        threshold: ()=>0.0003000000*(_midnightTensionActive?7.77:1), name:"❓???おにぎり",       emoji:"❓", price:99999, trigger: triggerUnknownEvent },
                         ];
                         let cumulative = 0;
                         for(const sec of SECRETS){
@@ -1299,8 +1540,8 @@ function tickLines(now){
                 const muts=[
                     `🌾 米: ${p.rice.name} (x${p.rice.multi})`,
                     `⚙️ 精米: 品質${p.quality}%`,
-                    `🥢 具材: ${p.filling.name} (x${p.filling.multi})`,
-                    `⬛ 海苔: ${p.nori.name}`,
+                    `🧂 味付け: ${p.flavor.name} (x${p.flavor.multi})`,
+                    `⬛ 海苔: ${p.nori.name} (x${p.nori.multi})`,
 
                 ];
                 if(p.accidents.length) muts.push(`💥 異常: ${p.accidents.join(",")}`);
@@ -1414,7 +1655,7 @@ function getTrendMulti(process){
 }
 
 function calcTotal(process){
-    let total = process.base.price * process.rice.multi * process.qualityMulti * process.cook.multi * (process.filling ? process.filling.multi : 1) * process.shape.multi * process.nori.multi;
+    let total = process.base.price * process.rice.multi * process.qualityMulti * process.cook.multi * (process.flavor ? process.flavor.multi : 1) * process.shape.multi * process.nori.multi;
     if (process.accidents.includes("異常発酵")) total *= 2.0;
     if (process.accidents.includes("自我の覚醒(AI倫理OFF)")) total *= 1.5;
     total *= getTrendMulti(process);
@@ -1434,6 +1675,17 @@ function renderInventory(){
 
     document.getElementById("money").textContent = Math.floor(money).toLocaleString();
     document.getElementById("foreignMoney").textContent = `外貨 ${formatForeign(foreignMoney)}`;
+    if(quaplanasFactory){
+            const tb = document.getElementById("factoryTravelBar"); if(tb){ tb.style.display="flex"; tb.style.setProperty("display","flex","important"); }
+        }
+        if(foreignUnlocked) document.getElementById("foreignMoney").style.display = "";
+    if(rpUnlocked){
+        const rpEl = document.getElementById("rpDisplay");
+        rpEl.style.display = "";
+        rpEl.textContent = `RP ${rp.toFixed(0)}`;
+    }
+    if(mysteryPanelUnlocked) renderMysteryPanel();
+    if(spacePanelUnlocked) renderSpacePanel();
     document.getElementById("itemCount").textContent = `${inventory.length}/${getStorageLimit()}`;
 }
 
@@ -1545,7 +1797,14 @@ function vsRender(){
         if(!card) break;
         if(card.type === 'transport'){
             const { saleId, items } = card;
-            const remain = Math.max(0, Math.ceil((items[0].transportEnd - Date.now()) / 1000));
+            // transportEndが未設定または既に過ぎている場合はカウントダウンを0に固定しない
+            const firstEnd = items[0] ? items[0].transportEnd : 0;
+            const remain = firstEnd > 0 ? Math.max(0, Math.ceil((firstEnd - Date.now()) / 1000)) : 0;
+            // 0sで固まっている場合（endTimeが設定済みなのにremain=0が続く）は表示スキップ
+            if(firstEnd > 0 && remain === 0 && Date.now() > firstEnd + 2000){
+                // finishSellが呼ばれるまで少し待つ（staleなカードを非表示）
+                continue;
+            }
             const total = items.reduce((s,it)=>s+it.finalPrice, 0);
             const shop = shops.find(s=>s.saleId===saleId);
             const shopName = shop ? shop.name : '輸送先';
@@ -1752,10 +2011,12 @@ function renderShops(){
         div.innerHTML += `
             <div class="shop ${shop.unlocked ? "" : "locked"}" id="shop${index}" ondragover="shopHover(event,${index})" ondrop="dropSell(event,${index})" ondragleave="shopLeave(${index})">
                 <h3>${shop.name}</h3>
-                <div>${shop.currency === "foreign" ? "外貨換算: 1億円=1外貨" : `市場倍率 x${shop.multi}`}</div>
+                <div>${shop.currency === "foreign" ? `市場倍率 x${shop.multi}<br>外貨換算: 1億円=1外貨` : `市場倍率 x${shop.multi}`}</div>
                 <div>輸送時間: ${shop.time}秒</div>
                 <div style="font-weight:bold; margin-top:5px;">${shop.busy ? `🚚 納品中 ${shop.pendingCount||""}個 (${remain}秒)` : shop.unlocked ? "注文待機中" : "未開放市場"}</div>
-                ${!shop.unlocked ? `<button class="btn-shop" onclick="buyShop(${index})" ${money < shop.price ? "disabled" : ""}>市場開拓(${shop.price.toLocaleString()}円)</button>` : ""}
+                ${!shop.unlocked ? (shop.priceForeign !== undefined
+                    ? `<button class="btn-shop" onclick="buyShop(${index})" ${(money < shop.priceMoney || foreignMoney < shop.priceForeign) ? "disabled" : ""}>市場開拓(外貨${shop.priceForeign.toLocaleString()} + ${shop.priceMoney.toLocaleString()}円)</button>`
+                    : `<button class="btn-shop" onclick="buyShop(${index})" ${money < shop.price ? "disabled" : ""}>市場開拓(${shop.price.toLocaleString()}円)</button>`) : ""}
             </div>
         `;
     });
@@ -1846,6 +2107,16 @@ function finishSell(shopIndex,saleId){
     if(shop.currency === "foreign"){
         const earnedForeign = profit / 100000000;
         foreignMoney += earnedForeign;
+        if(!foreignUnlocked){
+            foreignUnlocked = true;
+            document.getElementById("foreignMoney").style.display = "";
+            // 外貨強化エリアも表示されるのでrenderAllで対応
+        }
+        if(!mysteryPanelUnlocked && foreignMoney >= 10000){
+            mysteryPanelUnlocked = true;
+            document.getElementById("mysteryPanel").style.display = "";
+            addLog("通知", "❓ 不明なシグナルを受信。作業場の隅に見慣れないカードが現れた。");
+        }
         addLog("通知", `${shop.name}への納品完了。外貨 +${formatForeign(earnedForeign)} を受領。`);
         renderAll();
         return;
@@ -1899,11 +2170,11 @@ function renderHackArea(){
         const autoRecoverBtn = autoRecoverOwned
             ? `<span style="font-size:11px;color:#5edc88;margin-left:8px;">✅ 自動復旧待機中...</span>`
             : ``;
-        area.innerHTML = `<button onclick="recoverPower()" style="background:#5edc88; width:100%;">ブレーカー復旧 (100万円 / 5秒)</button>${autoRecoverBtn}`;
+        area.innerHTML = `<div style="min-height:240px;"><button onclick="recoverPower()" style="background:#5edc88; width:100%;">ブレーカー復旧 (100万円 / 5秒)</button>${autoRecoverBtn}</div>`;
         return;
     }
     if(hackLevel === 0){
-        area.innerHTML = `<button onclick="buyHack(0)" ${money < HACK_LEVEL_COSTS[0] ? "disabled":""} style="width:100%;">ハッキングモジュール解放 Lv1 (${HACK_LEVEL_COSTS[0].toLocaleString()}円)<br><span style="font-size:11px;opacity:0.7;">電力+10% / 緑ゾーン幅: 小</span></button>`;
+        area.innerHTML = `<div style="min-height:240px;"><button onclick="buyHack(0)" ${money < HACK_LEVEL_COSTS[0] ? "disabled":""} style="width:100%;">ハッキングモジュール解放 Lv1 (${HACK_LEVEL_COSTS[0].toLocaleString()}円)<br><span style="font-size:11px;opacity:0.7;">電力+10% / 緑ゾーン幅: 小</span></button></div>`;
         return;
     }
     const cfg = HACK_CONFIGS[hackLevel-1];
@@ -1934,19 +2205,23 @@ function renderHackArea(){
         const zoneLeft = 85 - cfg.zoneW;
         const isAutoHack = hackerOwned && hackerEnabled && _hackerPhase === "playing";
         area.innerHTML = `
+            <div style="min-height:${hackerOwned ? '230px' : '130px'};">
             <div style="font-size:11px;color:#aaa;margin-bottom:3px;">Lv${hackLevel} ${HACK_LEVEL_NAMES[hackLevel-1]} | 成功:+${cfg.gain}%${isAutoHack ? ' | <span style="color:#c86cff;">🤖 ハッカー自動操作中</span>' : ''}</div>
             <div style="width:100%; height:30px; background:#111; position:relative; border-radius:15px; overflow:hidden; border:2px solid ${isAutoHack ? '#c86cff' : '#444'};">
                 <div style="position:absolute; left:${zoneLeft}%; width:${cfg.zoneW}%; height:100%; background:#5edc88;"></div>
                 <div id="hackCursor" style="position:absolute; left:0%; width:6px; height:100%; background:#ff3333; transform:translateX(-50%); box-shadow:0 0 10px #ff3333;"></div>
             </div>
             ${isAutoHack ? '<div style="font-size:11px;color:#c86cff;text-align:center;margin-top:4px;">自動STOP待機中...</div>' : `<button onclick="stopHack()" style="background:#ff9f1c; width:100%; margin-top:8px;">STOP!</button>`}
+            </div>
             ${hackerLabel}
         `;
     } else {
         area.innerHTML = `
+            <div style="min-height:${hackerOwned ? '230px' : '130px'};">
             <div style="font-size:11px;color:#aaa;margin-bottom:4px;">Lv${hackLevel} ${HACK_LEVEL_NAMES[hackLevel-1]} | 成功:+${cfg.gain}% | 緑ゾーン幅:${cfg.zoneW}%</div>
             <button onclick="startHack()" style="background:#ff9f1c; width:100%;">グリッド過負荷注入 (ミニゲーム開始)</button>
             <div style="margin-top:4px;">${upgradeBtn}</div>
+            </div>
             ${hackerLabel}
         `;
     }
@@ -2052,8 +2327,8 @@ function confirmSecretStorageReplace(){
     const muts = [
         `🌾 米: ${p.rice.name} (x${p.rice.multi})`,
         `⚙️ 精米: 品質${p.quality}%`,
-        `🥢 具材: ${p.filling.name} (x${p.filling.multi})`,
-        `⬛ 海苔: ${p.nori.name}`,
+        `🧂 味付け: ${p.flavor.name} (x${p.flavor.multi})`,
+        `⬛ 海苔: ${p.nori.name} (x${p.nori.multi})`,
     ];
     if(p.accidents.length) muts.push(`💥 異常: ${p.accidents.join(",")}`);
     inventory.push({
@@ -2303,6 +2578,56 @@ function triggerIllegalVoltageEvent(){
         _illegalVoltageEventActive = false;
     }, 5200);
 }
+function triggerMidnightTension(){
+    if(_midnightTensionActive) return;
+    _midnightTensionActive = true;
+    _midnightTensionEnd = Date.now() + 60000;
+    showTopNotice("🍀 おにぎり工場が深夜テンションになります！シークレット率が777%倍増します！！！", 7000);
+    // ブレーカー通知の2倍サイズで表示
+    setTimeout(()=>{
+        const notice = document.getElementById("topNotice");
+        if(notice){ notice.style.fontSize = "22px"; notice.style.padding = "18px 32px"; }
+    }, 50);
+    addLog("通知", "🍀 深夜テンション発生！1分間シークレット率777%倍増！");
+    renderBuffs();
+    if(_midnightTensionTimer) clearTimeout(_midnightTensionTimer);
+    _midnightTensionTimer = setTimeout(()=>{
+        _midnightTensionActive = false;
+        _midnightTensionEnd = 0;
+        const notice2 = document.getElementById("topNotice");
+        if(notice2){ notice2.style.fontSize = ""; notice2.style.padding = ""; }
+        addLog("通知", "🍀 深夜テンション終了");
+        renderBuffs();
+    }, 60000);
+}
+
+function renderBuffs(){
+    let el = document.getElementById("buffBar");
+    if(!el){
+        el = document.createElement("div");
+        el.id = "buffBar";
+        el.style.cssText = "position:fixed;bottom:16px;right:16px;z-index:500;display:flex;flex-direction:column;gap:6px;align-items:flex-end;";
+        document.body.appendChild(el);
+    }
+    el.innerHTML = "";
+    if(_midnightTensionActive){
+        const rem = Math.max(0, Math.ceil((_midnightTensionEnd - Date.now())/1000));
+        const div = document.createElement("div");
+        div.style.cssText = "background:#1a2a0a;border:1px solid #5edc88;border-radius:8px;padding:6px 12px;font-size:13px;color:#5edc88;cursor:default;";
+        div.textContent = `🍀 深夜テンション ${rem}秒`;
+        div.title = "シークレット率777%倍増";
+        el.appendChild(div);
+    }
+}
+
+// 深夜テンション：1分に1回7%で発生
+setInterval(()=>{
+    if(!_midnightTensionActive && Math.random() < 0.07) triggerMidnightTension();
+    if(_midnightTensionActive) renderBuffs(); // カウントダウン更新
+}, 60000);
+// バフ表示更新（カウントダウン）
+setInterval(()=>{ if(_midnightTensionActive) renderBuffs(); }, 1000);
+
 
 function triggerCompressedEvent(){
     if(_compressedEventActive) return;
@@ -2997,9 +3322,10 @@ function renderTruckCard(type,title){
             <button onclick="buyTruck('${type}')" ${money < truck.price || truck.owned ? "disabled":""} style="padding:4px 8px; font-size:11px;">
                 ${truck.owned ? "確保済" : `購入(${truck.price.toLocaleString()}円)`}
             </button>
-            <button onclick="upgradeTruck('${type}')" ${!truck.owned || money < upgradeCost || truck.upgradeLevel >= truck.maxUpgrade ? "disabled":""} style="padding:4px 8px; font-size:11px;">
-                強化 L.${truck.upgradeLevel} (${upgradeCost.toLocaleString()}円)
-            </button>
+            ${truck.upgradeLevel >= truck.maxUpgrade
+                ? `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み</span>`
+                : `<button onclick="upgradeTruck('${type}')" ${!truck.owned || money < upgradeCost ? "disabled":""} style="padding:4px 8px; font-size:11px;">強化 L.${truck.upgradeLevel} (${upgradeCost.toLocaleString()}円)</button>`
+            }
         </div>
     `;
 }
@@ -3066,6 +3392,925 @@ function triggerFactoryFire(){
     }
     renderAll();
 }
+// ===== 宇宙開拓 =====
+function renderMysteryPanel(){
+    const area = document.getElementById("mysteryArea");
+    if(!area) return;
+    if(spacePanelUnlocked){
+        document.getElementById("mysteryPanel").style.display = "none";
+        return;
+    }
+    if(!telescopeBought){
+        area.innerHTML = `
+            <div style="font-size:13px;color:#aaa;margin-bottom:8px;">不明なシグナルの発信源は…宇宙？<br>解析するには特殊な機材が必要かもしれない。</div>
+            <button onclick="buyTelescope()" ${foreignMoney < 10000 ? "disabled":""} style="background:#334;border:1px solid #55aaff;color:#aaccff;padding:6px 16px;border-radius:8px;">
+                🔭 天文学者と天体望遠鏡を雇う<br><span style="font-size:11px;color:#88aaff;">外貨 10,000</span>
+            </button>`;
+    } else if(!astronomyUnlocked){
+        // 観測UI
+        let obsHtml = `<div style="font-size:13px;color:#5edc88;margin-bottom:6px;">✅ 購入済み - 🔭 天文学者と天体望遠鏡</div>`;
+        if(!observing && observeProgress === 0){
+            obsHtml += `<button onclick="startObserve('moon')" style="background:#1a2040;border:1px solid #55aaff;color:#aaccff;padding:5px 14px;border-radius:6px;font-size:12px;">🔭 惑星を観測する</button>`;
+        } else if(observing || observeProgress > 0){
+            obsHtml += `<div style="font-size:12px;color:#aaa;margin-bottom:4px;">惑星を観測中... ${observeProgress}%</div>
+            <div style="background:#111;border-radius:6px;height:12px;overflow:hidden;">
+                <div style="width:${observeProgress}%;height:100%;background:linear-gradient(90deg,#55aaff,#c0a0ff);transition:.5s;"></div>
+            </div>`;
+        }
+        area.innerHTML = obsHtml;
+    }
+}
+
+function ensurePlanetHierarchy(){
+    // 上位惑星があるのに下位惑星がない場合、下位を自動解放
+    if(marsUnlocked && !moonUnlocked){
+        moonUnlocked = true; astronomyUnlocked = true; spacePanelUnlocked = true;
+        document.getElementById("mysteryPanel").style.display = "none";
+        document.getElementById("spacePanel").style.display = "";
+    }
+    if(solarSystemUnlocked && !marsUnlocked){ marsUnlocked = true; }
+    if(solarSystemUnlocked && !moonUnlocked){ moonUnlocked = true; }
+    if(blackholeUnlocked && !solarSystemUnlocked){ solarSystemUnlocked = true; }
+    if(blackholeUnlocked && !marsUnlocked){ marsUnlocked = true; }
+    if(blackholeUnlocked && !moonUnlocked){ moonUnlocked = true; }
+    if(quaplanasUnlocked && !blackholeUnlocked){ blackholeUnlocked = true; }
+    if(quaplanasUnlocked && !solarSystemUnlocked){ solarSystemUnlocked = true; }
+    if(quaplanasUnlocked && !marsUnlocked){ marsUnlocked = true; }
+    if(quaplanasUnlocked && !moonUnlocked){ moonUnlocked = true; }
+}
+
+function renderSpacePanel(){
+    ensurePlanetHierarchy();
+    const panel = document.getElementById("spacePanel");
+    const area = document.getElementById("spaceArea");
+    if(!panel || !area) return;
+    panel.style.display = "";
+
+    let html = ``;
+
+    // 天文学者と天体望遠鏡カード
+    html += `<div style="background:#101828;border:1px solid #55aaff44;border-radius:8px;padding:10px 14px;margin-bottom:8px;">`;
+    html += `<div style="font-size:13px;color:#88ccff;margin-bottom:4px;">`;
+    if(radioTelescopeUnlocked){
+        html += `📡 電波望遠鏡 <span style="font-size:11px;color:#5edc88;">✅ 購入済み</span>`;
+    } else {
+        html += `🔭 天文学者と天体望遠鏡 <span style="font-size:11px;color:#5edc88;">✅ 購入済み</span>`;
+    }
+    html += `</div>`;
+
+    if(!radioTelescopeUnlocked){
+        // 電波望遠鏡研究
+        if(marsUnlocked){
+            html += `<div style="margin-top:6px;">`;
+            if(!radioTelescopeResearching && radioTelescopeResearchProgress === 0){
+                html += `<button onclick="startRadioResearch()" style="background:#1a1a40;border:1px solid #a060ff;color:#c090ff;padding:3px 10px;border-radius:6px;font-size:12px;">📡 電波望遠鏡を研究する（3分）</button>`;
+            } else if(radioTelescopeResearchProgress < 100){
+                html += `<div style="font-size:12px;color:#aaa;margin-bottom:3px;">電波望遠鏡研究中... ${radioTelescopeResearchProgress}%</div>
+                <div style="background:#111;border-radius:6px;height:10px;overflow:hidden;">
+                    <div style="width:${radioTelescopeResearchProgress}%;height:100%;background:linear-gradient(90deg,#a060ff,#ff60a0);"></div>
+                </div>`;
+            }
+            html += `</div>`;
+        }
+    } else {
+        // 電波望遠鏡：宇宙観測ボタン
+        if(!radioObserving && radioObserveProgress === 0){
+            const nextTarget = getNextRadioTarget();
+            if(nextTarget){
+                html += `<button onclick="startRadioObserve()" ${rp < 5000 ? "disabled":""} style="background:#1a1a40;border:1px solid #55ffaa;color:#80ffcc;padding:4px 12px;border-radius:6px;font-size:12px;margin-top:4px;">
+                    📡 宇宙観測をする <span style="font-size:11px;">RP 5,000 / 5分</span>
+                </button>`;
+                if(rp < 5000) html += `<span style="font-size:11px;color:#ff8888;margin-left:6px;">RP不足</span>`;
+            } else {
+                html += `<div style="font-size:11px;color:#5edc88;margin-top:4px;">✅ 全天体を発見済み</div>`;
+            }
+        } else if(radioObserving || radioObserveProgress > 0){
+            html += `<div style="font-size:12px;color:#aaa;margin-top:4px;margin-bottom:3px;">宇宙観測中... ${radioObserveProgress}%</div>
+            <div style="background:#111;border-radius:6px;height:10px;overflow:hidden;">
+                <div style="width:${radioObserveProgress}%;height:100%;background:linear-gradient(90deg,#00ffaa,#55aaff);"></div>
+            </div>`;
+        }
+    }
+    html += `</div>`;
+
+    // 月カード
+    if(moonUnlocked){
+        html += renderMoonCard();
+    }
+
+    // 火星カード
+    if(marsUnlocked){
+        html += renderMarsCard();
+    }
+
+    // 太陽系カード
+    if(solarSystemUnlocked){
+        html += renderSolarCard();
+    }
+
+    // ブラックホールカード
+    if(blackholeUnlocked){
+        html += renderBlackholeCard();
+    }
+
+    // 生命惑星カード
+    if(quaplanasUnlocked){
+        html += renderQuaplanasCard();
+    }
+
+    // ロケット開発
+    if(marsUnlocked && !rocketUnlocked){
+        html += `<div style="background:#0a1a30;border:1px solid #55aaff44;border-radius:8px;padding:10px 14px;margin-top:8px;">
+            <div style="font-size:14px;font-weight:bold;color:#55aaff;margin-bottom:4px;">🚀 ロケット開発</div>`;
+        if(!rocketDevStarted){
+            html += `<div style="font-size:12px;color:#aaa;margin-bottom:6px;">RP 1,000 を消費してロケット開発を開始できます。</div>
+            <button onclick="startRocketDev()" ${rp < 1000 ? "disabled":""} style="background:#1a2a50;border:1px solid #55aaff;color:#aaccff;padding:5px 14px;border-radius:6px;">
+                ロケットの開発を進める <span style="font-size:11px;">RP 1,000</span>
+            </button>`;
+        } else {
+            html += `<div style="font-size:12px;color:#aaa;margin-bottom:3px;">開発中... ${rocketDevelopProgress}%</div>
+            <div style="background:#111;border-radius:6px;height:14px;overflow:hidden;">
+                <div style="width:${rocketDevelopProgress}%;height:100%;background:linear-gradient(90deg,#55aaff,#a060ff);"></div>
+            </div>`;
+        }
+        html += `</div>`;
+    }
+
+    // ロケット＆UFOカード
+    if(rocketUnlocked){
+        html += renderRocketCard();
+    }
+
+    // RP工場強化（UFO取得後）
+    if(ufoTechAcquired){
+        html += renderRPFactoryCard();
+    }
+
+    area.innerHTML = html;
+    // select値を復元
+    const ps = document.getElementById("rocketPlanetSelect");
+    const rs = document.getElementById("rocketTypeSelect");
+    if(ps && _savedPlanet) ps.value = _savedPlanet;
+    if(rs && _savedRocketType) rs.value = _savedRocketType;
+}
+
+let _savedPlanet = "moon";
+let _savedRocketType = "small";
+
+function renderMoonCard(){
+    return `<div style="background:#1a1830;border:1px solid #8888cc;border-radius:8px;padding:10px 14px;margin-top:8px;">
+        <div style="font-size:14px;font-weight:bold;color:#aaaaee;margin-bottom:4px;">🌕 月</div>
+        <div style="font-size:12px;color:#bbb;margin-bottom:6px;">研究者を雇って月の研究を進めよう。<br>研究者1人につき10秒ごとに <span style="color:#aaaaee;">+10 RP</span></div>
+        <div style="font-size:13px;color:#aaaaee;margin-bottom:6px;">月の研究者: <b>${moonResearchers}</b>人（上限10人）　所持RP: <b>${rp.toFixed(0)}</b></div>
+        ${!moonResearcherBought
+            ? `<button onclick="buyFirstMoonResearcher()" ${foreignMoney < 6000 ? "disabled":""} style="background:#2a1060;border:1px solid #8888cc;color:#aaaaee;padding:5px 14px;border-radius:6px;">
+                👩‍🔬 研究者を雇う<br><span style="font-size:11px;">外貨 6,000</span>
+               </button>`
+            : moonResearchers >= 10
+                ? `<span style="font-size:11px;color:#5edc88;">✅ 研究者 最大（10人）</span>`
+                : `<button onclick="buyMoonResearcherWithRP()" ${rp < 100 ? "disabled":""} style="background:#2a1060;border:1px solid #8888cc;color:#aaaaee;padding:5px 14px;border-radius:6px;">
+                    👩‍🔬 研究者を追加雇用<br><span style="font-size:11px;">RP 100</span>
+                   </button>`
+        }
+    </div>`;
+}
+
+function renderMarsCard(){
+    return `<div style="background:#1a1030;border:1px solid #a060ff;border-radius:8px;padding:10px 14px;margin-top:8px;">
+        <div style="font-size:14px;font-weight:bold;color:#c090ff;margin-bottom:4px;">🔴 火星</div>
+        <div style="font-size:12px;color:#bbb;margin-bottom:6px;">研究者を雇って火星を研究しよう。<br>研究者1人につき10秒ごとに <span style="color:#c0a0ff;">+20 RP</span>（月の2倍）</div>
+        <div style="font-size:13px;color:#c0a0ff;margin-bottom:6px;">火星の研究者: <b>${marsResearchers}</b>人（上限10人）　所持RP: <b>${rp.toFixed(0)}</b></div>
+        ${!marsResearcherBought
+            ? `<button onclick="buyFirstMarsResearcher()" ${foreignMoney < 8000 ? "disabled":""} style="background:#2a1060;border:1px solid #a060ff;color:#c090ff;padding:5px 14px;border-radius:6px;">
+                👩‍🔬 研究者を雇う<br><span style="font-size:11px;">外貨 8,000</span>
+               </button>`
+            : marsResearchers >= 10
+                ? `<span style="font-size:11px;color:#5edc88;">✅ 研究者 最大（10人）</span>`
+                : `<button onclick="buyMarsResearcherWithRP()" ${rp < 200 ? "disabled":""} style="background:#2a1060;border:1px solid #a060ff;color:#c090ff;padding:5px 14px;border-radius:6px;">
+                    👩‍🔬 研究者を追加雇用<br><span style="font-size:11px;">RP 200</span>
+                   </button>`
+        }
+    </div>`;
+}
+
+function renderSolarCard(){
+    return `<div style="background:#1a1020;border:1px solid #ffd166;border-radius:8px;padding:10px 14px;margin-top:8px;">
+        <div style="font-size:14px;font-weight:bold;color:#ffd166;margin-bottom:4px;">☀️ 太陽系</div>
+        <div style="font-size:12px;color:#bbb;margin-bottom:6px;">太陽系を研究しよう。<br>研究者1人につき10秒ごとに <span style="color:#ffd166;">+30 RP</span></div>
+        <div style="font-size:13px;color:#ffd166;margin-bottom:6px;">太陽系の研究者: <b>${solarResearchers}</b>人（上限10人）　所持RP: <b>${rp.toFixed(0)}</b></div>
+        ${!solarResearcherBought
+            ? `<button onclick="buyFirstSolarResearcher()" ${foreignMoney < 15000 ? "disabled":""} style="background:#1a1a00;border:1px solid #ffd166;color:#ffd166;padding:5px 14px;border-radius:6px;">
+                👩‍🔬 研究者を雇う<br><span style="font-size:11px;">外貨 15,000</span>
+               </button>`
+            : solarResearchers >= 10
+                ? `<span style="font-size:11px;color:#5edc88;">✅ 研究者 最大（10人）</span>`
+                : `<button onclick="buySolarResearcherWithRP()" ${rp < 500 ? "disabled":""} style="background:#1a1a00;border:1px solid #ffd166;color:#ffd166;padding:5px 14px;border-radius:6px;">
+                    👩‍🔬 研究者を追加雇用<br><span style="font-size:11px;">RP 500</span>
+                   </button>`
+        }
+    </div>`;
+}
+
+function renderBlackholeCard(){
+    let html = `<div style="background:#0a0a1a;border:1px solid #ff60a0;border-radius:8px;padding:10px 14px;margin-top:8px;">
+        <div style="font-size:14px;font-weight:bold;color:#ff60a0;margin-bottom:4px;">🕳️ ブラックホール</div>
+        <div style="font-size:12px;color:#bbb;margin-bottom:6px;">ブラックホールを研究することで新技術が生まれるかもしれない。</div>`;
+    if(!warpDeveloped){
+        if(!blackholeResearching && blackholeResearchProgress === 0){
+            html += `<button onclick="startBHResearch()" style="background:#1a0030;border:1px solid #ff60a0;color:#ff90c0;padding:4px 12px;border-radius:6px;font-size:12px;">🔬 ブラックホールを研究する（5分）</button>`;
+        } else if(blackholeResearchProgress < 100){
+            html += `<div style="font-size:12px;color:#aaa;margin-bottom:3px;">研究中... ${blackholeResearchProgress}%</div>
+            <div style="background:#111;border-radius:6px;height:10px;overflow:hidden;">
+                <div style="width:${blackholeResearchProgress}%;height:100%;background:linear-gradient(90deg,#ff60a0,#a000ff);"></div>
+            </div>`;
+        }
+    } else {
+        html += `<div style="font-size:12px;color:#5edc88;margin-bottom:6px;">✅ ワープ技術を開発済み</div>`;
+        // ブラックホール研究者
+        const bhBtn = !bhResearcherBought
+            ? `<button onclick="buyFirstBHResearcher()" ${foreignMoney < 30000 ? "disabled":""} style="background:#1a0030;border:1px solid #ff60a0;color:#ff90c0;padding:5px 14px;border-radius:6px;">👩‍🔬 研究者を雇う<br><span style='font-size:11px;'>外貨 30,000</span></button>`
+            : bhResearchers >= 10
+                ? `<span style="font-size:11px;color:#5edc88;">✅ 研究者 最大（10人）</span>`
+                : `<button onclick="buyBHResearcherWithRP()" ${rp < 1000 ? "disabled":""} style="background:#1a0030;border:1px solid #ff60a0;color:#ff90c0;padding:5px 14px;border-radius:6px;">👩‍🔬 研究者を追加雇用<br><span style='font-size:11px;'>RP 1,000</span></button>`;
+        html += `<div style="font-size:12px;color:#bbb;margin-bottom:4px;">ブラックホールをさらに研究。<br>研究者1人につき10秒ごとに <span style="color:#ff60a0;">+50 RP</span></div>
+        <div style="font-size:13px;color:#ff60a0;margin-bottom:6px;">BHの研究者: <b>${bhResearchers}</b>人（上限10人）</div>
+        ${bhBtn}`;
+    }
+    html += `</div>`;
+    return html;
+}
+
+function renderQuaplanasCard(){
+    const cardName = quaplanasResearched ? "🌍✨ クァプラナス星" : "🌍✨ クァプラナス星";
+    let html = `<div style="background:#0a1a0a;border:1px solid #5edc88;border-radius:8px;padding:10px 14px;margin-top:8px;">
+        <div style="font-size:14px;font-weight:bold;color:#5edc88;margin-bottom:4px;">${cardName}</div>`;
+
+    const m = quaplanasMission;
+
+    if(quaplanasFactory){
+        html += `<div style="font-size:12px;color:#5edc88;margin-bottom:4px;">✅ クァプラナス工場稼働中</div>
+        <button onclick="travelToQuaplanas()" style="background:#0a3a0a;border:1px solid #5edc88;color:#5edc88;padding:5px 14px;border-radius:6px;font-size:12px;">
+            🛸 クァプラナス工場へ移動
+        </button>`;
+        if(ufoTechAcquired){
+            html += `<div style="margin-top:6px;font-size:12px;color:#aaa;">UFO派遣（RP・外貨獲得）</div>
+            ${!m ? `<button onclick="startLifeMission('ufo')" ${foreignMoney < 30000 ? "disabled":""} style="background:#0a2a0a;border:1px solid #5edc88;color:#5edc88;padding:5px 14px;border-radius:6px;font-size:12px;margin-top:4px;">
+                🛸 UFOで派遣（外貨 30,000）
+            </button>` : m.progress < 100 ? `<div style="font-size:12px;color:#aaa;margin-top:4px;">🛸 UFO派遣中... ${m.progress}%</div>
+            <div style="background:#111;border-radius:6px;height:10px;overflow:hidden;margin-top:3px;"><div style="width:${m.progress}%;height:100%;background:linear-gradient(90deg,#5edc88,#00ffff);"></div></div>` : ""}`;
+        }
+    } else if(quaplanasResearched){
+        html += `<div style="font-size:12px;color:#aaa;margin-bottom:6px;">クァプラナス星の研究が完了した。<br>おにぎり工場を建設できる。</div>
+        <button onclick="buildQuaplanasFactory()" ${foreignMoney < 100000 ? "disabled":""} style="background:#0a3a0a;border:1px solid #5edc88;color:#5edc88;padding:6px 16px;border-radius:6px;font-size:13px;">
+            🏭 クァプラナス工場を建設（外貨 100,000）
+        </button>`;
+    } else if(ufoTechAcquired){
+        // UFO取得後、クァプラナスをさらに研究できる
+        if(!_quaplanasResearchProgress){
+            html += `<div style="font-size:12px;color:#aaa;margin-bottom:6px;">UFOでクァプラナスに接近し、さらに研究できる。</div>
+            <button onclick="startQuaplanasResearch()" style="background:#0a2a0a;border:1px solid #5edc88;color:#5edc88;padding:5px 14px;border-radius:6px;font-size:12px;">
+                🔬 クァプラナス星をさらに研究する（5分）
+            </button>`;
+        } else if(_quaplanasResearchProgress < 100){
+            html += `<div style="font-size:12px;color:#aaa;margin-bottom:3px;">クァプラナス研究中... ${_quaplanasResearchProgress}%</div>
+            <div style="background:#111;border-radius:6px;height:10px;overflow:hidden;"><div style="width:${_quaplanasResearchProgress}%;height:100%;background:linear-gradient(90deg,#5edc88,#ffd166);"></div></div>`;
+        }
+    } else if(warpDeveloped){
+        if(!alienContactDone){
+            if(!m){
+                html += `<div style="font-size:12px;color:#bbb;margin-bottom:6px;">ワープエンジンで宇宙飛行士を派遣できる。</div>
+                <button onclick="startLifeMission('warp')" ${foreignMoney < 30000 ? "disabled":""} style="background:#0a2a0a;border:1px solid #5edc88;color:#5edc88;padding:6px 16px;border-radius:6px;font-size:13px;">
+                    🚀 ワープエンジンで宇宙飛行士を派遣（外貨 30,000）
+                </button>`;
+            } else if(m.progress < 100){
+                html += `<div style="font-size:12px;color:#aaa;margin-bottom:3px;">🚀 派遣中... ${m.progress}%</div>
+                <div style="background:#111;border-radius:6px;height:12px;overflow:hidden;"><div style="width:${m.progress}%;height:100%;background:linear-gradient(90deg,#5edc88,#55aaff);"></div></div>`;
+            }
+        } else if(!ufoTechAcquired){
+            if(!m){
+                html += `<div style="font-size:12px;color:#ffd166;margin-bottom:6px;">👽 クァプラン：「シークレットのおにぎりが食べてみたい。くれたら良い報酬をあげるよ。」</div>
+                <button onclick="startLifeMission('secret')" ${foreignMoney < 30000 ? "disabled":""} style="background:#1a1a00;border:1px solid #ffd166;color:#ffd166;padding:6px 16px;border-radius:6px;font-size:13px;">
+                    🚀 ワープエンジンで宇宙飛行士にシークレットおにぎりを持たせて派遣（外貨 30,000）
+                </button>`;
+            } else if(m.progress < 100){
+                html += `<div style="font-size:12px;color:#aaa;margin-bottom:3px;">🚀 シークレットおにぎり配達中... ${m.progress}%</div>
+                <div style="background:#111;border-radius:6px;height:12px;overflow:hidden;"><div style="width:${m.progress}%;height:100%;background:linear-gradient(90deg,#ffd166,#ff9f1c);"></div></div>`;
+            }
+        }
+    } else {
+        html += `<div style="font-size:12px;color:#aaa;">ワープ技術が開発されると派遣できるようになる。</div>`;
+    }
+
+    html += `</div>`;
+    return html;
+}
+
+function startQuaplanasResearch(){
+    if(_quaplanasResearchProgress > 0 || quaplanasResearched) return;
+    _quaplanasResearchProgress = 1;
+    addLog("通知", "🔬 クァプラナス星の詳細研究を開始（5分）。");
+    if(_quaplanasResearchTimer) clearInterval(_quaplanasResearchTimer);
+    _quaplanasResearchTimer = setInterval(()=>{
+        _quaplanasResearchProgress++;
+        if(_quaplanasResearchProgress >= 100){
+            clearInterval(_quaplanasResearchTimer);
+            _quaplanasResearchTimer = null;
+            quaplanasResearched = true;
+            addLog("通知", "🔬 クァプラナス星の研究完了！工場建設が可能になった。");
+            showTopNotice("🔬 クァプラナス星の研究完了！工場を建設できます！", 6000);
+            renderAll();
+        } else if(spacePanelUnlocked) renderSpacePanel();
+    }, 3000); // 5分、100ステップ → 3000ms/step
+}
+
+function buildQuaplanasFactory(){
+    if(quaplanasFactory || foreignMoney < 100000) return;
+    foreignMoney -= 100000;
+    quaplanasFactory = true;
+    quaplanasFactoryData = initQuaplanasFactoryData();
+    addLog("通知", "🏭 クァプラナス工場を建設しました！工場トラベルから移動できます。");
+    showTopNotice("🏭 クァプラナス工場が完成しました！", 6000);
+    // 工場トラベルボタンを表示
+    const travelBar = document.getElementById("factoryTravelBar");
+    if(travelBar){ travelBar.style.display = "flex"; }
+    // 地球のmain-containerにpadding-topを追加
+    const mc = document.getElementById("mainContainer") || document.querySelector(".main-container");
+    if(mc) mc.style.paddingTop = "40px";
+    renderAll();
+}
+
+function travelToQuaplanas(){
+    currentWorld = "quaplanas";
+    document.getElementById("quaplanasWorld").style.display = "";
+    document.getElementById("earthWorld").style.display = "none";
+    onEnterQuaplanas();
+}
+
+function travelToEarth(){
+    currentWorld = "earth";
+    document.getElementById("earthWorld").style.display = "";
+    document.getElementById("quaplanasWorld").style.display = "none";
+    if(_qAutoRollTimer){ clearInterval(_qAutoRollTimer); _qAutoRollTimer=null; }
+    renderAll();
+}
+
+
+function renderRocketCard(){
+    const mission = rocketMission;
+    const vehicleName = ufoOwned ? "ロケット＆UFO" : "ロケット";
+    const ROCKET_DEFS = [
+        { key:"small",  label:"🚀 小型ロケット",   price:500,  rpCost:1000, travelSec:{ moon:60, mars:100 } },
+        { key:"medium", label:"🚀🚀 中型ロケット",  price:2000, rpCost:2500, travelSec:{ moon:40, mars:80 } },
+        { key:"large",  label:"🚀🚀🚀 大型ロケット",price:8000, rpCost:5000, travelSec:{ moon:25, mars:60 } },
+    ];
+
+    let html = `<div style="background:#0a1a30;border:1px solid #55aaff66;border-radius:8px;padding:10px 14px;margin-top:8px;">
+        <div style="font-size:14px;font-weight:bold;color:#55aaff;margin-bottom:6px;">🚀 ${vehicleName}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">`;
+
+    ROCKET_DEFS.forEach(r => {
+        const owned = ownedRockets[r.key] || 0;
+        html += `<div style="background:#111;border:1px solid ${owned>0?"#5edc88":"#334"};border-radius:6px;padding:6px 10px;font-size:12px;">
+            <div style="color:#ffd166;">${r.label}</div>
+            <div style="color:#aaa;font-size:11px;">RP消費: ${r.rpCost}</div>
+            <div style="color:#c0a0ff;font-size:11px;">${owned>0 ? `✅ ${owned}機所有` : "未購入"}</div>
+            <button onclick="buyRocket('${r.key}')" ${rp < r.price ? "disabled":""} style="margin-top:4px;padding:2px 8px;font-size:11px;background:#1a2a50;border:1px solid #55aaff;color:#aaccff;border-radius:4px;">購入 RP ${r.price}</button>
+        </div>`;
+    });
+
+    if(ufoOwned){
+        html += `<div style="background:#111;border:1px solid #5edc88;border-radius:6px;padding:6px 10px;font-size:12px;">
+            <div style="color:#5edc88;">🛸 UFO</div>
+            <div style="color:#aaa;font-size:11px;">✅ 所有中</div>
+        </div>`;
+    }
+    html += `</div>`;
+
+    if(!mission){
+        const availPlanets = [];
+        if(moonUnlocked) availPlanets.push({val:"moon", label:"🌕 月"});
+        if(marsUnlocked) availPlanets.push({val:"mars", label:"🔴 火星"});
+        const hasAnyRocket = Object.values(ownedRockets).some(v=>v>0);
+        const availRockets = [];
+        if((ownedRockets.small||0)>0)  availRockets.push({val:"small", label:"🚀 小型 (RP 1,000)"});
+        if((ownedRockets.medium||0)>0) availRockets.push({val:"medium", label:"🚀🚀 中型 (RP 2,500)"});
+        if((ownedRockets.large||0)>0)  availRockets.push({val:"large",  label:"🚀🚀🚀 大型 (RP 5,000)"});
+
+        if(availPlanets.length > 0 && hasAnyRocket){
+            const selPlanet = _savedPlanet || availPlanets[0].val;
+            const selRocket = (_savedRocketType && (ownedRockets[_savedRocketType]||0)>0) ? _savedRocketType : (availRockets[0]?.val || "small");
+            const rDef = ROCKET_DEFS.find(r=>r.key===selRocket);
+            const rpNeeded = rDef ? rDef.rpCost : 1000;
+            const canDispatch = rp >= rpNeeded;
+            html += `<div style="font-size:12px;color:#aaa;margin-bottom:6px;">
+                派遣先: <select id="rocketPlanetSelect" onchange="_savedPlanet=this.value" style="background:#222;color:#fff;border:1px solid #555;border-radius:4px;padding:2px;">
+                    ${availPlanets.map(p=>`<option value="${p.val}" ${selPlanet===p.val?"selected":""}>${p.label}</option>`).join("")}
+                </select>
+                &nbsp;ロケット: <select id="rocketTypeSelect" onchange="_savedRocketType=this.value" style="background:#222;color:#fff;border:1px solid #555;border-radius:4px;padding:2px;">
+                    ${availRockets.map(r=>`<option value="${r.val}" ${selRocket===r.val?"selected":""}>${r.label}</option>`).join("")}
+                </select>
+            </div>
+            <button onclick="startRocketMission()" ${!canDispatch?"disabled":""} style="margin-top:4px;background:${canDispatch?"#1a2a50":"#1a1a1a"};border:1px solid ${canDispatch?"#55aaff":"#444"};color:${canDispatch?"#aaccff":"#666"};padding:10px 24px;border-radius:8px;font-size:14px;font-weight:bold;">
+                🚀 宇宙飛行士をロケットで派遣
+            </button>
+            ${!canDispatch ? `<div style="font-size:11px;color:#ff8888;margin-top:3px;">RP不足（必要: ${rpNeeded}）</div>` : ""}`;
+        }
+    } else if(mission.progress < 100){
+        html += `<div style="font-size:12px;color:#55aaff;margin-top:4px;margin-bottom:3px;">派遣中... ${mission.progress}%</div>
+        <div style="background:#111;border-radius:6px;height:14px;overflow:hidden;">
+            <div style="width:${mission.progress}%;height:100%;background:linear-gradient(90deg,#ff9f1c,#ff5555);transition:.5s;"></div>
+        </div>`;
+    }
+    html += `</div>`;
+    return html;
+}
+
+function renderRPFactoryCard(){
+    const cost = rpFactoryLevel < MAX_RP_FACTORY ? (rpFactoryLevel + 1) * 500 : 0;
+    return `<div style="background:#1a0a2a;border:1px solid #c060ff;border-radius:8px;padding:10px 14px;margin-top:8px;">
+        <div style="font-size:14px;font-weight:bold;color:#c060ff;margin-bottom:4px;">🏭 RP工場強化</div>
+        <div style="font-size:12px;color:#bbb;margin-bottom:6px;">RPでシークレットおにぎり排出率を強化。最大10倍。<br>現在: <span style="color:#c060ff;">x${(1 + rpFactoryLevel).toFixed(1)}</span></div>
+        ${rpFactoryLevel < MAX_RP_FACTORY
+            ? `<button onclick="upgradeRPFactory()" ${rp < cost ? "disabled":""} style="background:#2a0a4a;border:1px solid #c060ff;color:#c060ff;padding:4px 12px;border-radius:6px;font-size:12px;">
+                強化 Lv.${rpFactoryLevel+1} (RP ${cost})
+               </button>`
+            : `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み (x${MAX_RP_FACTORY+1}.0)</span>`
+        }
+    </div>`;
+}
+
+function buyTelescope(){
+    if(telescopeBought || foreignMoney < 10000) return;
+    foreignMoney -= 10000;
+    telescopeBought = true;
+    telescopeBoughtAt = Date.now();
+    addLog("通知", "🔭 天文学者と天体望遠鏡を外貨10,000で購入した。");
+    renderAll();
+}
+
+function startObserve(target, resume){
+    if(observing) return;
+    currentObserveTarget = target;
+    observing = true;
+    if(!resume) observeProgress = 0;
+    if(_observeTimer) clearInterval(_observeTimer);
+    _observeTimer = setInterval(()=>{
+        observeProgress++;
+        if(observeProgress >= 100){
+            clearInterval(_observeTimer);
+            _observeTimer = null;
+            observing = false;
+            observeProgress = 100;
+            finishObserve(target);
+        }
+        renderMysteryPanel();
+    }, 1000);
+}
+
+function finishObserve(target){
+    if(target === "moon"){
+        // 研究完了、5分後に月発見通知
+        addLog("通知", "🔭 観測完了！5分後に結果が出る...");
+        setTimeout(()=>{
+            astronomyUnlocked = true;
+            spacePanelUnlocked = true;
+            moonUnlocked = true;
+            document.getElementById("mysteryPanel").style.display = "none";
+            document.getElementById("spacePanel").style.display = "";
+            addLog("通知", "🌕 天文学者が月を発見しました！宇宙開拓カードが解放されました。");
+            showTopNotice("🌕 天文学者が月を発見しました！宇宙開拓カードが解放された！", 6000);
+            // 5分後に火星発見
+            setTimeout(()=>{
+                marsUnlocked = true;
+                addLog("通知", "🔴 天文学者が火星を発見しました！");
+                showTopNotice("🔴 天文学者が火星を発見しました！", 6000);
+                renderAll();
+            }, 5 * 60 * 1000);
+            renderAll();
+        }, 5 * 60 * 1000);
+    }
+}
+
+function getNextRadioTarget(){
+    if(!solarSystemUnlocked) return "solar";
+    if(!blackholeUnlocked) return "blackhole";
+    if(!quaplanasUnlocked) return "life";
+    return null;
+}
+
+function startRadioResearch(){
+    if(radioTelescopeResearching || radioTelescopeUnlocked) return;
+    radioTelescopeResearching = true;
+    radioTelescopeResearchProgress = 0;
+    addLog("通知", "📡 電波望遠鏡の研究を開始（3分）。");
+    if(_radioResearchTimer) clearInterval(_radioResearchTimer);
+    _radioResearchTimer = setInterval(()=>{
+        radioTelescopeResearchProgress++;
+        if(radioTelescopeResearchProgress >= 100){
+            clearInterval(_radioResearchTimer);
+            _radioResearchTimer = null;
+            radioTelescopeResearching = false;
+            radioTelescopeUnlocked = true;
+            addLog("通知", "📡 電波望遠鏡の研究完了！🔭が📡電波望遠鏡に変わった。");
+            showTopNotice("📡 電波望遠鏡が完成しました！", 5000);
+            renderAll();
+        } else {
+            if(spacePanelUnlocked) renderSpacePanel();
+        }
+    }, 1800); // 3分=180秒、100ステップ → 1800ms/step
+}
+
+function resumeRadioResearch(){
+    radioTelescopeResearching = true;
+    if(_radioResearchTimer) clearInterval(_radioResearchTimer);
+    _radioResearchTimer = setInterval(()=>{
+        radioTelescopeResearchProgress++;
+        if(radioTelescopeResearchProgress >= 100){
+            clearInterval(_radioResearchTimer);
+            radioTelescopeResearching = false;
+            radioTelescopeUnlocked = true;
+            showTopNotice("📡 電波望遠鏡が完成しました！", 5000);
+            renderAll();
+        } else if(spacePanelUnlocked) renderSpacePanel();
+    }, 1800);
+}
+
+function startRadioObserve(){
+    if(radioObserving || rp < 5000) return;
+    const target = getNextRadioTarget();
+    if(!target) return;
+    rp -= 5000;
+    radioObserveTarget = target;
+    radioObserving = true;
+    radioObserveProgress = 0;
+    addLog("通知", `📡 宇宙観測開始（RP 5,000消費）。5分後に結果が判明する。`);
+    if(_radioObserveTimer) clearInterval(_radioObserveTimer);
+    _radioObserveTimer = setInterval(()=>{
+        radioObserveProgress++;
+        if(radioObserveProgress >= 100){
+            clearInterval(_radioObserveTimer);
+            _radioObserveTimer = null;
+            radioObserving = false;
+            finishRadioObserve(radioObserveTarget);
+        } else if(spacePanelUnlocked) renderSpacePanel();
+    }, 3000); // 5分=300秒、100ステップ → 3000ms/step
+}
+
+function resumeRadioObserve(){
+    radioObserving = true;
+    if(_radioObserveTimer) clearInterval(_radioObserveTimer);
+    _radioObserveTimer = setInterval(()=>{
+        radioObserveProgress++;
+        if(radioObserveProgress >= 100){
+            clearInterval(_radioObserveTimer);
+            radioObserving = false;
+            finishRadioObserve(radioObserveTarget);
+        } else if(spacePanelUnlocked) renderSpacePanel();
+    }, 3000);
+}
+
+function finishRadioObserve(target){
+    radioObserveProgress = 0;
+    radioObserveTarget = "";
+    // 上位惑星発見時、下位惑星が未解放なら自動解放
+    if(!moonUnlocked){ moonUnlocked = true; astronomyUnlocked = true; spacePanelUnlocked = true;
+        document.getElementById("mysteryPanel").style.display="none";
+        document.getElementById("spacePanel").style.display=""; }
+    if(!marsUnlocked && (target==="solar"||target==="blackhole"||target==="life")){ marsUnlocked = true; }
+    if(target === "solar"){
+        solarSystemUnlocked = true;
+        addLog("通知", "☀️ 太陽系を発見しました！");
+        showTopNotice("☀️ 太陽系を発見しました！", 6000);
+    } else if(target === "blackhole"){
+        blackholeUnlocked = true;
+        addLog("通知", "🕳️ ブラックホールを発見しました！");
+        showTopNotice("🕳️ ブラックホールを発見しました！", 6000);
+    } else if(target === "life"){
+        quaplanasUnlocked = true;
+        addLog("通知", "🌍✨ クァプラナス星を発見しました！");
+        showTopNotice("🌍✨ クァプラナス星を発見しました！", 7000);
+    }
+    renderAll();
+}
+
+function startBHResearch(){
+    if(blackholeResearching || warpDeveloped) return;
+    blackholeResearching = true;
+    blackholeResearchProgress = 0;
+    addLog("通知", "🕳️ ブラックホール研究開始（5分）。");
+    if(_bhResearchTimer) clearInterval(_bhResearchTimer);
+    _bhResearchTimer = setInterval(()=>{
+        blackholeResearchProgress++;
+        if(blackholeResearchProgress >= 100){
+            clearInterval(_bhResearchTimer);
+            _bhResearchTimer = null;
+            blackholeResearching = false;
+            warpDeveloped = true;
+            addLog("通知", "🔬 研究者の1人がブラックホールでワープと何でも翻訳機を開発しました！");
+            showTopNotice("🔬 研究者がブラックホールでワープと何でも翻訳機を開発しました！", 7000);
+            renderAll();
+        } else if(spacePanelUnlocked) renderSpacePanel();
+    }, 3000); // 5分、100ステップ → 3000ms/step
+}
+
+function resumeBHResearch(){
+    blackholeResearching = true;
+    if(_bhResearchTimer) clearInterval(_bhResearchTimer);
+    _bhResearchTimer = setInterval(()=>{
+        blackholeResearchProgress++;
+        if(blackholeResearchProgress >= 100){
+            clearInterval(_bhResearchTimer);
+            blackholeResearching = false;
+            warpDeveloped = true;
+            showTopNotice("🔬 研究者がブラックホールでワープと何でも翻訳機を開発しました！", 7000);
+            renderAll();
+        } else if(spacePanelUnlocked) renderSpacePanel();
+    }, 3000);
+}
+
+let _lifeMissionTimer = null;
+function startLifeMission(phase){
+    if(foreignMoney < 30000) return;
+    if(quaplanasMission && quaplanasMission.progress < 100) return;
+    foreignMoney -= 30000;
+    quaplanasMission = { phase, progress: 0, startedAt: Date.now(), totalSec: 600 };
+    addLog("通知", `🚀 生命惑星へ派遣開始（${phase}）。10分かかる。`);
+    if(_lifeMissionTimer) clearInterval(_lifeMissionTimer);
+    _lifeMissionTimer = setInterval(()=>{
+        const elapsed = (Date.now() - quaplanasMission.startedAt) / 1000;
+        quaplanasMission.progress = Math.min(100, Math.floor(elapsed / 600 * 100));
+        if(quaplanasMission.progress >= 100){
+            clearInterval(_lifeMissionTimer);
+            _lifeMissionTimer = null;
+            finishLifeMission(phase);
+        } else if(spacePanelUnlocked) renderSpacePanel();
+    }, 1000);
+    renderAll();
+}
+
+function resumeLifeMission(){
+    if(!quaplanasMission) return;
+    const phase = quaplanasMission.phase;
+    if(_lifeMissionTimer) clearInterval(_lifeMissionTimer);
+    _lifeMissionTimer = setInterval(()=>{
+        const elapsed = (Date.now() - quaplanasMission.startedAt) / 1000;
+        quaplanasMission.progress = Math.min(100, Math.floor(elapsed / 600 * 100));
+        if(quaplanasMission.progress >= 100){
+            clearInterval(_lifeMissionTimer);
+            finishLifeMission(phase);
+        } else if(spacePanelUnlocked) renderSpacePanel();
+    }, 1000);
+}
+
+function finishLifeMission(phase){
+    quaplanasMission = null;
+    if(phase === "warp"){
+        alienContactDone = true;
+        addLog("通知", "👽 宇宙飛行士が帰還。クァプランが「シークレットのおにぎりが食べてみたい。くれたら良い報酬をあげるよ」と言っている。");
+        showTopNotice("👽 宇宙飛行士が帰還！クァプランからメッセージが届いた！", 6000);
+    } else if(phase === "secret"){
+        ufoTechAcquired = true;
+        ufoOwned = true;
+        addLog("通知", "🛸 宇宙飛行士がUFOの製造技術を持って帰ってきた！ロケット＆UFOに更新。");
+        showTopNotice("🛸 宇宙飛行士がUFOの製造技術を持って帰ってきた！", 7000);
+    } else if(phase === "ufo"){
+        const rpGain = 500 + Math.floor(Math.random()*500);
+        const fgGain = 5000 + Math.floor(Math.random()*5000);
+        rp += rpGain;
+        foreignMoney += fgGain;
+        addLog("通知", `🛸 UFO派遣完了！RP+${rpGain}、外貨+${fgGain}を獲得。`);
+        showTopNotice(`🛸 UFO派遣完了！RP+${rpGain}・外貨+${fgGain}！`, 5000);
+    }
+    renderAll();
+}
+
+// ===== ロケット関連 =====
+const ROCKET_DEFS_DATA = {
+    small:  { rpCost:1000, travelSec:{ moon:60, mars:100 } },
+    medium: { rpCost:2500, travelSec:{ moon:40, mars:80 } },
+    large:  { rpCost:5000, travelSec:{ moon:25, mars:60 } },
+};
+const PLANET_REWARDS = {
+    moon: { foreign:[300,800], rp:[50,150] },
+    mars: { foreign:[700,2000], rp:[100,300], extraForeign:10000 },
+};
+
+function resumeRocketDev(){
+    rocketDeveloping = true;
+    if(_rocketDevTimer) clearInterval(_rocketDevTimer);
+    _rocketDevTimer = setInterval(()=>{
+        rocketDevelopProgress++;
+        if(rocketDevelopProgress >= 100){
+            clearInterval(_rocketDevTimer);
+            _rocketDevTimer = null;
+            rocketDeveloping = false;
+            rocketUnlocked = true;
+            addLog("通知", "🚀 ロケット開発完了！");
+            showTopNotice("🚀 ロケット開発完了！ロケットを購入できます！", 5000);
+            renderAll();
+        } else if(spacePanelUnlocked) renderSpacePanel();
+    }, 1000);
+}
+
+function startRocketDev(){
+    if(rocketDevStarted || rocketDeveloping || rp < 1000) return;
+    rp -= 1000;
+    rocketDevStarted = true;
+    addLog("通知", "🚀 ロケット開発を開始しました。");
+    resumeRocketDev();
+    renderAll();
+}
+
+function buyRocket(type){
+    if((ownedRockets[type]||0) >= 1){ showToast("同種ロケットは1機のみ所持可能です"); return; }
+    const d = ROCKET_DEFS_DATA[type];
+    const prices = { small:500, medium:2000, large:8000 };
+    if(!d || rp < prices[type]) return;
+    rp -= prices[type];
+    ownedRockets[type] = 1;
+    addLog("通知", `🚀 ${type}ロケットを購入しました。`);
+    renderAll();
+}
+
+let _missionTimer = null;
+function startRocketMission(){
+    const planet = _savedPlanet || "moon";
+    const hasAny = Object.values(ownedRockets).some(v=>v>0);
+    const rType = (_savedRocketType && (ownedRockets[_savedRocketType]||0)>0) ? _savedRocketType : Object.keys(ownedRockets).find(k=>(ownedRockets[k]||0)>0) || "small";
+    if(!hasAny){ showToast("ロケットを先に購入してください"); return; }
+    const d = ROCKET_DEFS_DATA[rType] || ROCKET_DEFS_DATA[ownedRocket];
+    const pr = PLANET_REWARDS[planet];
+    if(!d || !pr) return;
+    if(rp < d.rpCost){ showToast(`RP不足（必要: ${d.rpCost}）`); return; }
+    if(rocketMission && rocketMission.progress < 100) return;
+    rp -= d.rpCost;
+    const totalSec = d.travelSec[planet] || 100;
+    rocketMission = { type: rType, planet, progress:0, totalSec, startedAt: Date.now() };
+    addLog("通知", `🚀 宇宙飛行士を${planet}へ派遣（${totalSec}秒）。`);
+    resumeMission();
+    renderAll();
+}
+
+function resumeMission(){
+    if(!rocketMission) return;
+    if(_missionTimer) clearInterval(_missionTimer);
+    _missionTimer = setInterval(()=>{
+        if(!rocketMission){ clearInterval(_missionTimer); return; }
+        const elapsed = (Date.now() - rocketMission.startedAt) / 1000;
+        rocketMission.progress = Math.min(100, Math.floor(elapsed / rocketMission.totalSec * 100));
+        if(rocketMission.progress >= 100){
+            clearInterval(_missionTimer);
+            _missionTimer = null;
+            setTimeout(completeMission, 300);
+        } else if(spacePanelUnlocked) renderSpacePanel();
+    }, 1000);
+}
+
+function completeMission(){
+    if(!rocketMission || rocketMission.rewarded) return;
+    rocketMission.rewarded = true;
+    const planet = rocketMission.planet;
+    const pr = PLANET_REWARDS[planet];
+    if(!pr){ rocketMission = null; renderAll(); return; }
+    const [fMin, fMax] = pr.foreign;
+    const [rMin, rMax] = pr.rp;
+    const fEarned = Math.floor(Math.random()*(fMax-fMin+1))+fMin + (pr.extraForeign||0);
+    const rpEarned = Math.floor(Math.random()*(rMax-rMin+1))+rMin;
+    foreignMoney += fEarned;
+    rp += rpEarned;
+    addLog("通知", `🚀 ${planet}探査完了！外貨+${fEarned.toLocaleString()} RP+${rpEarned}`);
+    showTopNotice(`🚀 ${planet}探査完了！外貨 +${fEarned.toLocaleString()} / RP +${rpEarned}`, 5000);
+    rocketMission = null;
+    renderAll();
+}
+
+function upgradeTelescope(){
+    if(rp < 500) return;
+    rp -= 500;
+    telescopeRPLevel++;
+    addLog("通知", `🔭 望遠鏡をRP強化 Lv${telescopeRPLevel}。観測範囲が広がった。RP獲得+${telescopeRPLevel*10}%`);
+    renderAll();
+}
+
+function upgradeRPFactory(){
+    if(rpFactoryLevel >= MAX_RP_FACTORY) return;
+    const cost = (rpFactoryLevel + 1) * 500;
+    if(rp < cost) return;
+    rp -= cost;
+    rpFactoryLevel++;
+    addLog("通知", `🏭 RP工場強化 Lv${rpFactoryLevel}。シークレットおにぎり率 x${(1+rpFactoryLevel).toFixed(1)}`);
+    renderAll();
+}
+
+// ===== 惑星ごとの研究者管理 =====
+let solarResearchers = 0;
+let solarResearcherBought = false;
+let bhResearchers = 0;
+let bhResearcherBought = false;
+
+// 月研究者
+function buyFirstMoonResearcher(){
+    if(moonResearcherBought || foreignMoney < 6000) return;
+    foreignMoney -= 6000;
+    moonResearcherBought = true;
+    moonResearchers = 1;
+    if(!rpUnlocked){ rpUnlocked = true; document.getElementById("rpDisplay").style.display = ""; }
+    startRPLoop();
+    addLog("通知", "👩‍🔬 月の研究者を外貨6,000で雇用した。10秒ごとに+10RP");
+    renderAll();
+}
+function buyMoonResearcherWithRP(){
+    if(!moonResearcherBought || rp < 100 || moonResearchers >= 10) return;
+    rp -= 100;
+    moonResearchers = Math.min(10, moonResearchers + 1);
+    addLog("通知", `👩‍🔬 月の研究者を追加雇用。現在${moonResearchers}人。`);
+    renderAll();
+}
+
+// 火星研究者
+function buyFirstMarsResearcher(){
+    if(marsResearcherBought || foreignMoney < 8000) return;
+    foreignMoney -= 8000;
+    marsResearcherBought = true;
+    marsResearchers = 1;
+    if(!rpUnlocked){ rpUnlocked = true; document.getElementById("rpDisplay").style.display = ""; }
+    if(!_rpLoopId) startRPLoop();
+    addLog("通知", "👩‍🔬 火星の研究者を外貨8,000で雇用した。10秒ごとに+20RP");
+    renderAll();
+}
+function buyMarsResearcherWithRP(){
+    if(!marsResearcherBought || rp < 200 || marsResearchers >= 10) return;
+    rp -= 200;
+    marsResearchers = Math.min(10, marsResearchers + 1);
+    addLog("通知", `👩‍🔬 火星の研究者を追加雇用。現在${marsResearchers}人。`);
+    renderAll();
+}
+
+// 太陽系研究者
+function buyFirstSolarResearcher(){
+    if(solarResearcherBought || foreignMoney < 15000) return;
+    foreignMoney -= 15000;
+    solarResearcherBought = true;
+    solarResearchers = 1;
+    if(!_rpLoopId) startRPLoop();
+    addLog("通知", "👩‍🔬 太陽系の研究者を外貨15,000で雇用した。10秒ごとに+30RP");
+    renderAll();
+}
+function buySolarResearcherWithRP(){
+    if(!solarResearcherBought || rp < 500 || solarResearchers >= 10) return;
+    rp -= 500;
+    solarResearchers = Math.min(10, solarResearchers + 1);
+    addLog("通知", `👩‍🔬 太陽系の研究者を追加雇用。現在${solarResearchers}人。`);
+    renderAll();
+}
+
+// ブラックホール研究者
+function buyFirstBHResearcher(){
+    if(bhResearcherBought || foreignMoney < 30000) return;
+    foreignMoney -= 30000;
+    bhResearcherBought = true;
+    bhResearchers = 1;
+    if(!_rpLoopId) startRPLoop();
+    addLog("通知", "👩‍🔬 BHの研究者を外貨30,000で雇用した。10秒ごとに+50RP");
+    renderAll();
+}
+function buyBHResearcherWithRP(){
+    if(!bhResearcherBought || rp < 1000 || bhResearchers >= 10) return;
+    rp -= 1000;
+    bhResearchers = Math.min(10, bhResearchers + 1);
+    addLog("通知", `👩‍🔬 BHの研究者を追加雇用。現在${bhResearchers}人。`);
+    renderAll();
+}
+
+// 旧互換（初回研究者購入 → 月）
+function buyFirstResearcher(){ buyFirstMoonResearcher(); }
+function buyResearcherWithRP(){ buyMoonResearcherWithRP(); }
+
+let _rpLoopId = null;
+function startRPLoop(){
+    if(_rpLoopId) return;
+    _rpLoopId = setInterval(()=>{
+        // 上限超過を修正
+        if(moonResearchers > 10) moonResearchers = 10;
+        if(marsResearchers > 10) marsResearchers = 10;
+        if(solarResearchers > 10) solarResearchers = 10;
+        if(bhResearchers > 10) bhResearchers = 10;
+
+        const moonGain = moonResearchers * 10;
+        const marsGain = marsResearchers * 20;
+        const solarGain = solarResearchers * 30;
+        const bhGain = bhResearchers * 50;
+        const total = moonGain + marsGain + solarGain + bhGain;
+        if(total > 0){
+            rp += total;
+            const rpEl = document.getElementById("rpDisplay");
+            if(rpEl && rpUnlocked) rpEl.textContent = `RP ${rp.toFixed(0)}`;
+            if(spacePanelUnlocked) renderSpacePanel();
+        }
+    }, 10000);
+}
+
+
 function renderUpgradeArea(){
     const nextPackaging = PACKAGING_UPGRADES[packagingLevel];
     const eMaxSpeed = getEffectiveMaxSpeed();
@@ -3107,22 +4352,38 @@ function renderUpgradeArea(){
         <hr style="border-color:#333;margin:4px 0 8px;">
         <div style="font-size:13px; line-height:1.8;">
             ⚡ 生産基本速度 Lv.${speedLevel}/${eMaxSpeed} <span style="color:#ffd166; font-size:11px;">(x${(18000/Math.max(1600,(18000-(speedLevel-1)*800))).toFixed(2)}倍速)</span>
-            <button onclick="upgradeSpeed()" ${money < getSpeedUpgradeCost() || speedLevel >= eMaxSpeed ? "disabled":""} style="padding:2px 8px; font-size:11px;">強化(${getSpeedUpgradeCost().toLocaleString()}円)</button>
+            ${speedLevel >= eMaxSpeed
+                ? `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み</span>`
+                : `<button onclick="upgradeSpeed()" ${money < getSpeedUpgradeCost() ? "disabled":""} style="padding:2px 8px; font-size:11px;">強化(${getSpeedUpgradeCost().toLocaleString()}円)</button>`
+            }
             | 🔁 同時並列ライン ${multiRoll}/${eMaxMulti} 
-            <button onclick="upgradeMultiRoll()" ${money < getMultiRollUpgradeCost() || multiRoll >= eMaxMulti ? "disabled":""} style="padding:2px 8px; font-size:11px;">拡張(${getMultiRollUpgradeCost().toLocaleString()}円)</button>
+            ${multiRoll >= eMaxMulti
+                ? `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み</span>`
+                : `<button onclick="upgradeMultiRoll()" ${money < getMultiRollUpgradeCost() ? "disabled":""} style="padding:2px 8px; font-size:11px;">拡張(${getMultiRollUpgradeCost().toLocaleString()}円)</button>`
+            }
             <br>
             🧬 禁断変異誘導誘発 Lv.${mutationLevel}/${eMaxMut} <span style="color:#c86cff; font-size:11px;">(変異ボーナス+${mutationLevel})</span>
-            <button onclick="upgradeMutation()" ${money < getMutationUpgradeCost() || mutationLevel >= eMaxMut ? "disabled":""} style="padding:2px 8px; font-size:11px;">研究(${getMutationUpgradeCost().toLocaleString()}円)</button>
+            ${mutationLevel >= eMaxMut
+                ? `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み</span>`
+                : `<button onclick="upgradeMutation()" ${money < getMutationUpgradeCost() ? "disabled":""} style="padding:2px 8px; font-size:11px;">研究(${getMutationUpgradeCost().toLocaleString()}円)</button>`
+            }
             | ✨ 量子品質保証 Lv.${qualityLevel}/${eMaxQual} (現在:x${(1 + qualityLevel*0.15).toFixed(2)})
-            <button onclick="upgradeQuality()" ${money < getQualityUpgradeCost() || qualityLevel >= eMaxQual ? "disabled":""} style="padding:2px 8px; font-size:11px;">投資(${getQualityUpgradeCost().toLocaleString()}円)</button>
+            ${qualityLevel >= eMaxQual
+                ? `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み</span>`
+                : `<button onclick="upgradeQuality()" ${money < getQualityUpgradeCost() ? "disabled":""} style="padding:2px 8px; font-size:11px;">投資(${getQualityUpgradeCost().toLocaleString()}円)</button>`
+            }
             <br>
             📦 バルク梱包システム: <span style="color:#ffd166;">${packagingLevel === 0 ? "通常生産" : packagingLevel === 1 ? "クレート(40倍)" : "コンテナ(500倍)"}</span>
-            <button onclick="upgradePackaging()" ${!nextPackaging || money < nextPackaging.cost ? "disabled":""} style="padding:2px 8px; font-size:11px;">
-                ${nextPackaging ? `${nextPackaging.next}化(${nextPackaging.cost.toLocaleString()}円)` : "最大自動化"}
-            </button>
+            ${!nextPackaging
+                ? `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み</span>`
+                : `<button onclick="upgradePackaging()" ${money < nextPackaging.cost ? "disabled":""} style="padding:2px 8px; font-size:11px;">${nextPackaging.next}化(${nextPackaging.cost.toLocaleString()}円)</button>`
+            }
             <br>
             🤖 自動化パルス生産コア:
-            <button onclick="buyAutoRoll()" ${money < 5000 || autoRollOwned ? "disabled":""} style="padding:2px 8px; font-size:11px;">AIコア購入(5,000円)</button>
+            ${autoRollOwned
+                ? `<span style="font-size:11px;color:#5edc88;">✅ 所有済み</span>`
+                : `<button onclick="buyAutoRoll()" ${money < 5000 ? "disabled":""} style="padding:2px 8px; font-size:11px;">AIコア購入(5,000円)</button>`
+            }
             <button onclick="toggleAutoRoll()" ${!autoRollOwned ? "disabled":""} style="padding:2px 8px; font-size:11px; background:${powerGrid.isBroken ? '#444' : autoRollEnabled?'#5edc88':'#ffd166'}">
                 状態: ${powerGrid.isBroken ? "⚡ ブレーカー停止によりOFF" : autoRollEnabled ? "稼働中(ON)" : "待機中(OFF)"}
             </button>
@@ -3133,6 +4394,7 @@ function renderUpgradeArea(){
                 : `<span style="font-size:11px;color:#5edc88;">✅ 最大拡張済み(${STORAGE_LIMIT_MAX}個)</span>`
             }
             <br>
+            ${foreignUnlocked ? `
             <div style="font-size:15px;font-weight:bold;color:#55aaff;margin-bottom:2px;letter-spacing:1px;">💵 外貨強化エリア <span style="font-size:13px;font-weight:normal;color:#88bbff;">（所持外貨: ${formatForeign(foreignMoney)}）</span></div>
             <div style="font-size:12px;line-height:2;">
             ⚡ ブレーカー強化 Lv.${breakerLevel}/${MAX_BREAKER_LEVEL}
@@ -3151,6 +4413,7 @@ function renderUpgradeArea(){
             🤖 ハッカー雇用: ${hackerBtn}
             <span style="font-size:11px;color:#aaa;">（自動ハッキング、10%でミス。目標電力まで上昇したら停止）</span>
             </div>
+            ` : ''}
         </div>
     `;
 }
@@ -3645,7 +4908,30 @@ function updateFactoryStatusText() {
 
 function redeemCode(){
     const code = document.getElementById("codeInput").value.trim();
+    document.getElementById("codeInput").value = "";
     if(!code) return;
+
+    // 特殊コード: IDを表示（使用済み管理なし）
+    if(code === "ID"){
+        showToast("Your ID: " + window._playerId, 6000);
+        return;
+    }
+
+    // 特殊コード: Admin パネル開閉（管理者のみ）
+    if(code === "Admin"){
+        if(!isAdmin()){
+            showToast("このコードは存在しません");
+            return;
+        }
+        const el = document.getElementById("adminPanel");
+        if(el && el.style.display !== "none"){
+            el.style.display = "none";
+        } else {
+            openAdminPanel();
+        }
+        return;
+    }
+
     if(usedCodes.includes(code)){
         showToast("このコードは使用済みです");
         return;
@@ -3657,7 +4943,7 @@ function redeemCode(){
         addLog("AI", "🧠 コードを受理。5万円がチャージされました。");
         showToast("💰 5万円注入成功");
         renderAll();
-    }else{
+    } else {
         showToast("このコードは存在しません");
     }
 }
@@ -3696,9 +4982,9 @@ setInterval(()=>{
     renderShops();
     if(inventory.some(it=>it.transporting)) vsSchedule(); // 輸送カウントダウン更新
 
-    // stuck shop 強制リセット（endTimeを5秒超過してもbusyのまま）
+    // stuck shop 強制リセット（endTimeを2秒超過してもbusyのまま）
     for(const sh of shops){
-        if(sh.busy && sh.endTime > 0 && Date.now() > sh.endTime + 5000){
+        if(sh.busy && sh.endTime > 0 && Date.now() > sh.endTime + 2000){
             const sid = sh.saleId;
             inventory.forEach(it=>{ if(it.saleId===sid){ it.transporting=false; it.saleId=null; } });
             sh.busy=false; sh.saleId=null; sh.endTime=0; sh.pendingTotal=0; sh.pendingCount=0;
@@ -3844,6 +5130,19 @@ function getSaveData(){
         autoRollOwned, autoRollEnabled, autoTransportOwned, autoTransportRoutes,
         autoRepairOwned, hackLevel, hackUnlocked,
         breakerLevel, expansionLimitBoostOwned, trafficLawOwned, autoRecoverOwned, hackerOwned, hackerEnabled, hackerTargetLevel, foreignMoney, storageExpansionLevel,
+        foreignUnlocked, mysteryPanelUnlocked, telescopeBought, astronomyUnlocked, spacePanelUnlocked,
+        moonUnlocked, marsUnlocked, moonResearchers, moonResearcherBought, marsResearchers, marsResearcherBought,
+        solarResearchers, solarResearcherBought, bhResearchers, bhResearcherBought, rp, rpUnlocked,
+        telescopeBoughtAt, telescopeRPLevel,
+        observeProgress, observing: false, currentObserveTarget,
+        radioTelescopeResearching: false, radioTelescopeResearchProgress, radioTelescopeUnlocked,
+        radioObserving: false, radioObserveProgress, radioObserveTarget,
+        solarSystemUnlocked, blackholeUnlocked, quaplanasUnlocked,
+        warpDeveloped, alienContactDone, ufoTechAcquired, quaplanasMission,
+        blackholeResearchProgress, blackholeResearching: false,
+        rpFactoryLevel, quaplanasFactory, quaplanasFactoryData, quaplanasResearched, quap, _quaplanasResearchProgress,
+        rocketDevelopProgress, rocketDeveloping: false, ownedRockets, ufoOwned, rocketUnlocked, rocketDevStarted,
+        rocketMission,
         powerGrid: {...powerGrid},
         shops: shops.map(s=>({unlocked:s.unlocked, busy:false, endTime:0, saleId:null})),
         trucks: Object.fromEntries(Object.entries(trucks).map(([k,t])=>[k,{owned:t.owned,upgradeLevel:t.upgradeLevel}])),
@@ -3891,6 +5190,92 @@ function loadGame(){
         hackerTargetLevel = d.hackerTargetLevel ?? 200;
         foreignMoney = d.foreignMoney ?? 0;
         storageExpansionLevel = d.storageExpansionLevel ?? 0;
+        foreignUnlocked = d.foreignUnlocked ?? false;
+        mysteryPanelUnlocked = d.mysteryPanelUnlocked ?? false;
+        telescopeBought = d.telescopeBought ?? false;
+        astronomyUnlocked = d.astronomyUnlocked ?? false;
+        spacePanelUnlocked = d.spacePanelUnlocked ?? false;
+        moonUnlocked = d.moonUnlocked ?? false;
+        marsUnlocked = d.marsUnlocked ?? false;
+        moonResearchers = d.moonResearchers ?? d.marsResearchers ?? 0;
+        moonResearcherBought = d.moonResearcherBought ?? d.marsResearcherBought ?? false;
+        marsResearchers = d.marsResearchers ?? 0;
+        marsResearcherBought = d.marsResearcherBought ?? false;
+        solarResearchers = d.solarResearchers ?? 0;
+        solarResearcherBought = d.solarResearcherBought ?? false;
+        bhResearchers = d.bhResearchers ?? 0;
+        bhResearcherBought = d.bhResearcherBought ?? false;
+        rp = d.rp ?? 0;
+        rpUnlocked = d.rpUnlocked ?? false;
+        telescopeBoughtAt = d.telescopeBoughtAt ?? 0;
+        telescopeRPLevel = d.telescopeRPLevel ?? 0;
+        observeProgress = d.observeProgress ?? 0;
+        observing = false;
+        currentObserveTarget = d.currentObserveTarget ?? "";
+        radioTelescopeResearching = false;
+        radioTelescopeResearchProgress = d.radioTelescopeResearchProgress ?? 0;
+        radioTelescopeUnlocked = d.radioTelescopeUnlocked ?? false;
+        radioObserving = false;
+        radioObserveProgress = d.radioObserveProgress ?? 0;
+        radioObserveTarget = d.radioObserveTarget ?? "";
+        solarSystemUnlocked = d.solarSystemUnlocked ?? false;
+        blackholeUnlocked = d.blackholeUnlocked ?? false;
+        quaplanasUnlocked = d.quaplanasUnlocked ?? false;
+        quaplanasResearched = d.quaplanasResearched ?? false;
+        quaplanasFactory = d.quaplanasFactory ?? false;
+        quap = d.quap ?? 0;
+        currentWorld = "earth";
+        _quaplanasResearchProgress = d._quaplanasResearchProgress ?? 0;
+        warpDeveloped = d.warpDeveloped ?? false;
+        alienContactDone = d.alienContactDone ?? false;
+        ufoTechAcquired = d.ufoTechAcquired ?? false;
+        quaplanasMission = d.quaplanasMission ?? d.lifePlanetMission ?? null;
+        blackholeResearchProgress = d.blackholeResearchProgress ?? 0;
+        blackholeResearching = false;
+        rpFactoryLevel = d.rpFactoryLevel ?? 0;
+        if(d.quaplanasFactoryData) quaplanasFactoryData = d.quaplanasFactoryData;
+        rocketDevelopProgress = d.rocketDevelopProgress ?? 0;
+        rocketDeveloping = false;
+        ownedRockets = d.ownedRockets ?? {};
+        ufoOwned = d.ufoOwned ?? false;
+        rocketUnlocked = d.rocketUnlocked ?? false;
+        rocketDevStarted = d.rocketDevStarted ?? false;
+        rocketMission = d.rocketMission ?? null;
+        // ロケット開発が途中だったら再開
+        if(rocketDevStarted && !rocketUnlocked && rocketDevelopProgress < 100){
+            resumeRocketDev();
+        }
+        // ミッション途中だった場合は再開
+        if(rocketMission && !rocketMission.rewarded){
+            resumeMission();
+        }
+        // 観測再開
+        if(observeProgress > 0 && observeProgress < 100 && currentObserveTarget && !observing){
+            startObserve(currentObserveTarget, true);
+        }
+        // 電波望遠鏡研究再開
+        if(radioTelescopeResearchProgress > 0 && !radioTelescopeUnlocked){
+            resumeRadioResearch();
+        }
+        // 電波観測再開
+        if(radioObserveProgress > 0 && radioObserveProgress < 100 && radioObserveTarget){
+            resumeRadioObserve();
+        }
+        // ブラックホール研究再開
+        if(blackholeResearchProgress > 0 && !warpDeveloped){
+            resumeBHResearch();
+        }
+        // 生命惑星ミッション再開
+        if(quaplanasMission && quaplanasMission.progress < 100){
+            resumeLifeMission();
+        }
+        if(quaplanasFactory){
+            const tb = document.getElementById("factoryTravelBar"); if(tb){ tb.style.display="flex"; tb.style.setProperty("display","flex","important"); }
+        }
+        if(foreignUnlocked) document.getElementById("foreignMoney").style.display = "";
+        if(rpUnlocked){ document.getElementById("rpDisplay").style.display = ""; startRPLoop(); }
+        if(mysteryPanelUnlocked) document.getElementById("mysteryPanel").style.display = "";
+        if(spacePanelUnlocked){ document.getElementById("spacePanel").style.display = ""; }
         if(hackerOwned) startHackerLoop();
         if(d.powerGrid) Object.assign(powerGrid, d.powerGrid);
         if(d.autoTransportRoutes){
@@ -3909,7 +5294,12 @@ function loadGame(){
         earnLog = d.earnLog ?? [];
         usedCodes = d.usedCodes ?? [];
         return true;
-    } catch(e){ console.warn("Load failed:", e); return false; }
+    } catch(e){
+        console.warn("Load failed:", e);
+        // ロード中にエラーが起きても図鑑・ルートは消さない
+        // 部分的に読めたデータは既に変数に入っているのでそのまま継続
+        return false;
+    }
 }
 
 function deleteGameData(){
@@ -3947,5 +5337,6 @@ if(_deletedNotice) showToast("データを削除しました");
             <div id="tdmBody" style="overflow-y:auto;max-height:55vh;flex:1;"></div>
         </div>
     </div>
+</div><!-- end earthWorld -->
 </body>
 </html>
