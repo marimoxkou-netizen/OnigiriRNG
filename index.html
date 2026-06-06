@@ -5324,6 +5324,105 @@ addLog("AI", _loaded ? "🔄 セーブデータを読み込みました。" : "�
 updateTrend();
 renderAll();
 if(_deletedNotice) showToast("データを削除しました");
+
+// ===== プレイヤーID & 管理者 =====
+(function(){
+    let pid = localStorage.getItem("onigiriRNG_playerId");
+    if(!pid){
+        pid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+            var r = Math.random()*16|0;
+            return (c==='x' ? r : (r&0x3|0x8)).toString(16);
+        });
+        localStorage.setItem("onigiriRNG_playerId", pid);
+    }
+    window._playerId = pid;
+    console.log("Player ID:", pid);
+})();
+
+const _ADMIN_IDS = new Set([]);
+function isAdmin(){ return _ADMIN_IDS.has(window._playerId); }
+
+function openAdminPanel(){
+    let el = document.getElementById("adminPanel");
+    if(el){ el.style.display = el.style.display==="none" ? "flex" : "none"; return; }
+    el = document.createElement("div");
+    el.id = "adminPanel";
+    el.style.cssText = "position:fixed;inset:0;background:#000c;z-index:9999;display:flex;align-items:center;justify-content:center;";
+    el.innerHTML = `
+    <div style="background:#111;border:2px solid #ffd166;border-radius:12px;padding:20px;width:520px;max-width:95vw;max-height:85vh;overflow-y:auto;color:#fff;font-size:13px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h2 style="color:#ffd166;margin:0;">🔧 管理者パネル</h2>
+            <button onclick="document.getElementById('adminPanel').style.display='none'" style="background:#333;color:#aaa;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;">✕</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div style="background:#1a1a1a;border-radius:8px;padding:10px;grid-column:1/-1;">
+                <div style="color:#ffd166;margin-bottom:6px;">💰 通貨操作</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                    円<input id="adm_money" type="number" value="1000000" style="width:90px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;">
+                    <button onclick="money+=+document.getElementById('adm_money').value;renderAll();" style="padding:3px 10px;background:#ffd166;color:#111;border:none;border-radius:4px;cursor:pointer;">+</button>
+                    外貨<input id="adm_foreign" type="number" value="10000" style="width:80px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;">
+                    <button onclick="foreignMoney+=+document.getElementById('adm_foreign').value;renderAll();" style="padding:3px 10px;background:#55aaff;color:#111;border:none;border-radius:4px;cursor:pointer;">+</button>
+                    RP<input id="adm_rp" type="number" value="1000" style="width:70px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;">
+                    <button onclick="rp+=+document.getElementById('adm_rp').value;renderAll();" style="padding:3px 10px;background:#c0a0ff;color:#111;border:none;border-radius:4px;cursor:pointer;">+</button>
+                    クァプ<input id="adm_quap" type="number" value="100" style="width:70px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;">
+                    <button onclick="quap+=+document.getElementById('adm_quap').value;renderAll();" style="padding:3px 10px;background:#5edc88;color:#111;border:none;border-radius:4px;cursor:pointer;">+</button>
+                </div>
+            </div>
+            <div style="background:#1a1a1a;border-radius:8px;padding:10px;">
+                <div style="color:#ffd166;margin-bottom:6px;">⚡ 電圧操作</div>
+                電圧%<input id="adm_voltage" type="number" value="100" style="width:80px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;"><br>
+                <button onclick="powerGrid.level=+document.getElementById('adm_voltage').value;powerGrid.isBroken=false;renderAll();" style="margin-top:6px;padding:3px 10px;background:#ff9f1c;color:#111;border:none;border-radius:4px;cursor:pointer;">設定</button>
+            </div>
+            <div style="background:#1a1a1a;border-radius:8px;padding:10px;">
+                <div style="color:#ffd166;margin-bottom:6px;">🍙 おにぎり生成</div>
+                <select id="adm_onigirikind" style="background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;font-size:11px;width:100%;"></select>
+                <select id="adm_onigiririar" style="background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;font-size:11px;margin-top:2px;width:100%;">
+                    <option value="common">common</option><option value="uncommon">uncommon</option><option value="rare">rare</option><option value="epic">epic</option><option value="legend">legend</option><option value="mythical">mythical</option><option value="secret">secret</option>
+                </select>
+                個数<input id="adm_onigiricount" type="number" value="1" min="1" max="100" style="width:50px;background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;">
+                <button onclick="adminGenOnigiri()" style="margin-top:4px;padding:3px 10px;background:#ff60a0;color:#111;border:none;border-radius:4px;cursor:pointer;display:block;">生成</button>
+            </div>
+            <div style="background:#1a1a1a;border-radius:8px;padding:10px;grid-column:1/-1;">
+                <div style="color:#ffd166;margin-bottom:6px;">🎪 イベント発火</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                    <button onclick="typeof triggerBananaEvent==='function'&&triggerBananaEvent()" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">🍌バナナ</button>
+                    <button onclick="typeof triggerDJEvent==='function'&&triggerDJEvent()" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">🎧DJ</button>
+                    <button onclick="typeof triggerErrorEvent==='function'&&triggerErrorEvent()" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">❌Error</button>
+                    <button onclick="typeof triggerGlowEvent==='function'&&triggerGlowEvent()" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">✨発光</button>
+                    <button onclick="typeof triggerIllegalVoltageEvent==='function'&&triggerIllegalVoltageEvent()" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">⚡違法電圧</button>
+                    <button onclick="typeof triggerMidnightTension==='function'&&triggerMidnightTension()" style="padding:3px 8px;background:#333;color:#5edc88;border:1px solid #5edc88;border-radius:4px;cursor:pointer;font-size:11px;">🍀深夜テンション</button>
+                    <button onclick="powerGrid.isBroken=true;renderAll();addLog('警告','[管理者]ブレーカー落下');" style="padding:3px 8px;background:#333;color:#ff3333;border:1px solid #ff3333;border-radius:4px;cursor:pointer;font-size:11px;">🔌ブレーカー</button>
+                </div>
+            </div>
+            <div style="background:#1a1a1a;border-radius:8px;padding:10px;grid-column:1/-1;">
+                <div style="color:#ffd166;margin-bottom:6px;">⏱️ 時間倍率</div>
+                %<input id="adm_timescale" type="number" value="100" min="1" style="width:80px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;">
+                <button onclick="window._adminTimeScale=+document.getElementById('adm_timescale').value/100;showToast('時間倍率: '+(window._adminTimeScale*100)+'%');" style="padding:3px 10px;background:#ff9f1c;color:#111;border:none;border-radius:4px;cursor:pointer;margin-left:4px;">適用</button>
+                <span style="font-size:11px;color:#888;margin-left:6px;">100%=通常速度</span>
+            </div>
+        </div>
+    </div>`;
+    el.addEventListener("click", e=>{ if(e.target===el) el.style.display="none"; });
+    document.body.appendChild(el);
+    const sel = el.querySelector("#adm_onigirikind");
+    if(sel) sel.innerHTML = onigiris.map(o=>`<option value="${o.name}">${o.name}</option>`).join("");
+}
+
+function adminGenOnigiri(){
+    const name = document.getElementById("adm_onigirikind")?.value || onigiris[0].name;
+    const cls  = document.getElementById("adm_onigiririar")?.value || "common";
+    const cnt  = Math.min(100, parseInt(document.getElementById("adm_onigiricount")?.value)||1);
+    const base = onigiris.find(o=>o.name===name) || onigiris[0];
+    for(let i=0;i<cnt;i++){
+        if(inventory.length >= storageMax) break;
+        inventory.push({ id:Date.now()+i, name, emoji:base.emoji, class:cls, finalPrice:base.price, process:null, transporting:false, saleId:null });
+    }
+    addLog("管理者", "🍙 "+name+"×"+cnt+"を生成");
+    renderAll();
+}
+
+window._adminTimeScale = 1;
+
 </script>
     <!-- 輸送中詳細モーダル -->
     <div id="transportDetailModal" style="display:none;position:fixed;inset:0;background:#000a;z-index:9500;align-items:center;justify-content:center;" onclick="if(event.target===this)closeTransportDetail()">
