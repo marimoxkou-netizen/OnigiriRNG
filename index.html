@@ -419,7 +419,7 @@ input,select{
         <button onclick="hideDeleteConfirm()" style="background:#444;color:#ccc;border:none;border-radius:8px;padding:8px 24px;cursor:pointer;">キャンセル</button>
     </div>
 </div>
-<div id="lassoBox"></div>
+<div id="lassoBox" style="position:fixed;z-index:3000;pointer-events:none;"></div>
 <div id="topNotice"></div>
 <div id="toast"></div>
 
@@ -520,14 +520,14 @@ input,select{
                 </div>
         </div>
 
-        <div class="panel">
+        <div class="panel" id="trendPanel">
             <h2>📈 市場トレンド相場</h2>
             <div id="trendArea" style="background:#111; padding:10px; border-radius:8px; font-size:14px; text-align:center;">
                 トレンド算出中...
             </div>
         </div>
 
-        <div class="panel">
+        <div class="panel" id="logPanel">
             <h2>📜 工場中央メインログ</h2>
             <div class="logBox" id="logBox"></div>
         </div>
@@ -542,61 +542,106 @@ input,select{
 </div>
 
 <!-- 工場トラベルバー -->
-<div id="factoryTravelBar" style="position:fixed;top:0;left:0;right:0;z-index:200;background:linear-gradient(90deg,#0a1a0a,#1a3a1a);border-bottom:2px solid #5edc88;padding:6px 16px;display:none;gap:12px;align-items:center;">
+<div id="factoryTravelBar" style="position:fixed;top:0;left:0;right:0;z-index:200;background:linear-gradient(90deg,#0a1a0a,#1a3a1a);border-bottom:2px solid #5edc88;padding:6px 16px;display:none;gap:12px;align-items:center;" onshow="document.body.style.paddingTop='40px'">
     <span style="color:#5edc88;font-weight:bold;font-size:13px;">🛸 工場トラベル</span>
     <button onclick="travelToEarth()" id="travelEarthBtn" style="background:#1a2a1a;border:1px solid #5edc88;color:#5edc88;padding:4px 14px;border-radius:6px;font-size:12px;">🌍 地球の工場</button>
     <button onclick="travelToQuaplanas()" id="travelQuaplanasBtn" style="background:#1a2a1a;border:1px solid #5edc88;color:#5edc88;padding:4px 14px;border-radius:6px;font-size:12px;">🌍✨ クァプラナス工場</button>
 </div>
 
 <!-- クァプラナス工場ワールド -->
-<div id="quaplanasWorld" style="display:none;padding-top:40px;">
-    <div style="background:linear-gradient(135deg,#050518 0%,#0a0a2a 30%,#0a1a20 60%,#1a0a2a 100%);min-height:100vh;padding:16px;">
-        <div style="max-width:1400px;margin:0 auto;">
-            <h1 style="color:#5edc88;font-size:20px;text-align:center;margin-bottom:12px;">🌍✨ クァプラナス工場</h1>
-            <div style="text-align:center;margin-bottom:8px;font-size:14px;color:#ffd166;">💠 クァプ: <span id="quapDisplay" style="font-weight:bold;">0</span> ｜ 💰 円: <span id="qMoneyDisplay">0</span></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                <!-- 左カラム -->
-                <div>
-                    <div class="panel" style="background:#080818;border:1px solid #5edc8866;">
-                        <h2 style="color:#5edc88;">⚙️ 生産ライン</h2>
-                        <div id="qProductionArea" style="font-size:13px;color:#aaa;">初期化中...</div>
-                        <button id="qRollButton" onclick="quaplanasManualRoll()" style="margin-top:8px;">手動パルス生産</button>
-                    </div>
-                    <div class="panel" style="background:#080818;border:1px solid #5edc8866;margin-top:12px;">
-                        <h2 style="color:#5edc88;">⚙️ 工場拡張</h2>
-                        <div id="qUpgradeArea" style="font-size:13px;color:#aaa;"></div>
-                    </div>
-                    <div class="panel" style="background:#080818;border:1px solid #c0a0ff66;margin-top:12px;">
-                        <h2 style="color:#c0a0ff;">💠 RP研究</h2>
-                        <div id="qRPArea" style="font-size:13px;color:#aaa;">所持RP: <span id="qRPDisplay">0</span></div>
-                    </div>
-                </div>
-                <!-- 右カラム -->
-                <div>
-                    <div class="panel" style="background:#080818;border:1px solid #5edc8866;">
-                        <h2 style="color:#5edc88;">🎒 倉庫ストレージ</h2>
-                        <div id="qInventoryArea" style="font-size:13px;color:#aaa;max-height:300px;overflow-y:auto;"></div>
-                        <button onclick="qSendAll()" style="margin-top:6px;background:#5edc88;color:#111;">⚡ 全ワープ販売</button>
-                    </div>
-                    <div class="panel" style="background:#080818;border:1px solid #5edc8866;margin-top:12px;">
-                        <h2 style="color:#5edc88;">🏪 クァプラナス指定納品先市場</h2>
-                        <div id="qShopsArea" style="font-size:13px;color:#aaa;"></div>
-                    </div>
-                    <div class="panel" style="background:#080818;border:1px solid #5edc8866;margin-top:12px;">
-                        <h2 style="color:#5edc88;">📖 クァプラナスおにぎり図鑑 (<span id="qDictCount">0</span>種類)</h2>
-                        <div id="qDictionaryArea" style="font-size:12px;max-height:200px;overflow-y:auto;color:#bbb;">未発見</div>
-                    </div>
-                    <div class="panel" style="background:#080818;border:1px solid #5edc8866;margin-top:12px;">
-                        <h2 style="color:#5edc88;">📜 クァプラナスログ</h2>
-                        <div class="logBox" id="qLogBox"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+<div id="quaplanasWorld" style="display:none;padding-top:50px;min-height:100vh;background:linear-gradient(135deg,#050518 0%,#0a0a2a 40%,#080820 100%);">
+
+<h1 style="color:#5edc88;text-align:center;font-size:20px;margin:12px 0 4px;">🌍✨ クァプラナス工場</h1>
+<div style="text-align:center;margin-bottom:8px;font-size:13px;color:#aaa;">
+    💠 クァプ: <span id="quapDisplay" style="font-weight:bold;color:#5edc88;">0</span>
 </div>
 
-<div id="earthWorld">
+<div id="qMain" style="display:grid;grid-template-columns:3fr 1fr;gap:12px;max-width:1400px;margin:0 auto;padding:0 12px 60px;">
+
+  <!-- 左カラム -->
+  <div class="left-column" style="grid-column:1;">
+
+    <div class="panel" style="background:#080820;border:1px solid #5edc8844;">
+      <div class="topStats">
+        <div class="statBox">💠 クァプ<br><br><span id="quapDisplay2" style="font-size:22px;font-weight:bold;color:#5edc88;">0</span></div>
+        <div class="statBox">🎒 倉庫保管数<br><br><span id="qItemCount" style="font-size:22px;font-weight:bold;">0</span></div>
+      </div>
+    </div>
+
+    <div class="panel" style="background:#080820;border:1px solid #5edc8844;">
+      <h2 style="color:#5edc88;">🏭 生産ライン（通過時に変異確定）
+        <button onclick="qToggleLines()" id="qToggleLineBtn" style="margin-left:12px;padding:3px 10px;font-size:12px;background:#333;color:#aaa;border:1px solid #555;border-radius:6px;cursor:pointer;">非表示</button>
+      </h2>
+      <div class="multiGrid" id="qMultiRollDisplay"></div>
+      <div style="margin-top:10px;">
+        <button onclick="quaplanasManualRoll()">手動パルス生産</button>
+      </div>
+    </div>
+
+    <div class="panel" style="background:#080820;border:1px solid #5edc8844;">
+      <h2 style="color:#5edc88;">⚙️ 工場拡張・禁断研究</h2>
+      <div id="qUpgradeArea"></div>
+    </div>
+
+    <div class="panel" style="background:#080820;border:1px solid #5edc8844;">
+      <h2 style="color:#5edc88;">🏪 クァプラナス指定納品先市場</h2>
+      <div id="qShopsArea"></div>
+    </div>
+
+    <div class="panel" style="background:#080820;border:1px solid #5edc8844;">
+      <h2 style="color:#5edc88;">📡 自動輸送プロトコル</h2>
+      <button id="qAutoTransportBuyBtn" onclick="buyQAutoTransport()">輸送AI購入(外貨 2,000)</button>
+      <div id="qAutoTransportArea" style="font-size:13px;color:#aaa;margin-top:6px;"></div>
+    </div>
+
+    <div class="panel" style="background:#080820;border:1px solid #5edc8844;">
+      <h2 style="color:#5edc88;">🎒 倉庫ストレージ（Shift/Ctrl+クリックで複数選択）</h2>
+      <div style="margin-bottom:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <select id="qShopSelectForSend" style="padding:6px;border-radius:8px;background:#1a1a30;color:white;border:1px solid #5edc8844;"></select>
+        <button onclick="qSendSelected()" style="background:#5edc88;color:#111;">🌀 選択をワープ販売</button>
+        <button onclick="qSelectAll()" style="padding:4px 10px;font-size:12px;background:#333;color:#aaa;border:1px solid #555;border-radius:6px;">全選択</button>
+        <button onclick="qDeselectAll()" style="padding:4px 10px;font-size:12px;background:#333;color:#aaa;border:1px solid #555;border-radius:6px;">選択解除</button>
+        <span style="font-size:12px;color:#aaa;">並べ替え:</span>
+        <button id="qSortPriceBtn" onclick="setQInventorySort('price')" style="padding:4px 10px;font-size:12px;">💰 価格順</button>
+        <button id="qSortRarityBtn" onclick="setQInventorySort('rarity')" style="padding:4px 10px;font-size:12px;">⭐ レア度順</button>
+      </div>
+      <div id="qInventoryViewport" style="height:400px;overflow-y:auto;position:relative;border:1px solid #1a2a1a;border-radius:6px;">
+        <div id="qInventorySpacer" style="position:relative;">
+          <div id="qInventoryVisible" style="position:absolute;left:0;right:0;top:0;display:flex;flex-wrap:wrap;gap:8px;padding:8px;"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 右カラム -->
+  <div class="right-column" style="grid-column:2;">
+
+    <div class="panel" style="background:#080820;border:1px solid #5edc8844;">
+      <h2 style="color:#5edc88;">📊 工場ステータス</h2>
+      <div class="status-grid" id="qStatusArea" style="font-size:13px;color:#aaa;"></div>
+    </div>
+
+    <div class="panel" style="background:#080820;border:1px solid #5edc8844;">
+      <h2 style="color:#5edc88;">📈 クァプラナス市場トレンド</h2>
+      <div id="qTrendArea" style="background:#0a0a20;padding:10px;border-radius:8px;font-size:13px;color:#aaa;">算出中...</div>
+    </div>
+
+    <div class="panel" style="background:#080820;border:1px solid #5edc8844;">
+      <h2 style="color:#5edc88;">📜 クァプラナスログ</h2>
+      <div class="logBox" id="qLogBox"></div>
+    </div>
+
+    <div class="panel" style="background:#080820;border:1px solid #5edc8844;">
+      <h2 style="color:#5edc88;">📖 クァプラナスおにぎり図鑑 (<span id="qDictCount">0</span>種類)</h2>
+      <div id="qDictionaryArea" style="font-size:12px;max-height:300px;overflow-y:auto;color:#bbb;"></div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<div id="earthWorld" style="display:block;">
 
 <script>
 // ===== クァプラナスおにぎり定義 =====
@@ -722,6 +767,10 @@ let _bhResearchTimer = null;
 // RP工場強化
 let rpFactoryLevel = 0;             // 0~10
 const MAX_RP_FACTORY = 10;
+let rpTruckSpeedLevel = 0;          // 0~10 トラック速度強化
+const MAX_RP_TRUCK = 10;
+let rpHackLevel = 0;                // 0~5 RP発電所強化
+const MAX_RP_HACK = 5;
 
 // ロケット関連
 let rocketDevelopProgress = 0;
@@ -991,6 +1040,16 @@ const trends = [
     { name: "安定市場", targetType: "none", targetKey: "", multi: 1.0, desc: "特記事項なし" }
 ];
 
+
+// ===== 設定 =====
+let gameSettings = {
+    secretAnimation: true,   // シークレット演出
+    showTrend: true,          // 市場トレンド表示
+    showMainLog: true,        // メインログ表示
+    stackInventory: false,    // 倉庫ストレージ圧縮
+    stackThreshold: "uncommon", // この以下のレア度をまとめる
+    breakerProtect: false,    // ブレーカー保護（落ちない）
+};
 const _logRecentMap = {}; // key: text, value: {count, firstTime}
 function addLog(type, text) {
     const logBox = document.getElementById("logBox");
@@ -1031,6 +1090,56 @@ function showToast(text, duration){
     toast.classList.add("show");
     clearTimeout(toast._t);
     toast._t = setTimeout(()=>toast.classList.remove("show"), duration||2000);
+}
+
+
+
+let qMarketTrend = { targetType:"all", targetKey:"all", multi:1.0, name:"通常相場" };
+const Q_TREND_TARGETS=[
+    {label:"全般ボーナス",type:"all",key:"all"},
+    {label:"Common底上げ",type:"rarity",key:"common"},
+    {label:"Uncommon高騰",type:"rarity",key:"uncommon"},
+    {label:"Rare急騰",type:"rarity",key:"rare"},
+    {label:"Epic暴落",type:"rarity",key:"epic"},
+    {label:"Legend熱狂",type:"rarity",key:"legend"},
+];
+
+function updateQTrend(){
+    const roll=Math.random();
+    if(roll<0.12){
+        qMarketTrend={targetType:"all",targetKey:"all",multi:0.5+Math.random()*0.4,name:"📉 全面安"};
+    } else if(roll<0.30){
+        qMarketTrend={targetType:"all",targetKey:"all",multi:1.3+Math.random()*0.7,name:"📈 全面高"};
+    } else {
+        const t=Q_TREND_TARGETS[Math.floor(Math.random()*Q_TREND_TARGETS.length)];
+        const m=0.6+Math.random()*1.8;
+        qMarketTrend={targetType:t.type,targetKey:t.key,multi:parseFloat(m.toFixed(2)),name:t.label+" x"+m.toFixed(2)};
+    }
+    renderQTrend();
+}
+
+function renderQTrend(){
+    const el=document.getElementById("qTrendArea"); if(!el) return;
+    const col=qMarketTrend.multi>1?"#5edc88":qMarketTrend.multi<0.8?"#ff6666":"#ffd166";
+    el.innerHTML=`<div style="font-size:16px;font-weight:bold;color:${col};">${qMarketTrend.name}</div>
+    <div style="font-size:12px;color:#aaa;margin-top:4px;">倍率: <b style="color:${col};">x${qMarketTrend.multi.toFixed(2)}</b></div>`;
+}
+
+setInterval(()=>{ updateQTrend(); },30000);
+
+function showQSaleEffect(quapAmount, count){
+    const el = document.createElement("div");
+    el.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.5);z-index:8000;background:linear-gradient(135deg,#0a1a0a,#1a3a0a);border:2px solid #5edc88;border-radius:16px;padding:24px 40px;text-align:center;transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);pointer-events:none;";
+    el.innerHTML = `<div style="font-size:40px;margin-bottom:8px;">🌀</div>
+        <div style="color:#5edc88;font-size:24px;font-weight:bold;">ワープ販売完了!</div>
+        <div style="color:#ffd166;font-size:18px;margin-top:6px;">💠 +${quapAmount.toLocaleString()} クァプ</div>
+        <div style="color:#aaa;font-size:13px;margin-top:4px;">${count}個のおにぎりを販売</div>`;
+    document.body.appendChild(el);
+    requestAnimationFrame(()=>{ el.style.transform="translate(-50%,-50%) scale(1)"; el.style.opacity="1"; });
+    setTimeout(()=>{
+        el.style.opacity="0"; el.style.transform="translate(-50%,-70%) scale(0.8)";
+        setTimeout(()=>el.remove(), 400);
+    }, 1800);
 }
 
 function formatForeign(value){
@@ -1163,6 +1272,10 @@ function buildProductionProcess(){
         dangerText = "中"; dangerBadgeClass = "danger-mid";
         if(RARITY_ORDER.indexOf(finalClass) < RARITY_ORDER.indexOf("epic")) finalClass = "epic";
     }
+    // 自我おにぎりは最低でもepic
+    if(accidents.includes("自我の覚醒(AI倫理OFF)") && RARITY_ORDER.indexOf(finalClass) < RARITY_ORDER.indexOf("epic")){
+        finalClass = "epic";
+    }
 
     if (dangerText === "EX" || (dangerText === "高" && maxDangerAchieved !== "EX")) maxDangerAchieved = dangerText;
 
@@ -1221,10 +1334,13 @@ function formatProduct(base){
     return { name:`${base.name}コンテナ`, emoji:`🚢`, priceMulti:500, count:1000, loadSize:60, kind:"コンテナ" };
 }
 
+function getAdminTimeScale(){ return Math.max(0.01, window._adminTimeScale || 1); }
+function adminScaledMs(ms){ return Math.max(1, Math.round(ms / getAdminTimeScale())); }
+
 function getRollDelay(){
     const powerSpeedBonus = powerGrid.level / 100;
     const baseDelay = Math.max(1600, (18000 - (speedLevel-1)*800) / powerSpeedBonus);
-    return baseDelay * (packagingLevel === 0 ? 1 : packagingLevel === 1 ? 4 : 18);
+    return (baseDelay * (packagingLevel === 0 ? 1 : packagingLevel === 1 ? 4 : 18)) / getAdminTimeScale();
 }
 
 function getTruckCapacity(truck){ return truck.baseAmount * Math.pow(2, truck.upgradeLevel); }
@@ -1508,8 +1624,9 @@ function tickLines(now){
                         let cumulative = 0;
                         for(const sec of SECRETS){
                             const prev = cumulative;
-                            cumulative = sec.threshold;
-                            if(sec.check() && roll >= prev && roll < sec.threshold){
+                            const thr = typeof sec.threshold==="function" ? sec.threshold() : sec.threshold;
+                            cumulative = thr;
+                            if(sec.check() && roll >= prev && roll < thr){
                                 it.process.name = sec.name;
                                 it.process.emoji = sec.emoji;
                                 it.process.base = {...it.process.base, name: sec.name.replace(/^.{1,2}/,""), emoji: sec.emoji, price: sec.price};
@@ -1677,7 +1794,7 @@ function renderInventory(){
     document.getElementById("money").textContent = Math.floor(money).toLocaleString();
     document.getElementById("foreignMoney").textContent = `外貨 ${formatForeign(foreignMoney)}`;
     if(quaplanasFactory){
-            const tb = document.getElementById("factoryTravelBar"); if(tb){ tb.style.display="flex"; tb.style.setProperty("display","flex","important"); }
+            const tb = document.getElementById("factoryTravelBar"); if(tb){ tb.style.display="flex"; tb.style.setProperty("display","flex","important"); document.body.style.paddingTop="42px"; }
         }
         if(foreignUnlocked) document.getElementById("foreignMoney").style.display = "";
     if(rpUnlocked){
@@ -1770,8 +1887,28 @@ function vsRender(){
     for(const [saleId, items] of transportGroups){
         allCards.push({ type:'transport', saleId, items });
     }
-    for(const item of normalItems){
-        allCards.push({ type:'item', item });
+    // スタック圧縮表示
+    const RARITY_RANK_MAP = {common:0,uncommon:1,rare:2,epic:3,legend:4,mythical:5,secret:6};
+    const stackThreshRank = RARITY_RANK_MAP[gameSettings.stackThreshold||"uncommon"]??1;
+    if(gameSettings.stackInventory){
+        const stackMap = new Map(); // class -> [items]
+        const nonStacked = [];
+        for(const item of normalItems){
+            if((RARITY_RANK_MAP[item.class]??0) <= stackThreshRank){
+                if(!stackMap.has(item.class)) stackMap.set(item.class, []);
+                stackMap.get(item.class).push(item);
+            } else {
+                nonStacked.push({ type:'item', item });
+            }
+        }
+        for(const [cls, items] of stackMap){
+            allCards.push({ type:'stack', cls, items });
+        }
+        for(const c of nonStacked) allCards.push(c);
+    } else {
+        for(const item of normalItems){
+            allCards.push({ type:'item', item });
+        }
     }
 
     const totalCards = allCards.length;
@@ -1821,6 +1958,18 @@ function vsRender(){
                 <div style="font-size:12px;color:#55aaff;">⏱ ${remain}s</div>
                 <button onclick="showTransportDetail(${saleId})" style="margin-top:6px;padding:2px 8px;font-size:11px;background:#1a2a3a;color:#88ccff;border:1px solid #55aaff55;border-radius:4px;cursor:pointer;">詳細を確認</button>
             </div>`;
+        } else if(card.type === 'stack'){
+            const { cls, items } = card;
+            const total = items.reduce((s,it)=>s+it.finalPrice,0);
+            const clsColor = RARITY_COLORS[cls]||'#888';
+            const ids = items.map(it=>it.id).join(',');
+            html += `<div class="card" style="border:1px solid ${clsColor}55;background:#111;cursor:pointer;" onclick="showStackDetail([${ids}], '${cls}')">
+                <span class="rarityBadge" style="background:${clsColor}22;color:${clsColor};border:1px solid ${clsColor}55;">${RARITY_LABELS[cls]||cls}</span>
+                <div style="font-size:32px;margin-top:10px;">📦</div>
+                <h4 style="margin:5px 0;color:${clsColor};font-size:12px;">×${items.length}個まとめ</h4>
+                <div class="money" style="font-size:14px;color:${clsColor};">${total.toLocaleString()}円</div>
+                <button onclick="event.stopPropagation();showStackDetail([${ids}], '${cls}')" style="margin-top:6px;padding:2px 8px;font-size:11px;background:#1a1a1a;color:#aaa;border:1px solid #555;border-radius:4px;cursor:pointer;">詳細</button>
+            </div>`;
         } else {
             const item = card.item;
             const isLocked = !!item.locked;
@@ -1836,6 +1985,37 @@ function vsRender(){
         }
     }
     visible.innerHTML = html;
+}
+
+function showStackDetail(ids, clsHint){
+    const idArr=Array.isArray(ids)?ids:[ids];
+    const items=inventory.filter(it=>idArr.includes(it.id));
+    if(!items.length) return;
+    const cls=clsHint||items[0].class;
+    const clsColor=RARITY_COLORS[cls]||'#888';
+    let el = document.getElementById("stackDetailModal");
+    if(!el){
+        el = document.createElement("div");
+        el.id = "stackDetailModal";
+        el.style.cssText = "position:fixed;inset:0;background:#000c;z-index:8000;display:flex;align-items:center;justify-content:center;";
+        el.addEventListener("click",e=>{if(e.target===el)el.style.display="none";});
+        document.body.appendChild(el);
+    }
+    el.innerHTML = `<div style="background:#111;border:2px solid ${clsColor};border-radius:12px;padding:16px;max-width:500px;width:95vw;max-height:80vh;overflow-y:auto;color:#fff;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <h3 style="margin:0;color:${clsColor};">${RARITY_LABELS[cls]||cls} まとめ (${items.length}個)</h3>
+            <button onclick="document.getElementById('stackDetailModal').style.display='none'" style="background:#333;color:#aaa;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;">✕</button>
+        </div>
+        ${items.map(it=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #222;">
+            <span style="font-size:20px;">${it.emoji}</span>
+            <div style="flex:1;">
+                <div style="font-size:12px;color:${clsColor};">${it.name}</div>
+                <div style="font-size:11px;color:#ffd166;">${it.finalPrice.toLocaleString()}円</div>
+            </div>
+            <button onclick="selectItem(event,${it.id});document.getElementById('stackDetailModal').style.display='none';" style="padding:2px 8px;font-size:11px;background:#1a2a1a;color:#5edc88;border:1px solid #5edc8855;border-radius:4px;cursor:pointer;">選択</button>
+        </div>`).join("")}
+    </div>`;
+    el.style.display = "flex";
 }
 
 function vsSchedule(){
@@ -2059,7 +2239,8 @@ function startSell(index,forcedItems=null,forcedTruck=null){
     // 合計金額を1回だけ計算してpendingTotalに保存（内部では個別に足し算しない）
     const total = sending.reduce((s, item) => s + item.finalPrice, 0);
     const saleId = nextSaleId++;
-    const time = Math.max(1, Math.floor(shop.time * (trafficLawOwned ? 1.5 : 1.0) / truck.speed));
+    const rpTruckMul = 1 + (rpTruckSpeedLevel||0)*0.1;
+    const time = Math.max(1, Math.floor(shop.time * (trafficLawOwned ? 1.5 : 1.0) / truck.speed / rpTruckMul));
 
     // アイテムはinventoryに残してtransportingフラグだけ立てる（表示用）
     const sentIds = new Set(sending.map(item=>item.id));
@@ -2080,7 +2261,7 @@ function startSell(index,forcedItems=null,forcedTruck=null){
     renderShops();
 
     // finishSellにはpendingTotalを渡すだけ（個別アイテムのループなし）
-    setTimeout(()=>finishSell(index,saleId), time*1000);
+    setTimeout(()=>finishSell(index,saleId), adminScaledMs(time*1000));
 }
 
 function finishSell(shopIndex,saleId){
@@ -2131,6 +2312,7 @@ function finishSell(shopIndex,saleId){
     }
     money += profit;
     earnLog.push({t: Date.now(), v: profit});
+    _earthPassiveEarnLog.push({t: Date.now(), v: profit});
 
     addLog("通知", `${shop.name}への納品完了。利益 +${profit.toLocaleString()}円 を受領。`);
     renderAll();
@@ -2243,7 +2425,8 @@ function startHack(){
     if(hackActive || hackLevel === 0) return;
     hackActive = true;
     hackPos = 0;
-    const _cfg = HACK_CONFIGS[Math.max(0,hackLevel-1)];
+    const _cfg = {...HACK_CONFIGS[Math.max(0,hackLevel-1)]};
+    _cfg.zoneW = Math.min(80, _cfg.zoneW + (rpHackLevel||0)*5);
     hackDir = _cfg.speed + Math.random() * 1.5;
     renderHackArea();
     hackLoop();
@@ -2364,7 +2547,7 @@ function buyStorageExpansion(){
 function triggerBlackout(reason){
     powerGrid.level = 0;
     powerGrid.status = "ブラックアウト(全機能停止)";
-    powerGrid.isBroken = true;
+    if(!gameSettings.breakerProtect) powerGrid.isBroken = true;
     _autoRollWasEnabled = autoRollEnabled; // falseにする前に保存
     autoRollEnabled = false;
     rolling = false;
@@ -2385,7 +2568,7 @@ function triggerBlackout(reason){
     renderHackArea();
 }
 
-// SECRETおにぎりをラインに注入するヘルパー
+// SECRETおにぎりをラインに注入するヘルパー（地球用）
 function injectSecretProcess(name, emoji, price){
     const targetLine = lines.find(l=>l.domReady) || null;
     if(targetLine){
@@ -2397,6 +2580,23 @@ function injectSecretProcess(name, emoji, price){
             p.class = "secret";
             targetLine.items.push({process:p, pos:0, done:false, completedOnce:false, needsInitFlash:true});
             if(!lineRafId){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); }
+        }
+    }
+}
+
+// SECRETおにぎりをクァプラナスラインに注入するヘルパー
+function injectQSecretProcess(name, emoji, price){
+    const fd=getQFD(); if(!fd) return;
+    const targetLine=qLines.find(l=>l.domReady)||null;
+    if(targetLine){
+        const p=buildQProductionProcess(fd);
+        if(p){
+            p.name=name;
+            p.emoji=emoji;
+            p.base={...p.base,name:name,emoji:emoji,price:price};
+            p.class="secret";
+            targetLine.items.push({process:p,pos:0,done:false,completedOnce:false,needsInitFlash:true});
+            if(!qLineRafId){ qLastLineTime=0; qLineRafId=requestAnimationFrame(qTickLines); }
         }
     }
 }
@@ -2416,7 +2616,7 @@ function triggerGlowEvent(){
     const finalDiv = document.createElement("div");
     finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.4);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
     finalDiv.innerHTML = `<div style="font-size:180px;filter:drop-shadow(0 0 18px #fff) drop-shadow(0 0 50px gold);">✨</div><div style="margin-top:-8px;font-size:40px;letter-spacing:6px;color:#fff7c8;text-shadow:0 0 12px #fff,0 0 28px gold;">GLLOW ONIGIRI.</div>`;
-    document.body.appendChild(finalDiv);
+    if(gameSettings.secretAnimation) document.body.appendChild(finalDiv);
 
     setTimeout(()=>{ blackout.style.transition = "0.12s"; blackout.style.opacity = "0.65"; blackout.style.transform = "scale(1.02)"; }, 80);
     setTimeout(()=>{ aura.style.transition = "0.5s"; aura.style.opacity = "1"; aura.style.transform = "translate(-50%,-50%) scale(1)"; }, 280);
@@ -2472,7 +2672,7 @@ function triggerMatchaAnkoEvent(){
     const finalDiv = document.createElement("div");
     finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.35);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
     finalDiv.innerHTML = `<div style="font-size:180px;filter:drop-shadow(0 0 20px #86efac) drop-shadow(0 0 45px #f5d0fe);">🍵</div><div style="margin-top:-6px;font-size:34px;letter-spacing:6px;color:#d9f99d;text-shadow:0 0 10px #86efac,0 0 28px #f5d0fe;">MATCHA ANKO.</div>`;
-    document.body.appendChild(finalDiv);
+    if(gameSettings.secretAnimation) document.body.appendChild(finalDiv);
 
     setTimeout(()=>{ blackout.style.transition = "0.7s"; blackout.style.opacity = "1"; }, 80);
 
@@ -2528,7 +2728,7 @@ function triggerIllegalVoltageEvent(){
     const finalDiv = document.createElement("div");
     finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.35);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
     finalDiv.innerHTML = `<div style="font-size:170px;filter:drop-shadow(0 0 24px #a855f7) drop-shadow(0 0 60px #facc15);">⚡</div><div style="margin-top:-8px;font-size:34px;letter-spacing:5px;color:#f5d0fe;text-shadow:0 0 12px #a855f7,0 0 30px #facc15;">ILLEGAL VOLTAGE.</div>`;
-    document.body.appendChild(finalDiv);
+    if(gameSettings.secretAnimation) document.body.appendChild(finalDiv);
 
     setTimeout(()=>{ blackout.style.transition = "0.2s"; blackout.style.opacity = "1"; }, 80);
 
@@ -2641,7 +2841,7 @@ function triggerCompressedEvent(){
     const finalDiv = document.createElement("div");
     finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.25);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
     finalDiv.innerHTML = `<div style="font-size:170px;filter:drop-shadow(0 0 18px #93c5fd) drop-shadow(0 0 40px #2563eb);">📦</div><div style="margin-top:-6px;font-size:34px;letter-spacing:5px;color:#bfdbfe;text-shadow:0 0 12px #93c5fd,0 0 30px #2563eb;">COMPRESSED ONIGIRI.</div>`;
-    document.body.appendChild(finalDiv);
+    if(gameSettings.secretAnimation) document.body.appendChild(finalDiv);
 
     setTimeout(()=>{ blackout.style.transition = "0.15s"; blackout.style.opacity = "1"; }, 60);
 
@@ -2706,7 +2906,7 @@ function triggerSmugglingEvent(){
     const finalDiv = document.createElement("div");
     finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.35);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
     finalDiv.innerHTML = `<div style="font-size:160px;filter:drop-shadow(0 0 18px #60a5fa) drop-shadow(0 0 42px #0ea5e9);">🚢</div><div style="margin-top:-6px;font-size:34px;letter-spacing:5px;color:#bae6fd;text-shadow:0 0 12px #60a5fa,0 0 30px #0ea5e9;">SMUGGLING ONIGIRI.</div>`;
-    document.body.appendChild(finalDiv);
+    if(gameSettings.secretAnimation) document.body.appendChild(finalDiv);
 
     setTimeout(()=>{ blackout.style.transition = "0.5s"; blackout.style.opacity = "1"; }, 80);
 
@@ -2769,7 +2969,7 @@ function triggerBribeEvent(){
     const finalDiv = document.createElement("div");
     finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.35);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
     finalDiv.innerHTML = `<div style="font-size:170px;filter:drop-shadow(0 0 18px #f59e0b) drop-shadow(0 0 45px #f97316);">💴</div><div style="margin-top:-6px;font-size:34px;letter-spacing:5px;color:#fde68a;text-shadow:0 0 12px #f59e0b,0 0 30px #f97316;">BRIBE ONIGIRI.</div>`;
-    document.body.appendChild(finalDiv);
+    if(gameSettings.secretAnimation) document.body.appendChild(finalDiv);
 
     setTimeout(()=>{ blackout.style.transition = "0.6s"; blackout.style.opacity = "1"; }, 80);
 
@@ -2829,7 +3029,7 @@ function triggerUnknownEvent(){
     const finalDiv = document.createElement("div");
     finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.3);opacity:0;z-index:9300;text-align:center;pointer-events:none;font-family:monospace;";
     finalDiv.innerHTML = `<div style="font-size:190px;filter:drop-shadow(0 0 20px #fff) drop-shadow(0 0 50px #888);">❓</div><div style="font-size:30px;color:#e5e7eb;text-shadow:0 0 8px #fff;letter-spacing:4px;">UNKNOWN ONIGIRI</div>`;
-    document.body.appendChild(finalDiv);
+    if(gameSettings.secretAnimation) document.body.appendChild(finalDiv);
 
     setTimeout(()=>{ blackout.style.transition = "0.35s"; blackout.style.opacity = "1"; noise.style.transition = "0.35s"; noise.style.opacity = "1"; }, 80);
 
@@ -2890,7 +3090,7 @@ function triggerBananaEvent(){
     const finalDiv = document.createElement("div");
     finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.4);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
     finalDiv.innerHTML = `<div style="font-size:220px;filter:drop-shadow(0 0 25px gold) drop-shadow(0 0 60px orange);">🍌</div><div style="margin-top:-10px;font-size:48px;letter-spacing:8px;color:#fff5a0;text-shadow:0 0 10px gold,0 0 30px orange;">banana.</div>`;
-    document.body.appendChild(finalDiv);
+    if(gameSettings.secretAnimation) document.body.appendChild(finalDiv);
 
     // 初動（bodyではなくblackoutを揺らす）
     blackout.style.transition = "0.15s";
@@ -3036,7 +3236,7 @@ function triggerDjEvent(){
     const finalDiv = document.createElement("div");
     finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.4);opacity:0;z-index:9300;text-align:center;pointer-events:none;";
     finalDiv.innerHTML = `<div style="font-size:180px;filter:drop-shadow(0 0 25px #a855f7) drop-shadow(0 0 60px #7c3aed);">🎧</div><div style="margin-top:-10px;font-size:36px;letter-spacing:8px;color:#d8b4fe;text-shadow:0 0 10px #a855f7,0 0 30px #7c3aed;">DJ Onigiri.</div>`;
-    document.body.appendChild(finalDiv);
+    if(gameSettings.secretAnimation) document.body.appendChild(finalDiv);
 
     setTimeout(()=>{ blackout.style.transition="0.8s"; blackout.style.opacity="1"; }, 100);
 
@@ -3109,7 +3309,7 @@ function triggerErrorEvent(){
     const finalDiv = document.createElement("div");
     finalDiv.style.cssText = "position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(0.4);opacity:0;z-index:9300;text-align:center;pointer-events:none;font-family:monospace;";
     finalDiv.innerHTML = `<div style="font-size:160px;filter:drop-shadow(0 0 25px #ff3333) drop-shadow(0 0 60px #ff0000);">❌</div><div style="font-size:28px;color:#ff4444;text-shadow:0 0 10px #ff3333;letter-spacing:4px;">Error Onigiri<br><span style="font-size:16px;opacity:0.7;">A low-probability error has occurred.</span></div>`;
-    document.body.appendChild(finalDiv);
+    if(gameSettings.secretAnimation) document.body.appendChild(finalDiv);
 
     setTimeout(()=>{ blackout.style.transition="0.5s"; blackout.style.opacity="0.95"; }, 100);
 
@@ -3548,11 +3748,6 @@ function renderSpacePanel(){
     }
 
     area.innerHTML = html;
-    // select値を復元
-    const ps = document.getElementById("rocketPlanetSelect");
-    const rs = document.getElementById("rocketTypeSelect");
-    if(ps && _savedPlanet) ps.value = _savedPlanet;
-    if(rs && _savedRocketType) rs.value = _savedRocketType;
 }
 
 let _savedPlanet = "moon";
@@ -3721,7 +3916,7 @@ function startQuaplanasResearch(){
             showTopNotice("🔬 クァプラナス星の研究完了！工場を建設できます！", 6000);
             renderAll();
         } else if(spacePanelUnlocked) renderSpacePanel();
-    }, 3000); // 5分、100ステップ → 3000ms/step
+    }, adminScaledMs(3000)); // 5分、100ステップ
 }
 
 function buildQuaplanasFactory(){
@@ -3733,25 +3928,966 @@ function buildQuaplanasFactory(){
     showTopNotice("🏭 クァプラナス工場が完成しました！", 6000);
     // 工場トラベルボタンを表示
     const travelBar = document.getElementById("factoryTravelBar");
-    if(travelBar){ travelBar.style.display = "flex"; }
-    // 地球のmain-containerにpadding-topを追加
-    const mc = document.getElementById("mainContainer") || document.querySelector(".main-container");
-    if(mc) mc.style.paddingTop = "40px";
+    if(travelBar){ travelBar.style.display = "flex"; document.body.style.paddingTop = "42px"; }
     renderAll();
 }
 
+
+// ===== クァプラナス工場ロジック =====
+const Q_MAX_SPEED=20, Q_MAX_MULTI=10, Q_MAX_MUT=10, Q_MAX_QUAL=10;
+const Q_PACKAGING=[null,
+    {name:"真空圧縮",cost:500000,multi:40},
+    {name:"クラウド圧縮",cost:5000000,multi:500},
+    {name:"4次元収納",cost:50000000,multi:10000},
+];
+const RARITY_COLORS_Q={common:"#aaa",uncommon:"#5edc88",rare:"#55aaff",epic:"#c060ff",legend:"#ffd166",mythical:"#ff60a0",secret:"#fff"};
+const RARITY_LABELS_Q={common:"Common",uncommon:"Uncommon",rare:"Rare",epic:"Epic",legend:"Legend",mythical:"Mythical",secret:"Secret"};
+const RARITY_RANK_Q={common:0,uncommon:1,rare:2,epic:3,legend:4,mythical:5,secret:6};
+
+let _qAutoRollTimer=null;
+let qLines=[]; let _qLineIdCtr=1000; let qLineRafId=null; let qLastLineTime=0; let qRolling=false; let qPendingBatches=new Set(); let _qBatchIdCtr=0;
+let _qAutoRollOwned=false;
+let _qAutoRollEnabled=false;
+let _qAutoTransportOwned=false;
+let _qAutoTransportRoutes=[{ enabled:false, maxPrice:5000, filterMode:"price", maxRarity:"mythical", shop:0, minCount:0 }];
+let _qSelectedItems=new Set();
+let _qInventorySortMode="price";
+let _qLinesVisible=true;
+let _qTextTimers={};
+let _qFlashTimers={};
+let _qRenderInvPending=false;
+let _worldSwitchTime=Date.now();
+let _earthPassiveEarnLog=[];
+let _quapPassiveEarnLog=[];
+let _ufoEventActive=false;
+let _quantumEventActive=false;
+
+function getQFD(){ return quaplanasFactoryData; }
+
+function initQuaplanasFactoryData(){
+    return {
+        speedLevel:1,multiRoll:1,mutationLevel:0,qualityLevel:0,packagingLevel:0,
+        quapSpeedBoost:0,quapStorageBoost:0,
+        inventory:[],money:0,
+        shops:[
+            {name:"🌌 銀河市場 α",baseMulti:1.0,unlocked:true},
+            {name:"⭐ 星系市場 β",baseMulti:1.1,unlocked:false},
+            {name:"🌀 時空市場 γ",baseMulti:1.25,unlocked:false},
+        ],
+        storageMax:30,nextItemId:1,discoveredOnigiris:[],
+    };
+}
+
+function getQRollDelay(fd){
+    if(!fd) fd=getQFD();
+    const boost=1+(fd?.quapSpeedBoost||0)*0.5;
+    const pkg=fd?.packagingLevel||0;
+    const pkgMult=pkg===0?1:pkg===1?4:18;
+    const baseDelay=Math.max(1600,(18000-((fd?.speedLevel||1)-1)*800)/boost);
+    return (baseDelay*pkgMult)/getAdminTimeScale();
+}
+
+function formatQProduct(base, pkgLevel){
+    if(pkgLevel===0) return { name:base.name, emoji:"🍙", priceMulti:1, count:1, loadSize:1, kind:"通常" };
+    if(pkgLevel===1) return { name:`${base.name}クレート`, emoji:"📦", priceMulti:40, count:50, loadSize:6, kind:"真空圧縮" };
+    if(pkgLevel===2) return { name:`${base.name}クラウドパック`, emoji:"☁️", priceMulti:500, count:1000, loadSize:60, kind:"クラウド圧縮" };
+    const multi=Q_PACKAGING[pkgLevel]?.multi||10000;
+    return { name:`${base.name} [4次元収納]`, emoji:"🔮", priceMulti:multi, count:10000, loadSize:100, kind:"4次元収納" };
+}
+
+function qWeightedRandom(list, fd, boostChance=false){
+    let mutationBonus=(fd?.mutationLevel||0)*0.5;
+    let modifiedList=list.map(item=>{
+        let c=item.chance;
+        if(boostChance && item.class!=="common") c+=mutationBonus;
+        return {...item,tempChance:Math.max(1,c)};
+    });
+    const total=modifiedList.reduce((a,b)=>a+b.tempChance,0);
+    let rand=Math.random()*total;
+    for(const item of modifiedList){
+        if(rand<item.tempChance) return item;
+        rand-=item.tempChance;
+    }
+    return list[0];
+}
+
+function buildQProductionProcess(fd){
+    if(!fd) return null;
+    const eligible=QUAPLANAS_ONIGIRIS.filter(o=>o.rarity!=="secret");
+    const total=eligible.reduce((s,o)=>s+o.chance,0);
+    let r=Math.random()*total, picked=eligible[eligible.length-1];
+    for(const o of eligible){r-=o.chance;if(r<=0){picked=o;break;}}
+    const base={name:picked.name,emoji:"🍙",class:picked.rarity,price:picked.price};
+    const product=formatQProduct(base, fd.packagingLevel||0);
+    const rice=qWeightedRandom(firstMutations, fd, true);
+    const quality=Math.floor(Math.random()*101);
+    const qualityMulti=getQualityMultiplier(quality);
+    const qualityClass=quality>=95?"mythical":quality>=85?"legend":quality>=70?"epic":"common";
+    const cook=qWeightedRandom(secondMutations, fd, true);
+    const flavor=qWeightedRandom(flavorMutations, fd, true);
+    const shape=qWeightedRandom(shapeMutations, fd, true);
+    const nori=qWeightedRandom(noriMutations, fd, true);
+    let name=base.name;
+    let finalClass=base.class;
+    let accidents=[];
+    if(shape.name!=="通常サイズ") name=shape.name+" "+name;
+    if(nori.name!=="普通の海苔") name+=`(${nori.name})`;
+    return {
+        base, product, rice, quality, qualityMulti, cook, flavor, shape, nori, name,
+        emoji:"🍙", accidents, dangerText:"低", dangerBadgeClass:"danger-low", class:finalClass,
+        qualityDetail:{name:`品質${quality}%`,label:`品質${quality}% x${qualityMulti.toFixed(2)}`,class:qualityClass},
+        flavorDetail:{name:flavor.name,label:`${flavor.name} x${flavor.multi}`,class:flavor.class},
+        packagingDetail:{name:product.kind,label:`${product.kind} / ${product.count}個`,class:(fd.packagingLevel||0)>0?"rare":"common"},
+        inspectDetail:{name:"検査OK",label:"AI通常検査パス",class:"uncommon"}
+    };
+}
+
+function getQTrendMulti(process){
+    if(qMarketTrend.targetType==="all") return qMarketTrend.multi;
+    if(qMarketTrend.targetType==="rarity" && process.base.class===qMarketTrend.targetKey) return qMarketTrend.multi;
+    return 1.0;
+}
+
+function calcQTotal(process, fd){
+    let total=process.base.price*process.rice.multi*process.qualityMulti*process.cook.multi*process.flavor.multi*process.shape.multi*process.nori.multi;
+    total*=(1+(fd?.qualityLevel||0)*0.15);
+    total*=getQTrendMulti(process);
+    return Math.floor(total)*process.product.priceMulti;
+}
+
+function buildQLineDOM(line){
+    if(!line.container) return;
+    line.container.innerHTML=`
+        <div id="qln_name_${line.id}" style="height:44px;text-align:center;overflow:hidden;"></div>
+        <div class="factoryLine"><div class="factoryInner" id="qln_inner_${line.id}">
+            <div class="machineTrack" id="qln_track_${line.id}">
+                ${productionStages.map((s,i)=>`
+                <div class="machine ${s.conveyor?"conveyor":""}" id="qln_m_${line.id}_${i}">
+                    <div style="font-size:13px;">${s.icon}</div>
+                    <div style="font-size:9px;margin-top:2px;" id="qln_mt_${line.id}_${i}">${s.conveyor?"":s.name}</div>
+                </div>`).join("")}
+            </div>
+            <div class="belt"></div>
+            <div id="qln_oni_${line.id}" style="position:absolute;inset:0;pointer-events:none;"></div>
+        </div></div>
+        <div id="qln_price_${line.id}" style="text-align:center;margin-top:4px;"></div>
+        <div id="qln_muts_${line.id}" class="mutationList" style="margin-top:4px;"></div>`;
+    line.domReady=true;
+}
+
+// クァプラナス用: 進行度に応じた名前・絵文字を返す（具材ステージで種類確定）
+function getCurrentQState(process, i){
+    let tempEmoji = "🌾";
+    let tempName = "搬入中...";
+    if(i >= 0){ tempName = `🌾 ${process.rice.name}`; }
+    if(i >= 4){ tempName = `🌾 ${process.rice.name} (品質${process.quality}%)`; }
+    if(i >= 6){ tempName = `🍚 ${process.cook.name}`; tempEmoji = "🍚"; }
+    if(i >= 8){
+        // 具材ステージで種類確定: 名前から先頭絵文字を抽出
+        const nameEmoji = process.base.name.match(/^(\p{Emoji}[\p{Emoji}\uFE0F]*)/u);
+        tempEmoji = nameEmoji ? nameEmoji[1] : "🍙";
+        tempName = process.base.name;
+        if(process.shape.name !== "通常サイズ") tempName = process.shape.name + " " + tempName;
+    }
+    if(i >= 10){
+        if(process.nori.name !== "普通の海苔") tempName += `(${process.nori.name})`;
+    }
+    if(i >= 12){
+        const fd=getQFD();
+        const pkg=fd?.packagingLevel||0;
+        if(pkg===1) tempName += " 📦";
+        else if(pkg===2) tempName += " 🚢";
+        else if(pkg===3) tempName += " 🔮";
+    }
+    if(i >= 14){ tempName = process.name; }
+    return { name: tempName, emoji: tempEmoji };
+}
+
+function qFlashMachineLine(lineId, si, cls){
+    const el=document.getElementById(`qln_m_${lineId}_${si}`);
+    if(!el||cls==="glow-common") return;
+    const key=`q${lineId}_${si}`;
+    clearTimeout(_qFlashTimers[key]);
+    el.classList.add("flash", cls);
+    const fd=getQFD();
+    _qFlashTimers[key]=setTimeout(()=>{ el.classList.remove("flash", cls); }, Math.min(500, Math.max(150, getQRollDelay(fd)/(productionStages.length-1)*0.39)));
+}
+
+function qRenderOniLayer(line, lineW){
+    const layer=document.getElementById(`qln_oni_${line.id}`);
+    if(!layer) return;
+    const W=lineW||800;
+    const MAX=productionStages.length-1;
+    const active=line.items.filter(it=>!it.done);
+    let nodes=Array.from(layer.children);
+    while(nodes.length<active.length){
+        const d=document.createElement("div");
+        d.style.cssText="position:absolute;top:66px;font-size:20px;z-index:4;transform:translateX(-50%);";
+        d.innerHTML='<div class="onigiriLabel"></div><span class="oni-emoji"></span>';
+        layer.appendChild(d);
+        nodes.push(d);
+    }
+    for(let i=0;i<nodes.length;i++){
+        if(i>=active.length){ nodes[i].style.display="none"; continue; }
+        nodes[i].style.display="";
+        const it=active[i];
+        nodes[i].style.left=((it.pos/MAX)*(W-40)+8)+"px";
+        const flr=Math.round(it.pos);
+        if(it._lastEmojiFl!==flr){
+            it._lastEmojiFl=flr;
+            nodes[i].querySelector(".oni-emoji").textContent=getCurrentQState(it.process,flr).emoji;
+        }
+        const mutFlr=Math.floor(it.pos);
+        if(it._lastMutFl!==mutFlr){
+            it._lastMutFl=mutFlr;
+            const muts=getMutsSoFar(it.process,it.pos);
+            const lbl=nodes[i].querySelector(".onigiriLabel");
+            if(muts.length){ lbl.style.color=""; lbl.innerHTML=muts.map(m=>colorMutation(m)).join("<br>"); }
+            else { lbl.style.color="#888"; lbl.textContent="搬入中..."; }
+        }
+    }
+}
+
+function qUpdateMachines(line){
+    const active=line.items.filter(it=>!it.done);
+    const lead=active.reduce((b,it)=>(!b||it.pos>b.pos)?it:b,null);
+    const fp=lead?Math.floor(lead.pos):-1;
+    if(line._lastLeadFp===fp) return;
+    line._lastLeadFp=fp;
+    productionStages.forEach((stage,i)=>{
+        const el=document.getElementById(`qln_m_${line.id}_${i}`);
+        const tel=document.getElementById(`qln_mt_${line.id}_${i}`);
+        if(!el) return;
+        const mkey=`q${line.id}_${i}`;
+        const textActive=!!_qTextTimers[mkey];
+        if(!el.classList.contains("flash")) el.className=`machine ${stage.conveyor?"conveyor":""}`;
+        if(!tel||stage.conveyor) return;
+        if(!lead){ if(!textActive){tel.textContent=stage.name;tel.style.color="";tel.style.fontWeight="";} return; }
+        if(i===fp) el.classList.add("active");
+        if(!textActive){ tel.textContent=stage.name; tel.style.color=""; tel.style.fontWeight=""; }
+    });
+}
+
+function onQLineTruckArrival(batchId){
+    if(!qPendingBatches.has(batchId)) return;
+    qPendingBatches.delete(batchId);
+    if(qPendingBatches.size===0){
+        qRolling=false;
+        updateQRollButtonState();
+        // 自動化コアが稼働中なら即座に次のおにぎりを投入（地球と同じ動作）
+        if(_qAutoRollOwned && _qAutoRollEnabled && currentWorld==="quaplanas"){
+            quaplanasAutoInject();
+        }
+    }
+}
+
+function updateQRollButtonState(){
+    const btn=document.querySelector('#quaplanasWorld button[onclick="quaplanasManualRoll()"]');
+    if(!btn) return;
+    btn.disabled=qRolling;
+    btn.textContent=qRolling?"🚚 生産中...":"手動パルス生産";
+    btn.style.background=qRolling?"#555":"";
+    btn.style.color=qRolling?"#aaa":"";
+}
+
+function ensureQLines(fd){
+    const display=document.getElementById("qMultiRollDisplay");
+    if(!display) return;
+    while(qLines.length>(fd.multiRoll||1)){
+        const rem=qLines.pop();
+        if(rem?.container) rem.container.remove();
+    }
+    while(qLines.length<(fd.multiRoll||1)){
+        const line={id:_qLineIdCtr++,items:[],container:null,domReady:false};
+        const card=document.createElement("div");
+        card.className="rollCard";
+        display.appendChild(card);
+        line.container=card;
+        buildQLineDOM(line);
+        qLines.push(line);
+    }
+}
+
+function startQAutoRoll(){
+    if(_qAutoRollTimer) clearInterval(_qAutoRollTimer);
+    const fd=getQFD(); if(!fd||!_qAutoRollOwned||!_qAutoRollEnabled) return;
+    const delay=Math.max(400,Math.floor(getQRollDelay(fd)));
+    _qAutoRollTimer=setInterval(()=>{
+        if(!_qAutoRollEnabled || !_qAutoRollOwned) return;
+        // バックグラウンド（別の惑星）のみsetIntervalで生産
+        // クァプラナス表示中はonQLineTruckArrivalから呼ばれる
+        if(currentWorld!=="quaplanas"){
+            quaplanasAutoInject();
+        }
+    },delay);
+    // クァプラナス表示中で何も流れていない場合は最初の1個を投入
+    if(currentWorld==="quaplanas" && qPendingBatches.size===0 && !qRolling){
+        quaplanasAutoInject();
+    }
+}
+
+// 自動化コア用: 各レーンに1個ずつ投入（地球と同じくqRollingロックなし）
+function quaplanasAutoInject(){
+    const fd=getQFD(); if(!fd) return;
+    // バックグラウンド（別の惑星を見ている間）は直接倉庫に追加
+    if(currentWorld!=="quaplanas"){
+        const process=buildQProductionProcess(fd);
+        if(!process) return;
+        const total=calcQTotal(process,fd);
+        if(fd.inventory.length<(fd.storageMax||30)){
+            if(!fd.discoveredOnigiris) fd.discoveredOnigiris=[];
+            if(!fd.discoveredOnigiris.includes(process.base.name)) fd.discoveredOnigiris.push(process.base.name);
+            fd.inventory.push({id:fd.nextItemId++,name:process.name,rarity:process.class,price:total,selected:false});
+            _quapPassiveEarnLog.push({t:Date.now(),v:total});
+        }
+        return;
+    }
+    // クァプラナス表示中は通常のラインアニメーション
+    ensureQLines(fd);
+    let injected=0;
+    for(let i=0;i<(fd.multiRoll||1);i++){
+        const line=qLines[i];
+        const process=buildQProductionProcess(fd);
+        if(!process) continue;
+        const batchId=_qBatchIdCtr++;
+        qPendingBatches.add(batchId);
+        line.items.push({process,pos:0,done:false,completedOnce:false,needsInitFlash:true,batchId});
+        injected++;
+    }
+    if(injected){
+        qRolling=true;
+        updateQRollButtonState();
+        if(!qLineRafId){ qLastLineTime=0; qLineRafId=requestAnimationFrame(qTickLines); }
+    }
+}
+
+function quaplanasManualRoll(){
+    const fd=getQFD(); if(!fd||qRolling) return;
+    qRolling=true;
+    updateQRollButtonState();
+    ensureQLines(fd);
+    let injected=0;
+    for(let i=0;i<(fd.multiRoll||1);i++){
+        const line=qLines[i];
+        const process=buildQProductionProcess(fd);
+        if(!process) continue;
+        const batchId=_qBatchIdCtr++;
+        qPendingBatches.add(batchId);
+        line.items.push({process,pos:0,done:false,completedOnce:false,needsInitFlash:true,batchId});
+        injected++;
+    }
+    if(injected===0){ qRolling=false; updateQRollButtonState(); return; }
+    if(!qLineRafId){ qLastLineTime=0; qLineRafId=requestAnimationFrame(qTickLines); }
+}
+
+function qTickLines(now){
+    const fd=getQFD();
+    const anyActive=qLines.some(l=>l.items.some(it=>!it.done));
+    if(!anyActive){ qLineRafId=null; qLastLineTime=0; qRolling=false; updateQRollButtonState(); return; }
+    if(!qLastLineTime) qLastLineTime=now;
+    const dt=Math.min(now-qLastLineTime,100);
+    qLastLineTime=now;
+    const _delay=getQRollDelay(fd);
+    const speed=(productionStages.length-1)/_delay;
+    const _stageMs=_delay/(productionStages.length-1);
+    const _textDur=Math.min(1500,Math.max(200,_stageMs*1.17));
+    for(const line of qLines){
+        const _inner=document.getElementById(`qln_inner_${line.id}`);
+        const _lineW=_inner?(_inner.offsetWidth||800):800;
+        for(const it of line.items){
+            if(it.done) continue;
+            if(it.needsInitFlash){
+                it.needsInitFlash=false;
+                const stage0=productionStages[0];
+                if(stage0&&!stage0.conveyor){
+                    const d0=getStageDetail(it.process,stage0.name);
+                    if(d0&&d0.class!=="common"){
+                        qFlashMachineLine(line.id,0,`glow-${d0.class}`);
+                        const tel0=document.getElementById(`qln_mt_${line.id}_0`);
+                        if(tel0){
+                            const tkey0=`q${line.id}_0`;
+                            clearTimeout(_qTextTimers[tkey0]);
+                            tel0.textContent=d0.name;
+                            tel0.style.color=RARITY_COLORS[d0.class]||"#fff";
+                            tel0.style.fontWeight="bold";
+                            _qTextTimers[tkey0]=setTimeout(()=>{ _qTextTimers[tkey0]=null; if(tel0){ tel0.textContent=stage0.name; tel0.style.color=""; tel0.style.fontWeight=""; } }, _textDur);
+                        }
+                    }
+                }
+            }
+            const prev=it.pos;
+            it.pos=Math.min(it.pos+speed*dt, productionStages.length-1);
+            if(it.batchId!==undefined&&qPendingBatches.has(it.batchId)&&it.pos>=(productionStages.length-1)*0.06) onQLineTruckArrival(it.batchId);
+            const pf=Math.floor(prev), nf=Math.floor(it.pos);
+            if(nf>pf){
+                for(let s=pf+1;s<=nf;s++){
+                    const stage=productionStages[s];
+                    if(!stage||stage.conveyor) continue;
+                    const d=getStageDetail(it.process,stage.name);
+                    if(d&&d.class!=="common"){
+                        qFlashMachineLine(line.id,s,`glow-${d.class}`);
+                        const tel=document.getElementById(`qln_mt_${line.id}_${s}`);
+                        if(tel){
+                            const tkey=`q${line.id}_${s}`;
+                            clearTimeout(_qTextTimers[tkey]);
+                            tel.textContent=d.name;
+                            tel.style.color=RARITY_COLORS[d.class]||"#fff";
+                            tel.style.fontWeight="bold";
+                            _qTextTimers[tkey]=setTimeout(()=>{ _qTextTimers[tkey]=null; if(tel){ tel.textContent=stage.name; tel.style.color=""; tel.style.fontWeight=""; } }, _textDur);
+                        }
+                    }
+                    // 具材ステージ(s=8)でUFO・量子おにぎり抽選
+                    if(s===8 && it.process.class!=="secret"){
+                        const roll=Math.random();
+                        const Q_SECRETS=[
+                            {check:()=>!_ufoEventActive,     threshold:0.00015, name:"🛸🍙 UFOおにぎり",   emoji:"🛸", price:9999999, trigger:triggerUfoEvent},
+                            {check:()=>!_quantumEventActive, threshold:0.00030, name:"⚛️🍙 量子おにぎり",  emoji:"⚛️", price:9999999, trigger:triggerQuantumEvent},
+                        ];
+                        let cumulative=0;
+                        for(const sec of Q_SECRETS){
+                            const prev2=cumulative;
+                            cumulative=sec.threshold;
+                            if(sec.check()&&roll>=prev2&&roll<cumulative){
+                                it.process.name=sec.name;
+                                it.process.emoji=sec.emoji;
+                                it.process.base={...it.process.base,name:sec.name,emoji:sec.emoji,price:sec.price};
+                                it.process.class="secret";
+                                sec.trigger();
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            if(it.pos>=productionStages.length-1&&!it.completedOnce){
+                it.completedOnce=true; it.done=true;
+                if(it.batchId!==undefined) onQLineTruckArrival(it.batchId);
+                const p=it.process, total=calcQTotal(p,fd);
+                const muts=[
+                    `🌾 米: ${p.rice.name} (x${p.rice.multi})`,
+                    `⚙️ 精米: 品質${p.quality}%`,
+                    `🧂 味付け: ${p.flavor.name} (x${p.flavor.multi})`,
+                    `⬛ 海苔: ${p.nori.name} (x${p.nori.multi})`,
+                ];
+                if(p.accidents.length) muts.push(`💥 異常: ${p.accidents.join(",")}`);
+                if(getQTrendMulti(p)!==1.0) muts.push(`📈 トレンド補正: x${getQTrendMulti(p)}`);
+                if(fd.inventory.length>=(fd.storageMax||30)){
+                    addQLog("警告","倉庫がいっぱいです！完成品は保管できませんでした。");
+                    continue;
+                }
+                if(!fd.discoveredOnigiris) fd.discoveredOnigiris=[];
+                if(!fd.discoveredOnigiris.includes(p.base.name)) fd.discoveredOnigiris.push(p.base.name);
+                fd.inventory.push({id:fd.nextItemId++,name:p.name,rarity:p.class,price:total,selected:false});
+                if(!_qRenderInvPending){
+                    _qRenderInvPending=true;
+                    setTimeout(()=>{ qVsSchedule(); renderQDictionary(fd); runQAutoTransport(); _qRenderInvPending=false; if(currentWorld==="quaplanas") renderQuaplanasFactory(); },80);
+                }
+                const na=document.getElementById(`qln_name_${line.id}`);
+                const pa=document.getElementById(`qln_price_${line.id}`);
+                const ma=document.getElementById(`qln_muts_${line.id}`);
+                const qCls=p.class;
+                if(na) na.innerHTML=`${productNameHtml(p.name,qCls)}<span style="font-size:10px;padding:1px 5px;border-radius:3px;background:${RARITY_COLORS[qCls]||'#888'}22;color:${RARITY_COLORS[qCls]||'#888'};border:1px solid ${RARITY_COLORS[qCls]||'#888'}44;">${RARITY_LABELS[qCls]||qCls}</span>`;
+                if(pa) pa.innerHTML=`<span class="money" style="color:#5edc88;">💠${Math.floor(total).toLocaleString()}</span>`;
+                if(ma) ma.innerHTML=muts.map(m=>colorMutation(m)).join("<br>");
+            }
+        }
+        line.items=line.items.filter(it=>!it.done);
+        if(line.domReady){ qRenderOniLayer(line,_lineW); qUpdateMachines(line); }
+    }
+    qLineRafId=requestAnimationFrame(qTickLines);
+}
+
+function injectQAdminProcess(process, count){
+    const fd=getQFD(); if(!fd||!process) return 0;
+    ensureQLines(fd);
+    let injected=0;
+    for(let n=0;n<count;n++){
+        const lineIdx=injected%(fd.multiRoll||1);
+        const line=qLines[lineIdx];
+        if(!line) break;
+        const batchId=_qBatchIdCtr++;
+        qPendingBatches.add(batchId);
+        line.items.push({process:JSON.parse(JSON.stringify(process)),pos:0,done:false,completedOnce:false,needsInitFlash:true,batchId});
+        injected++;
+    }
+    if(injected&&!qLineRafId){ qLastLineTime=0; qLineRafId=requestAnimationFrame(qTickLines); qRolling=true; updateQRollButtonState(); }
+    return injected;
+}
+
+function buyQAutoRoll(){
+    if(_qAutoRollOwned||foreignMoney<500) return;
+    foreignMoney-=500; _qAutoRollOwned=true; _qAutoRollEnabled=true;
+    addQLog("通知","🤖 自動化パルス生産コア購入。自動生産開始。");
+    startQAutoRoll();
+    renderQuaplanasFactory(); renderAll();
+}
+
+function toggleQAutoRoll(){
+    if(!_qAutoRollOwned) return;
+    _qAutoRollEnabled=!_qAutoRollEnabled;
+    if(_qAutoRollEnabled) startQAutoRoll();
+    else if(_qAutoRollTimer){ clearInterval(_qAutoRollTimer); _qAutoRollTimer=null; }
+    renderQuaplanasFactory();
+}
+
+function buyQAutoTransport(){
+    if(_qAutoTransportOwned||foreignMoney<2000) return;
+    foreignMoney-=2000; _qAutoTransportOwned=true;
+    if(!_qAutoTransportRoutes.length) _qAutoTransportRoutes=[{ enabled:false, maxPrice:5000, filterMode:"price", maxRarity:"mythical", shop:0, minCount:0 }];
+    addQLog("通知","📡 自動輸送プロトコル購入。");
+    startQAutoTransport();
+    renderQuaplanasFactory(); renderAll();
+}
+
+let _qAutoTransportTimer=null;
+function startQAutoTransport(){
+    if(_qAutoTransportTimer) clearInterval(_qAutoTransportTimer);
+    _qAutoTransportTimer=setInterval(()=>{ runQAutoTransport(); }, adminScaledMs(30000));
+}
+
+function runQAutoTransport(){
+    if(!_qAutoTransportOwned) return;
+    const fd=getQFD(); if(!fd) return;
+    for(const route of _qAutoTransportRoutes){
+        if(!route.enabled) continue;
+        const shop=fd.shops[route.shop];
+        if(!shop||!shop.unlocked) continue;
+        const rankMap={common:0,uncommon:1,rare:2,epic:3,legend:4,mythical:5,secret:6};
+        const maxRank=rankMap[route.maxRarity]??5;
+        let candidates=fd.inventory.filter(it=>{
+            if(route.filterMode==="price") return it.price<=route.maxPrice;
+            return (rankMap[it.rarity]??0)<=maxRank;
+        });
+        if(route.minCount>0 && candidates.length<route.minCount) continue;
+        if(!candidates.length) continue;
+        let total=0;
+        const ids=new Set(candidates.map(it=>it.id));
+        candidates.forEach(it=>{ total+=Math.floor(it.price*(shop.baseMulti||1)); });
+        fd.inventory=fd.inventory.filter(it=>!ids.has(it.id));
+        ids.forEach(id=>_qSelectedItems.delete(id));
+        quap+=total;
+        _quapPassiveEarnLog.push({t:Date.now(),v:total});
+        addQLog("自動輸送",`📡 ルート${ _qAutoTransportRoutes.indexOf(route)+1}: ${candidates.length}個 → 💠 ${total.toLocaleString()} クァプ`);
+        renderQuaplanasFactory(); renderAll();
+        break;
+    }
+}
+
+function addQAtRoute(){
+    if(_qAutoTransportRoutes.length>=8) return;
+    _qAutoTransportRoutes.push({ enabled:false, maxPrice:5000, filterMode:"price", maxRarity:"mythical", shop:0, minCount:0 });
+    renderQAutoTransport();
+}
+function removeQAtRoute(ri){
+    if(_qAutoTransportRoutes.length<=1) return;
+    _qAutoTransportRoutes.splice(ri,1);
+    renderQAutoTransport();
+}
+function toggleQAtFilter(ri){
+    const route=_qAutoTransportRoutes[ri];
+    route.filterMode=route.filterMode==="price"?"rarity":"price";
+    updateQAtFilterUI(ri);
+}
+function updateQAtFilterUI(ri){
+    const route=_qAutoTransportRoutes[ri];
+    const btn=document.getElementById(`qatFilterToggle_${ri}`);
+    const priceArea=document.getElementById(`qatPriceArea_${ri}`);
+    const rarityArea=document.getElementById(`qatRarityArea_${ri}`);
+    if(!btn) return;
+    if(route.filterMode==="price"){
+        btn.textContent="💰 クァプ以下モード"; btn.style.background="#ff9f1c"; btn.style.color="#111";
+        if(priceArea) priceArea.style.display=""; if(rarityArea) rarityArea.style.display="none";
+    } else {
+        btn.textContent="⭐ レア度モード"; btn.style.background="#c86cff"; btn.style.color="#fff";
+        if(priceArea) priceArea.style.display="none"; if(rarityArea) rarityArea.style.display="";
+    }
+}
+function renderQAtRoute(ri){
+    const route=_qAutoTransportRoutes[ri];
+    const fd=getQFD();
+    const canDelete=_qAutoTransportRoutes.length>1;
+    let html=`<div id="qatRoute_${ri}" style="border:1px solid #334;border-radius:8px;padding:8px;margin-bottom:6px;background:#1a1a2a;">`;
+    html+=`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">`;
+    html+=`<span style="font-size:12px;font-weight:bold;color:#5edc88;">ルート ${ri+1}</span>`;
+    html+=`<label style="font-size:12px;"><input type="checkbox" id="qatEnabled_${ri}" ${route.enabled?"checked":""}> 稼働</label>`;
+    if(canDelete) html+=`<button onclick="removeQAtRoute(${ri})" style="margin-left:auto;padding:1px 7px;font-size:11px;background:#ff3333;color:#fff;border:none;border-radius:4px;cursor:pointer;">✕ 削除</button>`;
+    html+=`</div><div style="font-size:12px;line-height:1.8;">`;
+    html+=`フィルタ: <button id="qatFilterToggle_${ri}" onclick="toggleQAtFilter(${ri})" style="font-size:11px;padding:2px 8px;margin:2px 0;"></button>`;
+    html+=`<span id="qatPriceArea_${ri}"> 単価 <input type="number" id="qatMaxPrice_${ri}" value="${route.maxPrice}" style="width:80px;" min="0"> クァプ以下を出荷</span>`;
+    html+=`<span id="qatRarityArea_${ri}" style="display:none;"> <select id="qatMaxRarity_${ri}">${RARITY_ORDER.map(r=>`<option value="${r}" ${route.maxRarity===r?"selected":""}>${RARITY_LABELS_Q[r]||RARITY_LABELS[r]||r}</option>`).join("")}</select> 以下を出荷</span>`;
+    html+=`<br>最低輸送数: <input type="number" id="qatMinCount_${ri}" value="${route.minCount||0}" style="width:60px;" min="0"> 個以上で出荷`;
+    html+=` ➜ 納品先: <select id="qatShop_${ri}">${(fd?.shops||[]).map((s,i)=>`<option value="${i}" ${route.shop===i?"selected":""} ${!s.unlocked?"disabled":""}>${s.name}</option>`).join("")}</select>`;
+    html+=`</div></div>`;
+    return html;
+}
+function bindQAtRoute(ri){
+    const route=_qAutoTransportRoutes[ri];
+    const get=id=>document.getElementById(id);
+    get(`qatEnabled_${ri}`).onchange=e=>{ route.enabled=e.target.checked; };
+    get(`qatMaxPrice_${ri}`).onchange=e=>{ route.maxPrice=Number(e.target.value); };
+    const mr=get(`qatMaxRarity_${ri}`);
+    if(mr) mr.onchange=e=>{ route.maxRarity=e.target.value; };
+    get(`qatShop_${ri}`).onchange=e=>{ route.shop=Number(e.target.value); };
+    const mc=get(`qatMinCount_${ri}`);
+    if(mc) mc.onchange=e=>{ route.minCount=Math.max(0,Number(e.target.value)||0); e.target.value=route.minCount; };
+    updateQAtFilterUI(ri);
+}
+// クァプラナス輸送（ワープ=0秒）
+function qSendSelected(){
+    const fd=getQFD(); if(!fd) return;
+    const shopSel=document.getElementById("qShopSelectForSend");
+    const shopIdx=shopSel?parseInt(shopSel.value):0;
+    const shop=fd.shops[shopIdx];
+    if(!shop||!shop.unlocked){addQLog("通知","市場が未開放です");return;}
+    const toSell=fd.inventory.filter(it=>_qSelectedItems.has(it.id));
+    if(!toSell.length){addQLog("通知","アイテムを選択してください");return;}
+    let total=0;
+    toSell.forEach(it=>{ total+=Math.floor(it.price*(shop.baseMulti||1)); });
+    fd.inventory=fd.inventory.filter(it=>!_qSelectedItems.has(it.id));
+    _qSelectedItems.clear();
+    fd.money=(fd.money||0)+total;
+    quap+=total; // クァプラナスでの売上はクァプ
+    _quapPassiveEarnLog.push({t:Date.now(),v:total});
+    addQLog("販売",`🌀 ワープ販売! ${toSell.length}個 → 💠 ${total.toLocaleString()} クァプ獲得！`);
+    // 売上演出
+    showQSaleEffect(total, toSell.length);
+    renderQuaplanasFactory(); renderAll();
+}
+
+function qSelectAll(){
+    const fd=getQFD(); if(!fd) return;
+    fd.inventory.forEach(it=>_qSelectedItems.add(it.id));
+    qVsSchedule();
+}
+function qDeselectAll(){ _qSelectedItems.clear(); qVsSchedule(); }
+
+function setQInventorySort(mode){
+    _qInventorySortMode=mode;
+    document.getElementById("qSortPriceBtn").style.background=mode==="price"?"#ffd166":"#333";
+    document.getElementById("qSortPriceBtn").style.color=mode==="price"?"#111":"#aaa";
+    document.getElementById("qSortRarityBtn").style.background=mode==="rarity"?"#ffd166":"#333";
+    document.getElementById("qSortRarityBtn").style.color=mode==="rarity"?"#111":"#aaa";
+    qVsSchedule();
+}
+
+function qToggleLines(){
+    _qLinesVisible=!_qLinesVisible;
+    const btn=document.getElementById("qToggleLineBtn");
+    if(btn) btn.textContent=_qLinesVisible?"非表示":"表示";
+    const disp=document.getElementById("qMultiRollDisplay");
+    if(disp) disp.style.display=_qLinesVisible?"":"none";
+}
+
+// ===== クァプラナス仮想スクロール =====
+const QVS={CARD_H:200,cols:3,_dirty:false,_raf:null,OVERSCAN:2};
+function qVsRender(){
+    QVS._dirty=false;
+    const vp=document.getElementById("qInventoryViewport");
+    const spacer=document.getElementById("qInventorySpacer");
+    const visible=document.getElementById("qInventoryVisible");
+    if(!vp||!spacer||!visible) return;
+    const fd=getQFD(); if(!fd||!fd.inventory){visible.innerHTML='<span style="color:#555;padding:16px;display:block;">倉庫は空です</span>';return;}
+    // sort
+    const sorted=[...fd.inventory].sort((a,b)=>_qInventorySortMode==="rarity"
+        ?(RARITY_RANK_Q[b.rarity]??0)-(RARITY_RANK_Q[a.rarity]??0)
+        :b.price-a.price);
+    const N=sorted.length;
+    const vpW=vp.clientWidth||600;
+    QVS.cols=Math.max(1,Math.floor(vpW/180));
+    QVS.CARD_H=190;
+    const totalRows=Math.ceil(N/QVS.cols);
+    const totalH=totalRows*QVS.CARD_H+24;
+    spacer.style.height=totalH+"px";
+    const scrollTop=vp.scrollTop;
+    const vpH=vp.clientHeight||400;
+    const firstRow=Math.max(0,Math.floor(scrollTop/QVS.CARD_H)-QVS.OVERSCAN);
+    const lastRow=Math.min(totalRows-1,Math.ceil((scrollTop+vpH)/QVS.CARD_H)+QVS.OVERSCAN);
+    const firstIdx=firstRow*QVS.cols;
+    const lastIdx=Math.min(N-1,(lastRow+1)*QVS.cols-1);
+    visible.style.top=(firstRow*QVS.CARD_H)+"px";
+    let html="";
+    for(let i=firstIdx;i<=lastIdx;i++){
+        const item=sorted[i]; if(!item) break;
+        const sel=_qSelectedItems.has(item.id);
+        const col=RARITY_COLORS_Q[item.rarity]||"#888";
+        const lbl=RARITY_LABELS_Q[item.rarity]||item.rarity;
+        html+=`<div class="card rarity-${item.rarity} ${sel?"selected":""}" onclick="qSelectItem(event,${item.id})"
+            style="cursor:pointer;border:${sel?"2px solid #ffd166":"1px solid "+col+"44"};background:${sel?"#1a1a00":"#0a0a18"};">
+            <span class="rarityBadge" style="background:${col}22;color:${col};border:1px solid ${col}55;">${lbl}</span>
+            <div style="font-size:36px;margin-top:8px;">🍙</div>
+            <h4 style="margin:4px 0;color:${col};font-size:11px;">${item.name}</h4>
+            <div style="font-size:14px;color:#5edc88;">💠${item.price.toLocaleString()}</div>
+        </div>`;
+    }
+    visible.innerHTML=html||'<span style="color:#555;padding:16px;display:block;">倉庫は空です</span>';
+    // count update
+    const cnt=document.getElementById("qItemCount"); if(cnt) cnt.textContent=`${fd.inventory.length}/${fd.storageMax}`;
+}
+function qVsSchedule(){
+    if(QVS._dirty) return;
+    QVS._dirty=true;
+    QVS._raf=requestAnimationFrame(qVsRender);
+}
+
+function qSelectItem(e,id){
+    if(e.shiftKey||e.ctrlKey||e.metaKey){
+        if(_qSelectedItems.has(id)) _qSelectedItems.delete(id);
+        else _qSelectedItems.add(id);
+    } else {
+        _qSelectedItems.clear();
+        _qSelectedItems.add(id);
+    }
+    qVsSchedule();
+}
+
+function renderQuaplanasFactory(){
+    const fd=getQFD(); if(!fd) return;
+    const sa=document.getElementById("qStatusArea");
+    if(sa){
+        const pkName=Q_PACKAGING[fd.packagingLevel]?.name||"通常生産";
+        const pkMulti=Q_PACKAGING[fd.packagingLevel]?.multi||1;
+        sa.innerHTML=`<div>生産速度:</div><div style="color:#ffd166;">Lv${fd.speedLevel}</div>
+        <div>並列ライン:</div><div style="color:#ffd166;">${fd.multiRoll}</div>
+        <div>梱包方式:</div><div style="color:#ffd166;">${pkName} (${pkMulti}倍)</div>
+        <div>倉庫容量:</div><div style="color:#ffd166;">${fd.storageMax}</div>`;
+    }
+    ensureQLines(fd);
+    renderQUpgradeArea(fd);
+    renderQShops(fd);
+    renderQDictionary(fd);
+    renderQAutoTransport(fd);
+    renderQShopSelect(fd);
+    qVsSchedule();
+    const qd=document.getElementById("quapDisplay"); if(qd) qd.textContent=quap.toLocaleString();
+    const qd2=document.getElementById("quapDisplay2"); if(qd2) qd2.textContent=quap.toLocaleString();
+    updateQRollButtonState();
+}
+
+function renderQShopSelect(fd){
+    const sel=document.getElementById("qShopSelectForSend"); if(!sel) return;
+    sel.innerHTML=fd.shops.filter(s=>s.unlocked).map((s,i)=>`<option value="${fd.shops.indexOf(s)}">${s.name} x${s.baseMulti}</option>`).join("");
+}
+
+function renderQUpgradeArea(fd){
+    const el=document.getElementById("qUpgradeArea"); if(!el) return;
+    const nextPk=Q_PACKAGING[fd.packagingLevel+1];
+    const pkName=Q_PACKAGING[fd.packagingLevel]?.name||"通常生産";
+    const pkMulti=Q_PACKAGING[fd.packagingLevel]?.multi||1;
+    const spCost=Math.floor(1000*Math.pow(3,fd.speedLevel-1));
+    const mlCost=Math.floor(2000*Math.pow(4,fd.multiRoll-1));
+    const mutCost=Math.floor(500*Math.pow(3,fd.mutationLevel));
+    const qualCost=Math.floor(1000*Math.pow(3,fd.qualityLevel));
+    const qSpCost=Math.floor(50*Math.pow(2,fd.quapSpeedBoost||0));
+    const qStCost=Math.floor(30*Math.pow(2,fd.quapStorageBoost||0));
+    const avgIncome=estimateQuapIncomePerMin(fd);
+    el.innerHTML=`<div style="font-size:12px;line-height:2.2;">
+        <div style="font-size:11px;color:#5edc88;margin-bottom:4px;">📊 推定平均収入: 💠 ${avgIncome.toLocaleString()}/分${currentWorld!=="quaplanas"?` ｜ 別惑星滞在 ${Math.max(0,Math.floor((Date.now()-_worldSwitchTime)/60000))}分`:``}</div>
+        ⚡ 生産基本速度 Lv${fd.speedLevel}/${Q_MAX_SPEED} ${fd.speedLevel>=Q_MAX_SPEED?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradeSpeed()" ${money<spCost?"disabled":""} style="padding:2px 6px;font-size:11px;">強化(${spCost.toLocaleString()}円)</button>`}
+        <br>🔁 同時並列ライン ${fd.multiRoll}/${Q_MAX_MULTI} ${fd.multiRoll>=Q_MAX_MULTI?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradeMulti()" ${money<mlCost?"disabled":""} style="padding:2px 6px;font-size:11px;">拡張(${mlCost.toLocaleString()}円)</button>`}
+        <br>🧬 禁断変異誘導 Lv${fd.mutationLevel}/${Q_MAX_MUT} ${fd.mutationLevel>=Q_MAX_MUT?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradeMutation()" ${money<mutCost?"disabled":""} style="padding:2px 6px;font-size:11px;">研究(${mutCost.toLocaleString()}円)</button>`}
+        <br>✨ 量子品質保証 Lv${fd.qualityLevel}/${Q_MAX_QUAL} ${fd.qualityLevel>=Q_MAX_QUAL?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradeQuality()" ${money<qualCost?"disabled":""} style="padding:2px 6px;font-size:11px;">投資(${qualCost.toLocaleString()}円)</button>`}
+        <br>📦 バルク梱包: <span style="color:#ffd166;">${fd.packagingLevel===0?"通常生産(1倍)":`${pkName}(${pkMulti}倍)`}</span> ${!nextPk?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradePackaging()" ${money<nextPk.cost?"disabled":""} style="padding:2px 6px;font-size:11px;">${nextPk.name}化(${nextPk.cost.toLocaleString()}円 / ${nextPk.multi}倍)</button>`}
+        <br>🤖 自動化パルス生産コア:
+        ${_qAutoRollOwned?`<span style="font-size:11px;color:#5edc88;">✅ 所有済み</span>`:`<button onclick="buyQAutoRoll()" ${foreignMoney<500?"disabled":""} style="padding:2px 6px;font-size:11px;">AIコア購入(外貨500)</button>`}
+        <button onclick="toggleQAutoRoll()" ${_qAutoRollOwned?"":"disabled"} style="padding:2px 6px;font-size:11px;background:${_qAutoRollEnabled?'#5edc88':'#ffd166'};">
+            状態: ${_qAutoRollEnabled?"稼働中(ON)":"待機中(OFF)"}
+        </button>
+        <hr style="border-color:#1a2a1a;margin:4px 0;">
+        💠 速度クァプ強化 Lv${fd.quapSpeedBoost||0} ${(fd.quapSpeedBoost||0)>=10?'<span style="color:#5edc88;font-size:11px;">✅ 最大</span>':`<button onclick="qUpgradeWithQuap('speed')" ${quap<qSpCost?"disabled":""} style="padding:2px 6px;font-size:11px;">強化(${qSpCost}💠)</button>`}
+        <br>💠 倉庫拡張+10 ${(fd.quapStorageBoost||0)>=10?'<span style="color:#5edc88;font-size:11px;">✅ 最大</span>':`<button onclick="qUpgradeWithQuap('storage')" ${quap<qStCost?"disabled":""} style="padding:2px 6px;font-size:11px;">拡張(${qStCost}💠)</button>`}
+    </div>`;
+}
+
+function renderQAutoTransport(){
+    const buyBtn=document.getElementById("qAutoTransportBuyBtn");
+    const area=document.getElementById("qAutoTransportArea");
+    if(!buyBtn||!area) return;
+    buyBtn.disabled=!_qAutoTransportOwned&&foreignMoney<2000;
+    const anyEnabled=_qAutoTransportRoutes.some(r=>r.enabled);
+    if(!_qAutoTransportOwned){
+        buyBtn.textContent="輸送AI購入(外貨 2,000)";
+        buyBtn.style.background=""; buyBtn.style.color="";
+        area.innerHTML="物流コア未接続";
+        return;
+    }
+    if(anyEnabled){ buyBtn.textContent="🤖 AI自動物流システム稼働中"; buyBtn.style.background="#5edc88"; buyBtn.style.color="#111"; }
+    else { buyBtn.textContent="⏸ AI自動物流システム待機中"; buyBtn.style.background="#555"; buyBtn.style.color="#aaa"; }
+    let html=_qAutoTransportRoutes.map((_,ri)=>renderQAtRoute(ri)).join("");
+    html+=`<button onclick="addQAtRoute()" ${_qAutoTransportRoutes.length>=8?"disabled":""} style="margin-top:4px;padding:3px 14px;font-size:13px;background:#334;color:#aaa;border:1px solid #556;border-radius:6px;cursor:pointer;">＋ ルート追加</button>`;
+    area.innerHTML=html;
+    for(let ri=0;ri<_qAutoTransportRoutes.length;ri++) bindQAtRoute(ri);
+}
+
+function renderQShops(fd){
+    const el=document.getElementById("qShopsArea"); if(!el) return;
+    const costs=[0,50000,500000];
+    el.innerHTML=`<div class="grid">${fd.shops.map((s,i)=>`
+        <div class="card" style="background:#0a0a18;border:1px solid ${s.unlocked?"#5edc8844":"#333"};">
+            <h4 style="color:#5edc88;">${s.name}</h4>
+            <div style="font-size:12px;color:#aaa;">市場倍率 x${s.baseMulti}</div>
+            <div style="font-size:11px;color:#aaa;">輸送時間: 0秒（ワープ）</div>
+            <div style="font-size:11px;color:#5edc88;">売上通貨: 💠 クァプ</div>
+            ${s.unlocked
+                ?'<span style="font-size:11px;color:#5edc88;">✅ 開放済み</span>'
+                :`<button onclick="qUnlockShop(${i})" ${money<costs[i]?"disabled":""} style="margin-top:6px;padding:3px 8px;font-size:11px;">開放(${costs[i].toLocaleString()}円)</button>`}
+        </div>`).join("")}</div>`;
+}
+
+function renderQDictionary(fd){
+    if(!fd) fd=getQFD(); if(!fd) return;
+    const discovered=(fd.discoveredOnigiris||[]);
+    const cnt=document.getElementById("qDictCount"); if(cnt) cnt.textContent=discovered.length;
+    const area=document.getElementById("qDictionaryArea"); if(!area) return;
+    const groups={common:[],uncommon:[],rare:[],epic:[],legend:[],mythical:[],secret:[]};
+    QUAPLANAS_ONIGIRIS.forEach(o=>{ if(groups[o.rarity]) groups[o.rarity].push(o); });
+    const labels={common:"Common",uncommon:"Uncommon",rare:"Rare",epic:"Epic",legend:"Legend",mythical:"Mythical",secret:"Secret"};
+    let html="";
+    for(const [rarity, items] of Object.entries(groups)){
+        if(!items.length) continue;
+        const col=RARITY_COLORS_Q[rarity]||"#aaa";
+        html+=`<div style="margin-bottom:10px;">
+            <div style="color:${col};font-size:12px;font-weight:bold;margin-bottom:4px;border-bottom:1px solid ${col}44;padding-bottom:2px;">${labels[rarity]} (${items.filter(o=>discovered.includes(o.name)).length}/${items.length})</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">`;
+        items.forEach(o=>{
+            const disc=discovered.includes(o.name);
+            html+=`<span style="display:inline-block;padding:3px 8px;border-radius:4px;background:${disc?col+"22":"#111"};border:1px solid ${disc?col:"#333"};font-size:11px;color:${disc?col:"#444"};">${disc?o.name:"???"}</span>`;
+        });
+        html+="</div></div>";
+    }
+    area.innerHTML=html||"未発見";
+}
+
+function qUpgradeSpeed(){ const fd=getQFD();if(!fd||fd.speedLevel>=Q_MAX_SPEED)return;const c=Math.floor(1000*Math.pow(3,fd.speedLevel-1));if(money<c)return;money-=c;fd.speedLevel++;restartQAutoRoll();renderQuaplanasFactory();renderAll(); }
+function qUpgradeMulti(){ const fd=getQFD();if(!fd||fd.multiRoll>=Q_MAX_MULTI)return;const c=Math.floor(2000*Math.pow(4,fd.multiRoll-1));if(money<c)return;money-=c;fd.multiRoll++;ensureQLines(fd);renderQuaplanasFactory();renderAll(); }
+function qUpgradeMutation(){ const fd=getQFD();if(!fd||fd.mutationLevel>=Q_MAX_MUT)return;const c=Math.floor(500*Math.pow(3,fd.mutationLevel));if(money<c)return;money-=c;fd.mutationLevel++;renderQuaplanasFactory();renderAll(); }
+function qUpgradeQuality(){ const fd=getQFD();if(!fd||fd.qualityLevel>=Q_MAX_QUAL)return;const c=Math.floor(1000*Math.pow(3,fd.qualityLevel));if(money<c)return;money-=c;fd.qualityLevel++;renderQuaplanasFactory();renderAll(); }
+function qUpgradePackaging(){ const fd=getQFD();if(!fd)return;const nPk=Q_PACKAGING[fd.packagingLevel+1];if(!nPk||money<nPk.cost)return;money-=nPk.cost;fd.packagingLevel++;renderQuaplanasFactory();renderAll(); }
+function qUnlockShop(i){ const fd=getQFD();if(!fd)return;const costs=[0,50000,500000];if(money<(costs[i]||0))return;money-=costs[i]||0;fd.shops[i].unlocked=true;renderQShops(fd);renderQShopSelect(fd); }
+function qUpgradeWithQuap(type){
+    const fd=getQFD();if(!fd)return;
+    if(type==="speed"){const c=Math.floor(50*Math.pow(2,fd.quapSpeedBoost||0));if(quap<c)return;quap-=c;fd.quapSpeedBoost=(fd.quapSpeedBoost||0)+1;restartQAutoRoll();}
+    else if(type==="storage"){const c=Math.floor(30*Math.pow(2,fd.quapStorageBoost||0));if(quap<c)return;quap-=c;fd.quapStorageBoost=(fd.quapStorageBoost||0)+1;fd.storageMax+=10;}
+    renderQuaplanasFactory();
+}
+function restartQAutoRoll(){if(_qAutoRollTimer){clearInterval(_qAutoRollTimer);_qAutoRollTimer=null;}if(_qAutoRollOwned&&_qAutoRollEnabled&&quaplanasFactory)startQAutoRoll();}
+
+function estimateEarthIncomePerMin(){
+    const delay=getRollDelay();
+    if(!delay||!autoRollOwned||!autoRollEnabled||powerGrid.isBroken) return 0;
+    const rollsPerMin=(60000/delay)*multiRoll;
+    const avgBase=onigiris.reduce((s,o)=>s+o.price,0)/Math.max(1,onigiris.length);
+    const pkgMult=packagingLevel===0?1:packagingLevel===1?40:500;
+    const qualMult=1+qualityLevel*0.15;
+    const mutEst=2.5;
+    const recent=_earthPassiveEarnLog.filter(e=>Date.now()-e.t<120000);
+    const recentAvg=recent.length?recent.reduce((s,e)=>s+e.v,0)/Math.max(1,recent.length/60000*60000):0;
+    const theoretical=Math.floor(rollsPerMin*avgBase*pkgMult*qualMult*mutEst*0.35);
+    return recentAvg>0?Math.floor(recentAvg*60/2):theoretical;
+}
+
+function estimateQuapIncomePerMin(fd){
+    if(!fd) fd=getQFD();
+    if(!fd||!_qAutoRollOwned||!_qAutoRollEnabled) return 0;
+    const delay=getQRollDelay(fd);
+    const rollsPerMin=(60000/delay)*(fd.multiRoll||1);
+    const eligible=QUAPLANAS_ONIGIRIS.filter(o=>o.rarity!=="secret");
+    const avgBase=eligible.reduce((s,o)=>s+o.price,0)/Math.max(1,eligible.length);
+    const pkgMult=Q_PACKAGING[fd.packagingLevel]?.multi||1;
+    const qualMult=1+(fd.qualityLevel||0)*0.15;
+    const recent=_quapPassiveEarnLog.filter(e=>Date.now()-e.t<120000);
+    const recentAvg=recent.length?recent.reduce((s,e)=>s+e.v,0)/Math.max(1,recent.length):0;
+    const theoretical=Math.floor(rollsPerMin*avgBase*pkgMult*qualMult*2.5*0.35);
+    return recentAvg>0?Math.floor(recentAvg*60):theoretical;
+}
+
+function accruePassiveWorldIncome(){ /* 実際の生産はバックグラウンド自動ロールで処理 */ }
+
+function addQLog(type,msg){
+    const box=document.getElementById("qLogBox");if(!box)return;
+    const div=document.createElement("div");
+    div.style.cssText="padding:2px 0;border-bottom:1px solid #1a2a1a;font-size:12px;color:#aaa;";
+    div.textContent=`[${type}] ${msg}`;
+    box.insertBefore(div,box.firstChild);
+    while(box.children.length>50)box.removeChild(box.lastChild);
+}
+
+function onEnterQuaplanas(){
+    const vp=document.getElementById("qInventoryViewport");
+    if(vp&&!vp._qVsListening){
+        vp.addEventListener("scroll",qVsSchedule);
+        vp.addEventListener("mousedown", e=>{
+            if(e.button!==0||e.target.tagName==="BUTTON") return;
+            qLassoStart(e, vp);
+        });
+        vp._qVsListening=true;
+    }
+    if(_qAutoRollOwned&&quaplanasFactory&&!_qAutoRollTimer&&_qAutoRollEnabled) startQAutoRoll();
+    // 自動輸送: タイマー未起動なら開始、かつ即座に1回実行（移動直後から動作）
+    if(_qAutoTransportOwned){
+        if(!_qAutoTransportTimer) startQAutoTransport();
+        runQAutoTransport();
+    }
+    renderQuaplanasFactory();
+}
+
+function qLassoStart(e, vp){
+    const rect=vp.getBoundingClientRect();
+    const startX=e.clientX-rect.left+vp.scrollLeft;
+    const startY=e.clientY-rect.top+vp.scrollTop;
+    const box=document.getElementById("lassoBox");
+    if(!box) return;
+    box.style.display="block";
+    let curX=e.clientX,curY=e.clientY;
+    function onMove(ev){
+        curX=ev.clientX; curY=ev.clientY;
+        const ax=Math.min(e.clientX,curX), ay=Math.min(e.clientY,curY);
+        const bx=Math.max(e.clientX,curX), by=Math.max(e.clientY,curY);
+        box.style.left=ax+"px"; box.style.top=ay+"px";
+        box.style.width=(bx-ax)+"px"; box.style.height=(by-ay)+"px";
+        // 選択判定
+        const fd=getQFD(); if(!fd) return;
+        if(!e.shiftKey&&!e.ctrlKey) _qSelectedItems.clear();
+        document.querySelectorAll("#qInventoryVisible .card").forEach(card=>{
+            const cr=card.getBoundingClientRect();
+            if(cr.left<bx&&cr.right>ax&&cr.top<by&&cr.bottom>ay){
+                const id=parseInt(card.getAttribute("onclick")?.match(/\d+/)?.[0]||0);
+                if(id) _qSelectedItems.add(id);
+            }
+        });
+        qVsSchedule();
+    }
+    function onUp(){
+        box.style.display="none";
+        box.style.width="0"; box.style.height="0";
+        document.removeEventListener("mousemove",onMove);
+        document.removeEventListener("mouseup",onUp);
+    }
+    document.addEventListener("mousemove",onMove);
+    document.addEventListener("mouseup",onUp);
+}
+
+
 function travelToQuaplanas(){
     currentWorld = "quaplanas";
-    document.getElementById("quaplanasWorld").style.display = "";
+    _worldSwitchTime=Date.now();
+    if(!quaplanasFactoryData) quaplanasFactoryData = initQuaplanasFactoryData();
+    document.getElementById("quaplanasWorld").style.display = "block";
     document.getElementById("earthWorld").style.display = "none";
+    document.getElementById("main").style.display = "none";
+    const h1 = document.querySelector("h1:not(#quaplanasWorld h1)");
+    if(h1) h1.style.display = "none";
+    document.body.style.paddingTop = "42px";
     onEnterQuaplanas();
 }
 
 function travelToEarth(){
     currentWorld = "earth";
-    document.getElementById("earthWorld").style.display = "";
+    _worldSwitchTime=Date.now();
     document.getElementById("quaplanasWorld").style.display = "none";
-    if(_qAutoRollTimer){ clearInterval(_qAutoRollTimer); _qAutoRollTimer=null; }
+    document.getElementById("earthWorld").style.display = "block";
+    document.getElementById("main").style.display = "";
+    const h1 = document.querySelector("h1:not(#quaplanasWorld h1)");
+    if(h1) h1.style.display = "";
     renderAll();
 }
 
@@ -3774,8 +4910,11 @@ function renderRocketCard(){
         html += `<div style="background:#111;border:1px solid ${owned>0?"#5edc88":"#334"};border-radius:6px;padding:6px 10px;font-size:12px;">
             <div style="color:#ffd166;">${r.label}</div>
             <div style="color:#aaa;font-size:11px;">RP消費: ${r.rpCost}</div>
-            <div style="color:#c0a0ff;font-size:11px;">${owned>0 ? `✅ ${owned}機所有` : "未購入"}</div>
-            <button onclick="buyRocket('${r.key}')" ${rp < r.price ? "disabled":""} style="margin-top:4px;padding:2px 8px;font-size:11px;background:#1a2a50;border:1px solid #55aaff;color:#aaccff;border-radius:4px;">購入 RP ${r.price}</button>
+            <div style="color:#c0a0ff;font-size:11px;">${owned>0 ? "✅ 所有中" : "未購入"}</div>
+            ${owned>0
+                ? `<span style="font-size:11px;color:#5edc88;padding:2px 8px;display:inline-block;margin-top:4px;">✅ 確保済</span>`
+                : `<button onclick="buyRocket('${r.key}')" ${rp < r.price ? "disabled":""} style="margin-top:4px;padding:2px 8px;font-size:11px;background:#1a2a50;border:1px solid #55aaff;color:#aaccff;border-radius:4px;">購入 RP ${r.price}</button>`
+            }
         </div>`;
     });
 
@@ -3788,6 +4927,11 @@ function renderRocketCard(){
     html += `</div>`;
 
     if(!mission){
+        // select値を事前に読んで保存（DOMが再作成される前に）
+        const _ps = document.getElementById("rocketPlanetSelect");
+        const _rs = document.getElementById("rocketTypeSelect");
+        if(_ps && _ps.value) _savedPlanet = _ps.value;
+        if(_rs && _rs.value) _savedRocketType = _rs.value;
         const availPlanets = [];
         if(moonUnlocked) availPlanets.push({val:"moon", label:"🌕 月"});
         if(marsUnlocked) availPlanets.push({val:"mars", label:"🔴 火星"});
@@ -3797,24 +4941,24 @@ function renderRocketCard(){
         if((ownedRockets.medium||0)>0) availRockets.push({val:"medium", label:"🚀🚀 中型 (RP 2,500)"});
         if((ownedRockets.large||0)>0)  availRockets.push({val:"large",  label:"🚀🚀🚀 大型 (RP 5,000)"});
 
-        if(availPlanets.length > 0 && hasAnyRocket){
+        if(availPlanets.length > 0){
             const selPlanet = _savedPlanet || availPlanets[0].val;
             const selRocket = (_savedRocketType && (ownedRockets[_savedRocketType]||0)>0) ? _savedRocketType : (availRockets[0]?.val || "small");
             const rDef = ROCKET_DEFS.find(r=>r.key===selRocket);
             const rpNeeded = rDef ? rDef.rpCost : 1000;
-            const canDispatch = rp >= rpNeeded;
+            const canDispatch = rp >= rpNeeded && hasAnyRocket;
             html += `<div style="font-size:12px;color:#aaa;margin-bottom:6px;">
                 派遣先: <select id="rocketPlanetSelect" onchange="_savedPlanet=this.value" style="background:#222;color:#fff;border:1px solid #555;border-radius:4px;padding:2px;">
                     ${availPlanets.map(p=>`<option value="${p.val}" ${selPlanet===p.val?"selected":""}>${p.label}</option>`).join("")}
                 </select>
-                &nbsp;ロケット: <select id="rocketTypeSelect" onchange="_savedRocketType=this.value" style="background:#222;color:#fff;border:1px solid #555;border-radius:4px;padding:2px;">
-                    ${availRockets.map(r=>`<option value="${r.val}" ${selRocket===r.val?"selected":""}>${r.label}</option>`).join("")}
+                &nbsp;ロケット: <select id="rocketTypeSelect" onchange="_savedRocketType=this.value" style="background:#222;color:#fff;border:1px solid #555;border-radius:4px;padding:2px;" ${!hasAnyRocket?"disabled":""}>
+                    ${hasAnyRocket ? availRockets.map(r=>`<option value="${r.val}" ${selRocket===r.val?"selected":""}>${r.label}</option>`).join("") : `<option>（ロケット未購入）</option>`}
                 </select>
             </div>
             <button onclick="startRocketMission()" ${!canDispatch?"disabled":""} style="margin-top:4px;background:${canDispatch?"#1a2a50":"#1a1a1a"};border:1px solid ${canDispatch?"#55aaff":"#444"};color:${canDispatch?"#aaccff":"#666"};padding:10px 24px;border-radius:8px;font-size:14px;font-weight:bold;">
                 🚀 宇宙飛行士をロケットで派遣
             </button>
-            ${!canDispatch ? `<div style="font-size:11px;color:#ff8888;margin-top:3px;">RP不足（必要: ${rpNeeded}）</div>` : ""}`;
+            ${!hasAnyRocket ? `<div style="font-size:11px;color:#ff8888;margin-top:3px;">ロケットを購入してください</div>` : !canDispatch ? `<div style="font-size:11px;color:#ff8888;margin-top:3px;">RP不足（必要: ${rpNeeded}）</div>` : ""}`;
         }
     } else if(mission.progress < 100){
         html += `<div style="font-size:12px;color:#55aaff;margin-top:4px;margin-bottom:3px;">派遣中... ${mission.progress}%</div>
@@ -3827,17 +4971,52 @@ function renderRocketCard(){
 }
 
 function renderRPFactoryCard(){
-    const cost = rpFactoryLevel < MAX_RP_FACTORY ? (rpFactoryLevel + 1) * 500 : 0;
+    const secretCost = rpFactoryLevel < MAX_RP_FACTORY ? (rpFactoryLevel+1)*500 : 0;
+    const truckCost  = rpTruckSpeedLevel < MAX_RP_TRUCK ? (rpTruckSpeedLevel+1)*300 : 0;
+    const hackCost   = rpHackLevel < MAX_RP_HACK ? (rpHackLevel+1)*800 : 0;
+    const truckMulti = (1 + rpTruckSpeedLevel*0.1).toFixed(1);
+    const hackUnlocked = hackLevel >= MAX_HACK_LEVEL;
     return `<div style="background:#1a0a2a;border:1px solid #c060ff;border-radius:8px;padding:10px 14px;margin-top:8px;">
-        <div style="font-size:14px;font-weight:bold;color:#c060ff;margin-bottom:4px;">🏭 RP工場強化</div>
-        <div style="font-size:12px;color:#bbb;margin-bottom:6px;">RPでシークレットおにぎり排出率を強化。最大10倍。<br>現在: <span style="color:#c060ff;">x${(1 + rpFactoryLevel).toFixed(1)}</span></div>
-        ${rpFactoryLevel < MAX_RP_FACTORY
-            ? `<button onclick="upgradeRPFactory()" ${rp < cost ? "disabled":""} style="background:#2a0a4a;border:1px solid #c060ff;color:#c060ff;padding:4px 12px;border-radius:6px;font-size:12px;">
-                強化 Lv.${rpFactoryLevel+1} (RP ${cost})
-               </button>`
-            : `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み (x${MAX_RP_FACTORY+1}.0)</span>`
-        }
+        <div style="font-size:14px;font-weight:bold;color:#c060ff;margin-bottom:6px;">⚙️ RP工場強化・禁断研究</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+            <div>
+                <span style="color:#bbb;font-size:12px;">🍙 シークレット排出率 Lv${rpFactoryLevel}/${MAX_RP_FACTORY} <b>x${(1+rpFactoryLevel).toFixed(1)}</b></span><br>
+                ${rpFactoryLevel < MAX_RP_FACTORY
+                    ? `<button onclick="upgradeRPFactory()" ${rp<secretCost?"disabled":""} style="background:#2a0a4a;border:1px solid #c060ff;color:#c060ff;padding:3px 10px;border-radius:5px;font-size:11px;">強化 Lv${rpFactoryLevel+1} (RP ${secretCost})</button>`
+                    : `<span style="font-size:11px;color:#5edc88;">✅ 最大</span>`}
+            </div>
+            <div>
+                <span style="color:#bbb;font-size:12px;">🚚 輸送速度 Lv${rpTruckSpeedLevel}/${MAX_RP_TRUCK} <b>x${truckMulti}</b></span><br>
+                ${rpTruckSpeedLevel < MAX_RP_TRUCK
+                    ? `<button onclick="upgradeRPTruckSpeed()" ${rp<truckCost?"disabled":""} style="background:#1a2a1a;border:1px solid #5edc88;color:#5edc88;padding:3px 10px;border-radius:5px;font-size:11px;">強化 Lv${rpTruckSpeedLevel+1} (RP ${truckCost})</button>`
+                    : `<span style="font-size:11px;color:#5edc88;">✅ 最大</span>`}
+            </div>
+            ${hackUnlocked ? `<div>
+                <span style="color:#bbb;font-size:12px;">⚡ 発電所ハッキング強化 Lv${rpHackLevel}/${MAX_RP_HACK} (成功率+${rpHackLevel*5}%)</span><br>
+                ${rpHackLevel < MAX_RP_HACK
+                    ? `<button onclick="upgradeRPHack()" ${rp<hackCost?"disabled":""} style="background:#2a1a0a;border:1px solid #ffd166;color:#ffd166;padding:3px 10px;border-radius:5px;font-size:11px;">強化 Lv${rpHackLevel+1} (RP ${hackCost})</button>`
+                    : `<span style="font-size:11px;color:#5edc88;">✅ 最大</span>`}
+            </div>` : `<div style="font-size:11px;color:#555;">⚡ 発電所ハッキング強化（ハッキング最大Lvで解放）</div>`}
+        </div>
     </div>`;
+}
+
+function upgradeRPTruckSpeed(){
+    if(rpTruckSpeedLevel >= MAX_RP_TRUCK) return;
+    const cost = (rpTruckSpeedLevel+1)*300;
+    if(rp < cost) return;
+    rp -= cost; rpTruckSpeedLevel++;
+    addLog("通知", `🚚 輸送速度強化 Lv${rpTruckSpeedLevel} (x${(1+rpTruckSpeedLevel*0.1).toFixed(1)}倍速)`);
+    renderAll();
+}
+
+function upgradeRPHack(){
+    if(rpHackLevel >= MAX_RP_HACK) return;
+    const cost = (rpHackLevel+1)*800;
+    if(rp < cost) return;
+    rp -= cost; rpHackLevel++;
+    addLog("通知", `⚡ 発電所ハッキング強化 Lv${rpHackLevel} (成功率+${rpHackLevel*5}%)`);
+    renderAll();
 }
 
 function buyTelescope(){
@@ -3855,6 +5034,7 @@ function startObserve(target, resume){
     observing = true;
     if(!resume) observeProgress = 0;
     if(_observeTimer) clearInterval(_observeTimer);
+    const _obsDelay = Math.max(50, Math.round(1000 / (window._adminTimeScale||1)));
     _observeTimer = setInterval(()=>{
         observeProgress++;
         if(observeProgress >= 100){
@@ -3865,7 +5045,7 @@ function startObserve(target, resume){
             finishObserve(target);
         }
         renderMysteryPanel();
-    }, 1000);
+    }, _obsDelay);
 }
 
 function finishObserve(target){
@@ -3905,6 +5085,7 @@ function startRadioResearch(){
     radioTelescopeResearchProgress = 0;
     addLog("通知", "📡 電波望遠鏡の研究を開始（3分）。");
     if(_radioResearchTimer) clearInterval(_radioResearchTimer);
+    const _rrDelay = Math.max(50, Math.round(1800 / (window._adminTimeScale||1)));
     _radioResearchTimer = setInterval(()=>{
         radioTelescopeResearchProgress++;
         if(radioTelescopeResearchProgress >= 100){
@@ -3918,7 +5099,7 @@ function startRadioResearch(){
         } else {
             if(spacePanelUnlocked) renderSpacePanel();
         }
-    }, 1800); // 3分=180秒、100ステップ → 1800ms/step
+    }, _rrDelay);
 }
 
 function resumeRadioResearch(){
@@ -3946,6 +5127,7 @@ function startRadioObserve(){
     radioObserveProgress = 0;
     addLog("通知", `📡 宇宙観測開始（RP 5,000消費）。5分後に結果が判明する。`);
     if(_radioObserveTimer) clearInterval(_radioObserveTimer);
+    const _roDelay = Math.max(50, Math.round(3000 / (window._adminTimeScale||1)));
     _radioObserveTimer = setInterval(()=>{
         radioObserveProgress++;
         if(radioObserveProgress >= 100){
@@ -3954,7 +5136,7 @@ function startRadioObserve(){
             radioObserving = false;
             finishRadioObserve(radioObserveTarget);
         } else if(spacePanelUnlocked) renderSpacePanel();
-    }, 3000); // 5分=300秒、100ステップ → 3000ms/step
+    }, _roDelay);
 }
 
 function resumeRadioObserve(){
@@ -4000,6 +5182,7 @@ function startBHResearch(){
     blackholeResearchProgress = 0;
     addLog("通知", "🕳️ ブラックホール研究開始（5分）。");
     if(_bhResearchTimer) clearInterval(_bhResearchTimer);
+    const _bhDelay = Math.max(50, Math.round(3000 / (window._adminTimeScale||1)));
     _bhResearchTimer = setInterval(()=>{
         blackholeResearchProgress++;
         if(blackholeResearchProgress >= 100){
@@ -4011,7 +5194,7 @@ function startBHResearch(){
             showTopNotice("🔬 研究者がブラックホールでワープと何でも翻訳機を開発しました！", 7000);
             renderAll();
         } else if(spacePanelUnlocked) renderSpacePanel();
-    }, 3000); // 5分、100ステップ → 3000ms/step
+    }, _bhDelay);
 }
 
 function resumeBHResearch(){
@@ -4099,6 +5282,7 @@ const PLANET_REWARDS = {
 function resumeRocketDev(){
     rocketDeveloping = true;
     if(_rocketDevTimer) clearInterval(_rocketDevTimer);
+    const _rdDelay = Math.max(50, Math.round(1000 / (window._adminTimeScale||1)));
     _rocketDevTimer = setInterval(()=>{
         rocketDevelopProgress++;
         if(rocketDevelopProgress >= 100){
@@ -4110,7 +5294,7 @@ function resumeRocketDev(){
             showTopNotice("🚀 ロケット開発完了！ロケットを購入できます！", 5000);
             renderAll();
         } else if(spacePanelUnlocked) renderSpacePanel();
-    }, 1000);
+    }, _rdDelay);
 }
 
 function startRocketDev(){
@@ -4346,6 +5530,7 @@ function renderUpgradeArea(){
         : `<button onclick="buyExpansionLimitBoost()" ${foreignMoney < EXPANSION_LIMIT_BOOST_COST ? "disabled":""} style="padding:2px 8px;font-size:11px;background:#55aaff;color:#111;">上限+50%(外貨${EXPANSION_LIMIT_BOOST_COST})</button>`;
 
     document.getElementById("upgradeArea").innerHTML = `
+        <div style="font-size:11px;color:#ffd166;margin-bottom:6px;">📊 推定平均収入: ${estimateEarthIncomePerMin().toLocaleString()}円/分${currentWorld!=="earth"?` ｜ 別惑星滞在 ${Math.max(0,Math.floor((Date.now()-_worldSwitchTime)/60000))}分`:``}</div>
         <div class="controlRow" style="margin-bottom:6px;">
             🔧 自動修理システム:
             <button onclick="buyAutoRepair()" ${autoRepairOwned || money < 300000 ? "disabled":""} style="padding:2px 8px; font-size:11px; margin-left:4px;">${autoRepairOwned ? "✅ 導入済み" : "導入(300,000円)"}</button>
@@ -4978,7 +6163,12 @@ function renderAll(){
 // メインシステムタイマー（軽量版）
 let trendTimer = 0;
 let slowTimer = 0;
-setInterval(()=>{
+let _mainGameLoopTimer = null;
+function restartMainGameLoop(){
+    if(_mainGameLoopTimer) clearInterval(_mainGameLoopTimer);
+    _mainGameLoopTimer = setInterval(mainGameLoopTick, adminScaledMs(1000));
+}
+function mainGameLoopTick(){
     // 輸送カウントダウン・ボタン状態は毎秒更新
     renderShops();
     if(inventory.some(it=>it.transporting)) vsSchedule(); // 輸送カウントダウン更新
@@ -5080,7 +6270,8 @@ setInterval(()=>{
         renderUpgradeArea();
         renderAutoTransport();
     }
-},1000);
+}
+restartMainGameLoop();
 
 // 電圧変動 + 機械故障タイマー（0.5秒ごと）
 setInterval(()=>{
@@ -5141,7 +6332,7 @@ function getSaveData(){
         solarSystemUnlocked, blackholeUnlocked, quaplanasUnlocked,
         warpDeveloped, alienContactDone, ufoTechAcquired, quaplanasMission,
         blackholeResearchProgress, blackholeResearching: false,
-        rpFactoryLevel, quaplanasFactory, quaplanasFactoryData, quaplanasResearched, quap, _quaplanasResearchProgress,
+        rpFactoryLevel, rpTruckSpeedLevel, rpHackLevel, gameSettings, quaplanasFactory, _qAutoRollOwned, _qAutoRollEnabled, _qAutoTransportOwned, _qAutoTransportRoutes, quaplanasFactoryData, quaplanasResearched, quap, _quaplanasResearchProgress,
         rocketDevelopProgress, rocketDeveloping: false, ownedRockets, ufoOwned, rocketUnlocked, rocketDevStarted,
         rocketMission,
         powerGrid: {...powerGrid},
@@ -5234,6 +6425,15 @@ function loadGame(){
         blackholeResearchProgress = d.blackholeResearchProgress ?? 0;
         blackholeResearching = false;
         rpFactoryLevel = d.rpFactoryLevel ?? 0;
+        _qAutoRollOwned = d._qAutoRollOwned ?? false;
+        _qAutoRollEnabled = d._qAutoRollEnabled ?? (_qAutoRollOwned ? true : false);
+        _qAutoTransportOwned = d._qAutoTransportOwned ?? false;
+        if(d._qAutoTransportRoutes && d._qAutoTransportRoutes.length) _qAutoTransportRoutes = d._qAutoTransportRoutes;
+        if(_qAutoTransportOwned) setTimeout(startQAutoTransport, 1000);
+        if(_qAutoRollOwned && _qAutoRollEnabled) setTimeout(startQAutoRoll, 1200);
+        rpTruckSpeedLevel = d.rpTruckSpeedLevel ?? 0;
+        rpHackLevel = d.rpHackLevel ?? 0;
+        if(d.gameSettings) Object.assign(gameSettings, d.gameSettings);
         if(d.quaplanasFactoryData) quaplanasFactoryData = d.quaplanasFactoryData;
         rocketDevelopProgress = d.rocketDevelopProgress ?? 0;
         rocketDeveloping = false;
@@ -5271,7 +6471,7 @@ function loadGame(){
             resumeLifeMission();
         }
         if(quaplanasFactory){
-            const tb = document.getElementById("factoryTravelBar"); if(tb){ tb.style.display="flex"; tb.style.setProperty("display","flex","important"); }
+            const tb = document.getElementById("factoryTravelBar"); if(tb){ tb.style.display="flex"; tb.style.setProperty("display","flex","important"); document.body.style.paddingTop="42px"; }
         }
         if(foreignUnlocked) document.getElementById("foreignMoney").style.display = "";
         if(rpUnlocked){ document.getElementById("rpDisplay").style.display = ""; startRPLoop(); }
@@ -5323,6 +6523,7 @@ if(_deletedNotice) localStorage.removeItem("onigiriRNG_deleted_notice");
 addLog("AI", _loaded ? "🔄 セーブデータを読み込みました。" : "🤖 おにぎり自動製造コア起動。初期シーケンス正常。コンビニへの出荷義務を果たしてください。");
 updateTrend();
 renderAll();
+updateQTrend();
 if(_deletedNotice) showToast("データを削除しました");
 
 // ===== プレイヤーID & 管理者 =====
@@ -5339,89 +6540,652 @@ if(_deletedNotice) showToast("データを削除しました");
     console.log("Player ID:", pid);
 })();
 
-const _ADMIN_IDS = new Set([]);
+const _ADMIN_IDS = new Set(["8d3e2c6a-dc9f-4962-8504-713f6b36ef96","70aa33f9-6619-4aa1-a420-b25cec212fb1"]);
 function isAdmin(){ return _ADMIN_IDS.has(window._playerId); }
+
+
+// ===== 設定パネル =====
+function openSettingsPanel(){
+    let el=document.getElementById("settingsPanel");
+    if(el){el.style.display=el.style.display==="none"?"flex":"none";return;}
+    el=document.createElement("div");
+    el.id="settingsPanel";
+    el.style.cssText="position:fixed;inset:0;background:#000c;z-index:9000;display:flex;align-items:center;justify-content:center;";
+    const RARITY_OPTS=["common","uncommon","rare","epic","legend","mythical"].map(r=>`<option value="${r}" ${gameSettings.stackThreshold===r?"selected":""}>${r}</option>`).join("");
+    el.innerHTML=`
+    <div style="background:#111;border:2px solid #555;border-radius:12px;padding:20px;width:420px;max-width:95vw;color:#fff;font-size:13px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h2 style="margin:0;color:#aaa;">⚙️ 設定</h2>
+            <button onclick="document.getElementById('settingsPanel').style.display='none'" style="background:#333;color:#aaa;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="set_secretAnim" ${gameSettings.secretAnimation?"checked":""} onchange="gameSettings.secretAnimation=this.checked;saveGame();">
+                <span>🎉 シークレット出現時の演出を表示</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="set_showTrend" ${gameSettings.showTrend?"checked":""} onchange="gameSettings.showTrend=this.checked;applySettingsDisplay();saveGame();">
+                <span>📈 市場トレンド相場を表示</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="set_showLog" ${gameSettings.showMainLog?"checked":""} onchange="gameSettings.showMainLog=this.checked;applySettingsDisplay();saveGame();">
+                <span>📜 メインログを表示</span>
+            </label>
+            <div style="border:1px solid #333;border-radius:6px;padding:8px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px;">
+                    <input type="checkbox" id="set_stackInv" ${gameSettings.stackInventory?"checked":""} onchange="gameSettings.stackInventory=this.checked;saveGame();">
+                    <span>📦 倉庫ストレージを圧縮表示（同レア度以下をまとめる）</span>
+                </label>
+                <div style="font-size:12px;color:#888;margin-left:24px;">
+                    この以下のレア度をまとめる:
+                    <select id="set_stackThreshold" onchange="gameSettings.stackThreshold=this.value;saveGame();" style="background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;margin-left:4px;">
+                        ${RARITY_OPTS}
+                    </select>
+                    <br><span style="font-size:11px;">（詳細ボタンで中身を確認できます）</span>
+                </div>
+            </div>
+            <div style="border-top:1px solid #333;margin-top:4px;padding-top:10px;">
+                <button onclick="document.getElementById('settingsPanel').style.display='none';showDeleteConfirm();" style="background:#1a0505;border:1px solid #ff3333;color:#ff6666;padding:8px 18px;border-radius:8px;font-size:13px;cursor:pointer;width:100%;">🗑️ セーブデータを削除</button>
+            </div>
+        </div>
+    </div>`;
+    el.addEventListener("click",e=>{if(e.target===el)el.style.display="none";});
+    document.body.appendChild(el);
+}
+
+function applySettingsDisplay(){
+    const tp=document.getElementById("trendPanel");
+    const lp=document.getElementById("logPanel");
+    if(tp) tp.style.display=gameSettings.showTrend?"":"none";
+    if(lp) lp.style.display=gameSettings.showMainLog?"":"none";
+}
+
+// 起動時に設定を適用
+document.addEventListener("DOMContentLoaded",()=>{ setTimeout(applySettingsDisplay,200); });
 
 function openAdminPanel(){
     let el = document.getElementById("adminPanel");
     if(el){ el.style.display = el.style.display==="none" ? "flex" : "none"; return; }
     el = document.createElement("div");
     el.id = "adminPanel";
-    el.style.cssText = "position:fixed;inset:0;background:#000c;z-index:9999;display:flex;align-items:center;justify-content:center;";
+    el.style.cssText = "position:fixed;inset:0;background:#000d;z-index:9999;display:flex;align-items:center;justify-content:center;";
     el.innerHTML = `
-    <div style="background:#111;border:2px solid #ffd166;border-radius:12px;padding:20px;width:520px;max-width:95vw;max-height:85vh;overflow-y:auto;color:#fff;font-size:13px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div style="background:#111;border:2px solid #ffd166;border-radius:12px;padding:20px;width:580px;max-width:97vw;max-height:90vh;overflow-y:auto;color:#fff;font-size:13px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
             <h2 style="color:#ffd166;margin:0;">🔧 管理者パネル</h2>
             <button onclick="document.getElementById('adminPanel').style.display='none'" style="background:#333;color:#aaa;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;">✕</button>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <div style="background:#1a1a1a;border-radius:8px;padding:10px;grid-column:1/-1;">
+        <div id="adminNotif" style="min-height:22px;color:#5edc88;font-size:12px;margin-bottom:6px;"></div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+
+            <!-- 通貨 -->
+            <div style="background:#1a1a1a;border-radius:8px;padding:10px;">
                 <div style="color:#ffd166;margin-bottom:6px;">💰 通貨操作</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
                     円<input id="adm_money" type="number" value="1000000" style="width:90px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;">
-                    <button onclick="money+=+document.getElementById('adm_money').value;renderAll();" style="padding:3px 10px;background:#ffd166;color:#111;border:none;border-radius:4px;cursor:pointer;">+</button>
+                    <button onclick="money+=+document.getElementById('adm_money').value;renderAll();admNotif('円 +'+Number(document.getElementById('adm_money').value).toLocaleString());" style="padding:3px 10px;background:#5edc88;color:#111;border:none;border-radius:4px;cursor:pointer;">+</button>
                     外貨<input id="adm_foreign" type="number" value="10000" style="width:80px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;">
-                    <button onclick="foreignMoney+=+document.getElementById('adm_foreign').value;renderAll();" style="padding:3px 10px;background:#55aaff;color:#111;border:none;border-radius:4px;cursor:pointer;">+</button>
+                    <button onclick="foreignMoney+=+document.getElementById('adm_foreign').value;renderAll();admNotif('外貨 +'+document.getElementById('adm_foreign').value);" style="padding:3px 10px;background:#55aaff;color:#111;border:none;border-radius:4px;cursor:pointer;">+</button>
                     RP<input id="adm_rp" type="number" value="1000" style="width:70px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;">
-                    <button onclick="rp+=+document.getElementById('adm_rp').value;renderAll();" style="padding:3px 10px;background:#c0a0ff;color:#111;border:none;border-radius:4px;cursor:pointer;">+</button>
+                    <button onclick="rp+=+document.getElementById('adm_rp').value;renderAll();admNotif('RP +'+document.getElementById('adm_rp').value);" style="padding:3px 10px;background:#c0a0ff;color:#111;border:none;border-radius:4px;cursor:pointer;">+</button>
                     クァプ<input id="adm_quap" type="number" value="100" style="width:70px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;">
-                    <button onclick="quap+=+document.getElementById('adm_quap').value;renderAll();" style="padding:3px 10px;background:#5edc88;color:#111;border:none;border-radius:4px;cursor:pointer;">+</button>
+                    <button onclick="quap+=+document.getElementById('adm_quap').value;renderAll();admNotif('クァプ +'+document.getElementById('adm_quap').value);" style="padding:3px 10px;background:#5edc88;color:#111;border:none;border-radius:4px;cursor:pointer;">+</button>
                 </div>
             </div>
+
+            <!-- 電圧 -->
             <div style="background:#1a1a1a;border-radius:8px;padding:10px;">
-                <div style="color:#ffd166;margin-bottom:6px;">⚡ 電圧操作</div>
-                電圧%<input id="adm_voltage" type="number" value="100" style="width:80px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;"><br>
-                <button onclick="powerGrid.level=+document.getElementById('adm_voltage').value;powerGrid.isBroken=false;renderAll();" style="margin-top:6px;padding:3px 10px;background:#ff9f1c;color:#111;border:none;border-radius:4px;cursor:pointer;">設定</button>
+                <div style="color:#ffd166;margin-bottom:6px;">⚡ 電圧操作（上限なし）</div>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                    <input id="adm_voltage" type="number" value="700" style="width:90px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;">%
+                    <button onclick="powerGrid.level=+document.getElementById('adm_voltage').value;powerGrid.isBroken=false;renderAll();admNotif('電圧設定: '+powerGrid.level+'%');" style="padding:3px 10px;background:#ff9f1c;color:#111;border:none;border-radius:4px;cursor:pointer;">設定</button>
+                    <button onclick="powerGrid.level+=100;renderAll();admNotif('電圧+100: '+powerGrid.level+'%');" style="padding:3px 10px;background:#ff9f1c;color:#111;border:none;border-radius:4px;cursor:pointer;">+100</button>
+                    <button onclick="powerGrid.level=Math.max(0,powerGrid.level-100);renderAll();admNotif('電圧-100: '+powerGrid.level+'%');" style="padding:3px 10px;background:#ff9f1c;color:#111;border:none;border-radius:4px;cursor:pointer;">-100</button>
+                </div>
             </div>
+
+            <!-- おにぎり生成 -->
             <div style="background:#1a1a1a;border-radius:8px;padding:10px;">
-                <div style="color:#ffd166;margin-bottom:6px;">🍙 おにぎり生成</div>
-                <select id="adm_onigirikind" style="background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;font-size:11px;width:100%;"></select>
-                <select id="adm_onigiririar" style="background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;font-size:11px;margin-top:2px;width:100%;">
-                    <option value="common">common</option><option value="uncommon">uncommon</option><option value="rare">rare</option><option value="epic">epic</option><option value="legend">legend</option><option value="mythical">mythical</option><option value="secret">secret</option>
-                </select>
-                個数<input id="adm_onigiricount" type="number" value="1" min="1" max="100" style="width:50px;background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;">
-                <button onclick="adminGenOnigiri()" style="margin-top:4px;padding:3px 10px;background:#ff60a0;color:#111;border:none;border-radius:4px;cursor:pointer;display:block;">生成</button>
+                <div style="color:#ffd166;margin-bottom:6px;">🍙 おにぎり生成（生産ラインに注入）</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                    <div>
+                        惑星<br><select id="adm_planet" onchange="adminFillOnigiriKinds()" style="width:100%;background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;">
+                            <option value="earth">地球</option>
+                            <option value="quaplanas">クァプラナス星</option>
+                        </select>
+                        種類<br><select id="adm_onigirikind" style="width:100%;background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;"></select>
+                    </div>
+                    <div>
+                        米<br><select id="adm_rice" style="width:100%;background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;"></select>
+                        精米<br><select id="adm_cook" style="width:100%;background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;"></select>
+                    </div>
+                    <div>
+                        味付け<br><select id="adm_flavor" style="width:100%;background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;"></select>
+                        海苔<br><select id="adm_nori" style="width:100%;background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;"></select>
+                    </div>
+                    <div>
+                        形<br><select id="adm_shape" style="width:100%;background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;"></select>
+                        異常<br><select id="adm_accident" style="width:100%;background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;">
+                            <option value="">なし</option>
+                            <option value="異常発酵">異常発酵</option>
+                            <option value="自我の覚醒(AI倫理OFF)">自我の覚醒</option>
+                            <option value="放射線汚染">放射線汚染</option>
+                        </select>
+                        トレンド補正<br><select id="adm_trend" style="width:100%;background:#222;color:#fff;border:1px solid #555;padding:2px;border-radius:4px;">
+                            <option value="">現在のトレンド</option>
+                        </select>
+                    </div>
+                </div>
+                品質%<input id="adm_quality" type="number" value="100" min="1" max="500" style="width:70px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;"> 個数<input id="adm_onigiricount" type="number" value="1" min="1" max="100" style="width:60px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;margin-top:6px;">
+                <button onclick="adminGenOnigiri()" style="margin-top:6px;padding:4px 14px;background:#ff60a0;color:#111;border:none;border-radius:4px;cursor:pointer;display:block;">生成</button>
             </div>
-            <div style="background:#1a1a1a;border-radius:8px;padding:10px;grid-column:1/-1;">
+
+            <!-- イベント発火 -->
+            <div style="background:#1a1a1a;border-radius:8px;padding:10px;">
                 <div style="color:#ffd166;margin-bottom:6px;">🎪 イベント発火</div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                    <button onclick="typeof triggerBananaEvent==='function'&&triggerBananaEvent()" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">🍌バナナ</button>
-                    <button onclick="typeof triggerDJEvent==='function'&&triggerDJEvent()" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">🎧DJ</button>
-                    <button onclick="typeof triggerErrorEvent==='function'&&triggerErrorEvent()" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">❌Error</button>
-                    <button onclick="typeof triggerGlowEvent==='function'&&triggerGlowEvent()" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">✨発光</button>
-                    <button onclick="typeof triggerIllegalVoltageEvent==='function'&&triggerIllegalVoltageEvent()" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">⚡違法電圧</button>
-                    <button onclick="typeof triggerMidnightTension==='function'&&triggerMidnightTension()" style="padding:3px 8px;background:#333;color:#5edc88;border:1px solid #5edc88;border-radius:4px;cursor:pointer;font-size:11px;">🍀深夜テンション</button>
-                    <button onclick="powerGrid.isBroken=true;renderAll();addLog('警告','[管理者]ブレーカー落下');" style="padding:3px 8px;background:#333;color:#ff3333;border:1px solid #ff3333;border-radius:4px;cursor:pointer;font-size:11px;">🔌ブレーカー</button>
+                    <button onclick="typeof triggerBananaEvent==='function'&&triggerBananaEvent();admNotif('🍌バナナ発火');" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">🍌バナナ</button>
+                    <button onclick="typeof triggerDjEvent==='function'&&triggerDjEvent();admNotif('🎧DJ発火');" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">🎧DJ</button>
+                    <button onclick="typeof triggerErrorEvent==='function'&&triggerErrorEvent();admNotif('❌Error発火');" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">❌Error</button>
+                    <button onclick="typeof triggerGlowEvent==='function'&&triggerGlowEvent();admNotif('✨発光発火');" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">✨発光</button>
+                    <button onclick="typeof triggerMatchaAnkoEvent==='function'&&triggerMatchaAnkoEvent();admNotif('🍵抹茶発火');" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">🍵抹茶あんこ</button>
+                    <button onclick="typeof triggerIllegalVoltageEvent==='function'&&triggerIllegalVoltageEvent();admNotif('⚡違法電圧発火');" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">⚡違法電圧</button>
+                    <button onclick="typeof triggerCompressedEvent==='function'&&triggerCompressedEvent();admNotif('📦圧縮発火');" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">📦圧縮</button>
+                    <button onclick="typeof triggerSmugglingEvent==='function'&&triggerSmugglingEvent();admNotif('🚢密輸発火');" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">🚢密輸</button>
+                    <button onclick="typeof triggerBribeEvent==='function'&&triggerBribeEvent();admNotif('💴賄賂発火');" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">💴賄賂</button>
+                    <button onclick="typeof triggerUnknownEvent==='function'&&triggerUnknownEvent();admNotif('❓???発火');" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">❓???</button>
+                    <button onclick="typeof triggerMidnightTension==='function'&&triggerMidnightTension();admNotif('🍀深夜テンション発火');" style="padding:3px 8px;background:#0a2a0a;color:#5edc88;border:1px solid #5edc88;border-radius:4px;cursor:pointer;font-size:11px;">🍀深夜テンション</button>
+                    <button onclick="typeof triggerTruckAccident==='function'&&triggerTruckAccident();admNotif('🚚トラック事故発火');" style="padding:3px 8px;background:#333;color:#ffd166;border:1px solid #555;border-radius:4px;cursor:pointer;font-size:11px;">🚚トラック事故</button>
+                    <button onclick="powerGrid.isBroken=true;renderAll();admNotif('🔌ブレーカー落下');" style="padding:3px 8px;background:#2a0000;color:#ff3333;border:1px solid #ff3333;border-radius:4px;cursor:pointer;font-size:11px;">🔌ブレーカー</button>
                 </div>
             </div>
-            <div style="background:#1a1a1a;border-radius:8px;padding:10px;grid-column:1/-1;">
-                <div style="color:#ffd166;margin-bottom:6px;">⏱️ 時間倍率</div>
-                %<input id="adm_timescale" type="number" value="100" min="1" style="width:80px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;">
-                <button onclick="window._adminTimeScale=+document.getElementById('adm_timescale').value/100;showToast('時間倍率: '+(window._adminTimeScale*100)+'%');" style="padding:3px 10px;background:#ff9f1c;color:#111;border:none;border-radius:4px;cursor:pointer;margin-left:4px;">適用</button>
-                <span style="font-size:11px;color:#888;margin-left:6px;">100%=通常速度</span>
+
+            <!-- 時間倍率 -->
+            <div style="background:#1a1a1a;border-radius:8px;padding:10px;">
+                <div style="color:#ffd166;margin-bottom:6px;">⏱️ 時間倍率（研究・輸送時間）</div>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                    <input id="adm_timescale" type="number" value="100" min="1" style="width:80px;background:#222;color:#fff;border:1px solid #555;padding:2px 4px;border-radius:4px;">%
+                    <button onclick="admApplyTimeScale();" style="padding:3px 10px;background:#ff9f1c;color:#111;border:none;border-radius:4px;cursor:pointer;">適用</button>
+                    <span id="adm_timescale_disp" style="font-size:11px;color:#888;">現在: 100%</span>
+                </div>
+                <div style="font-size:11px;color:#666;margin-top:4px;">100%=通常 / 1000%=10倍速 / 10%=0.1倍(スロー)</div>
             </div>
+
         </div>
     </div>`;
     el.addEventListener("click", e=>{ if(e.target===el) el.style.display="none"; });
     document.body.appendChild(el);
-    const sel = el.querySelector("#adm_onigirikind");
-    if(sel) sel.innerHTML = onigiris.map(o=>`<option value="${o.name}">${o.name}</option>`).join("");
+    // セレクト初期化
+    adminInitSelects();
+    admUpdateTimescaleDisp();
+}
+
+function admNotif(msg){
+    const el = document.getElementById("adminNotif");
+    if(!el) return;
+    el.textContent = "✅ " + msg;
+    clearTimeout(el._t);
+    el._t = setTimeout(()=>{ el.textContent=""; }, 2500);
+}
+
+const ADMIN_EARTH_SECRETS=[
+    {name:"🍌バナナおにぎり",emoji:"🍌",price:99999,short:"バナナおにぎり"},
+    {name:"🎧DJおにぎり",emoji:"🎧",price:95000,short:"DJおにぎり"},
+    {name:"❌Errorおにぎり",emoji:"❌",price:88888,short:"Errorおにぎり"},
+    {name:"✨発光おにぎり",emoji:"✨",price:85000,short:"発光おにぎり"},
+    {name:"🍵抹茶あんこおにぎり",emoji:"🍵",price:80000,short:"抹茶あんこおにぎり"},
+    {name:"⚡違法電圧おにぎり",emoji:"⚡",price:77777,short:"違法電圧おにぎり"},
+    {name:"📦圧縮おにぎり",emoji:"📦",price:75000,short:"圧縮おにぎり"},
+    {name:"🚢密輸おにぎり",emoji:"🚢",price:72000,short:"密輸おにぎり"},
+    {name:"💴賄賂おにぎり",emoji:"💴",price:70000,short:"賄賂おにぎり"},
+    {name:"❓???おにぎり",emoji:"❓",price:99999,short:"???おにぎり"},
+];
+
+function adminInitSelects(){
+    const fill=(id,arr,nameKey="name")=>{
+        const s=document.getElementById(id); if(!s) return;
+        s.innerHTML=arr.map(x=>`<option value="${x[nameKey]}">${x[nameKey]}</option>`).join("");
+    };
+    fill("adm_rice", firstMutations);
+    fill("adm_cook", secondMutations);
+    fill("adm_flavor", flavorMutations);
+    fill("adm_nori", noriMutations);
+    fill("adm_shape", shapeMutations);
+    adminFillOnigiriKinds();
+    const ts=document.getElementById("adm_trend");
+    if(ts) ts.innerHTML=`<option value="">現在のトレンド</option>`+trends.map(t=>`<option value="${t.name}">${t.name}</option>`).join("");
+}
+
+function adminFillOnigiriKinds(){
+    const s=document.getElementById("adm_onigirikind"); if(!s) return;
+    const planet=document.getElementById("adm_planet")?.value||"earth";
+    if(planet==="quaplanas"){
+        s.innerHTML=QUAPLANAS_ONIGIRIS.map(o=>`<option value="${o.name}">${o.name} (${o.rarity})</option>`).join("");
+    } else {
+        const normal=onigiris.map(o=>`<option value="${o.name}">${o.name}</option>`).join("");
+        const secrets=ADMIN_EARTH_SECRETS.map(o=>`<option value="${o.name}">${o.name} [SECRET]</option>`).join("");
+        s.innerHTML=normal+`<optgroup label="SECRET">${secrets}</optgroup>`;
+    }
+}
+
+function buildAdminMutation(name, arr, defaultName){
+    const found=arr.find(x=>x.name===name)||arr[0];
+    return {...found};
+}
+
+function buildAdminEarthProcess(opts){
+    const {name,rice,cook,flavor,nori,shape,acc,qualPct,trendName}=opts;
+    const secret=ADMIN_EARTH_SECRETS.find(s=>s.name===name);
+    const baseOni=onigiris.find(o=>o.name===name);
+    const base=secret
+        ? {name:secret.short,emoji:secret.emoji,class:"secret",price:secret.price,chance:0}
+        : baseOni||onigiris[0];
+    const product=formatProduct(base);
+    const riceObj=buildAdminMutation(rice,firstMutations,firstMutations[0].name);
+    const quality=Math.max(1,Math.min(500,qualPct||100));
+    const qualityMulti=getQualityMultiplier(quality);
+    const qualityClass=quality>=95?"mythical":quality>=85?"legend":quality>=70?"epic":"common";
+    const cookObj=buildAdminMutation(cook,secondMutations,secondMutations[0].name);
+    const flavorObj=buildAdminMutation(flavor,flavorMutations,flavorMutations[0].name);
+    const shapeObj=buildAdminMutation(shape,shapeMutations,shapeMutations[0].name);
+    const noriObj=buildAdminMutation(nori,noriMutations,noriMutations[0].name);
+    let finalName=secret?name:base.name;
+    let finalClass=secret?"secret":base.class;
+    const accidents=acc?[acc]:[];
+    if(acc==="自我の覚醒(AI倫理OFF)") finalName="【自我】"+finalName;
+    if(acc==="異常発酵") finalName="発酵 "+finalName;
+    if(shapeObj.name!=="通常サイズ") finalName=shapeObj.name+" "+finalName;
+    if(noriObj.name!=="普通の海苔") finalName+=`(${noriObj.name})`;
+    if(acc==="自我の覚醒(AI倫理OFF)"&&RARITY_ORDER.indexOf(finalClass)<RARITY_ORDER.indexOf("epic")) finalClass="epic";
+    const process={
+        base, product, rice:riceObj, quality, qualityMulti, cook:cookObj, flavor:flavorObj, shape:shapeObj, nori:noriObj,
+        name:finalName, emoji:secret?secret.emoji:(acc==="自我の覚醒(AI倫理OFF)"?"👁️":base.emoji),
+        accidents, dangerText:"低", dangerBadgeClass:"danger-low", class:finalClass,
+        qualityDetail:{name:`品質${quality}%`,label:`品質${quality}% x${qualityMulti.toFixed(2)}`,class:qualityClass},
+        flavorDetail:{name:flavorObj.name,label:`${flavorObj.name} x${flavorObj.multi}`,class:flavorObj.class},
+        packagingDetail:{name:product.kind,label:`${product.kind} / ${product.count}個`,class:packagingLevel>0?"rare":"common"},
+        inspectDetail:{name:"検査OK",label:acc?"⚠️検知回避出荷":"AI通常検査パス",class:acc?"epic":"uncommon"},
+        _adminTrend:trendName||""
+    };
+    return process;
+}
+
+function buildAdminQuapProcess(opts){
+    const {name,rice,cook,flavor,nori,shape,acc,qualPct}=opts;
+    const fd=getQFD();
+    const qBase=QUAPLANAS_ONIGIRIS.find(o=>o.name===name)||QUAPLANAS_ONIGIRIS[0];
+    const base={name:qBase.name,emoji:"🍙",class:qBase.rarity,price:qBase.price};
+    const product=formatQProduct(base, fd?.packagingLevel||0);
+    const riceObj=buildAdminMutation(rice,firstMutations,firstMutations[0].name);
+    const quality=Math.max(1,Math.min(500,qualPct||100));
+    const qualityMulti=getQualityMultiplier(quality);
+    const qualityClass=quality>=95?"mythical":quality>=85?"legend":quality>=70?"epic":"common";
+    const cookObj=buildAdminMutation(cook,secondMutations,secondMutations[0].name);
+    const flavorObj=buildAdminMutation(flavor,flavorMutations,flavorMutations[0].name);
+    const shapeObj=buildAdminMutation(shape,shapeMutations,shapeMutations[0].name);
+    const noriObj=buildAdminMutation(nori,noriMutations,noriMutations[0].name);
+    let finalName=base.name;
+    let finalClass=base.class;
+    const accidents=acc?[acc]:[];
+    if(shapeObj.name!=="通常サイズ") finalName=shapeObj.name+" "+finalName;
+    if(noriObj.name!=="普通の海苔") finalName+=`(${noriObj.name})`;
+    return {
+        base, product, rice:riceObj, quality, qualityMulti, cook:cookObj, flavor:flavorObj, shape:shapeObj, nori:noriObj,
+        name:finalName, emoji:"🍙", accidents, dangerText:"低", dangerBadgeClass:"danger-low", class:finalClass,
+        qualityDetail:{name:`品質${quality}%`,label:`品質${quality}% x${qualityMulti.toFixed(2)}`,class:qualityClass},
+        flavorDetail:{name:flavorObj.name,label:`${flavorObj.name} x${flavorObj.multi}`,class:flavorObj.class},
+        packagingDetail:{name:product.kind,label:`${product.kind} / ${product.count}個`,class:(fd?.packagingLevel||0)>0?"rare":"common"},
+        inspectDetail:{name:"検査OK",label:"AI通常検査パス",class:"uncommon"}
+    };
+}
+
+function injectAdminEarthProcess(process, count){
+    if(!process||powerGrid.isBroken) return 0;
+    const display=document.getElementById("multiRollDisplay");
+    if(!display) return 0;
+    while(lines.length<multiRoll){
+        const line={id:_lineIdCtr++,items:[],container:null,domReady:false};
+        const card=document.createElement("div");
+        card.className="rollCard";
+        display.appendChild(card);
+        line.container=card;
+        buildLineDOM(line);
+        lines.push(line);
+    }
+    let injected=0;
+    for(let i=0;i<count;i++){
+        const line=lines[i%multiRoll];
+        const batchId=_batchIdCtr++;
+        pendingBatches.add(batchId);
+        line.items.push({process:JSON.parse(JSON.stringify(process)),pos:0,done:false,completedOnce:false,needsInitFlash:true,batchId});
+        injected++;
+    }
+    if(injected){
+        rolling=true;
+        updateRollButtonState();
+        if(!lineRafId){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); }
+    }
+    return injected;
+}
+
+function adminCollectMutationLabels(opts){
+    const labels=[];
+    if(opts.rice&&opts.rice!==firstMutations[0].name) labels.push(opts.rice);
+    if(opts.cook&&opts.cook!==secondMutations[0].name) labels.push(opts.cook);
+    if(opts.flavor&&opts.flavor!==flavorMutations[0].name) labels.push(opts.flavor);
+    if(opts.shape&&opts.shape!==shapeMutations[0].name) labels.push(opts.shape);
+    if(opts.nori&&opts.nori!==noriMutations[0].name) labels.push(opts.nori);
+    if(opts.acc) labels.push(opts.acc);
+    return labels;
+}
+
+function adminGenOnigiriQuap(){
+    adminGenOnigiri();
 }
 
 function adminGenOnigiri(){
-    const name = document.getElementById("adm_onigirikind")?.value || onigiris[0].name;
-    const cls  = document.getElementById("adm_onigiririar")?.value || "common";
-    const cnt  = Math.min(100, parseInt(document.getElementById("adm_onigiricount")?.value)||1);
-    const base = onigiris.find(o=>o.name===name) || onigiris[0];
-    for(let i=0;i<cnt;i++){
-        if(inventory.length >= storageMax) break;
-        inventory.push({ id:Date.now()+i, name, emoji:base.emoji, class:cls, finalPrice:base.price, process:null, transporting:false, saleId:null });
+    const planet=document.getElementById("adm_planet")?.value||"earth";
+    const name=document.getElementById("adm_onigirikind")?.value;
+    const opts={
+        name,
+        rice:document.getElementById("adm_rice")?.value||firstMutations[0].name,
+        cook:document.getElementById("adm_cook")?.value||secondMutations[0].name,
+        flavor:document.getElementById("adm_flavor")?.value||flavorMutations[0].name,
+        nori:document.getElementById("adm_nori")?.value||noriMutations[0].name,
+        shape:document.getElementById("adm_shape")?.value||shapeMutations[0].name,
+        acc:document.getElementById("adm_accident")?.value||"",
+        qualPct:parseFloat(document.getElementById("adm_quality")?.value)||100,
+        trendName:document.getElementById("adm_trend")?.value||"",
+    };
+    const cnt=Math.min(100,parseInt(document.getElementById("adm_onigiricount")?.value)||1);
+    if(!name){ admNotif("種類を選択してください"); return; }
+    const mutLabels=adminCollectMutationLabels(opts);
+    const displayName=name.replace(/\[SECRET\]/,"").trim();
+    let msg=mutLabels.length
+        ? `[${mutLabels.join("、")}]がついている[${displayName}]おにぎりを生成しました！`
+        : `[${displayName}]おにぎりを生成しました！`;
+    if(planet==="quaplanas"){
+        const process=buildAdminQuapProcess(opts);
+        const n=injectQAdminProcess(process,cnt);
+        if(!n){ admNotif("生産ラインへの注入に失敗しました"); return; }
+        if(currentWorld!=="quaplanas") travelToQuaplanas();
+        admNotif(msg+` (×${n})`);
+        return;
     }
-    addLog("管理者", "🍙 "+name+"×"+cnt+"を生成");
+    const process=buildAdminEarthProcess(opts);
+    if(opts.trendName){
+        const t=trends.find(x=>x.name===opts.trendName);
+        if(t) marketTrend={...t};
+    }
+    const n=injectAdminEarthProcess(process,cnt);
+    if(!n){ admNotif("生産ラインへの注入に失敗しました"); return; }
+    if(currentWorld!=="earth") travelToEarth();
+    admNotif(msg+` (×${n})`);
     renderAll();
 }
 
+function admApplyTimeScale(){
+    const pct = parseFloat(document.getElementById("adm_timescale")?.value)||100;
+    window._adminTimeScale = pct / 100;
+    if(observing && _observeTimer){ clearInterval(_observeTimer); startObserve(currentObserveTarget, true); }
+    if(radioTelescopeResearching && _radioResearchTimer){ clearInterval(_radioResearchTimer); resumeRadioResearch(); }
+    if(radioObserving && _radioObserveTimer){ clearInterval(_radioObserveTimer); resumeRadioObserve(); }
+    if(blackholeResearching && _bhResearchTimer){ clearInterval(_bhResearchTimer); resumeBHResearch(); }
+    if(rocketDeveloping && _rocketDevTimer){ clearInterval(_rocketDevTimer); resumeRocketDev(); }
+    if(rocketMission && !rocketMission.rewarded && _missionTimer){ clearInterval(_missionTimer); resumeMission(); }
+    if(_quaplanasResearchTimer){ clearInterval(_quaplanasResearchTimer); resumeQuaplanasResearch(); }
+    restartQAutoRoll();
+    if(_qAutoTransportOwned) startQAutoTransport();
+    restartMainGameLoop();
+    admUpdateTimescaleDisp();
+    admNotif("時間倍率: "+pct+"%");
+}
+
+function resumeQuaplanasResearch(){
+    if(!quaplanasResearched && _quaplanasResearchProgress>0 && _quaplanasResearchProgress<100){
+        if(_quaplanasResearchTimer) clearInterval(_quaplanasResearchTimer);
+        const delay=Math.max(50,Math.round(3000/getAdminTimeScale()));
+        _quaplanasResearchTimer=setInterval(()=>{
+            _quaplanasResearchProgress=Math.min(100,_quaplanasResearchProgress+1);
+            if(_quaplanasResearchProgress>=100){
+                clearInterval(_quaplanasResearchTimer); _quaplanasResearchTimer=null;
+                quaplanasResearched=true;
+                addLog("通知","🔬 クァプラナス星の研究完了！工場建設が可能になった。");
+                renderAll();
+            }
+        },delay);
+    }
+}
+
+function admUpdateTimescaleDisp(){
+    const el = document.getElementById("adm_timescale_disp");
+    if(el) el.textContent = `現在: ${Math.round((window._adminTimeScale||1)*100)}%`;
+}
+
 window._adminTimeScale = 1;
+
+function triggerUfoEvent(){
+    if(_ufoEventActive) return;
+    _ufoEventActive = true;
+
+    const blackout = document.createElement("div");
+    blackout.style.cssText =
+    "position:fixed;inset:0;background:#000814;opacity:0;pointer-events:none;z-index:9100;";
+    document.body.appendChild(blackout);
+
+    const stars = document.createElement("div");
+    stars.style.cssText =
+    "position:fixed;inset:0;pointer-events:none;z-index:9110;";
+    document.body.appendChild(stars);
+
+    for(let i=0;i<250;i++){
+        const s=document.createElement("div");
+        s.style.cssText=
+        `position:absolute;
+        width:${Math.random()*3+1}px;
+        height:${Math.random()*3+1}px;
+        background:white;
+        left:${Math.random()*100}%;
+        top:${Math.random()*100}%;
+        border-radius:50%;`;
+        stars.appendChild(s);
+    }
+
+    const beam=document.createElement("div");
+    beam.style.cssText=
+    "position:fixed;left:50%;top:-200px;width:0;height:0;opacity:0;z-index:9140;" +
+    "border-left:180px solid transparent;" +
+    "border-right:180px solid transparent;" +
+    "border-top:700px solid rgba(0,255,180,.25);" +
+    "transform:translateX(-50%);";
+    document.body.appendChild(beam);
+
+    const ufo=document.createElement("div");
+    ufo.style.cssText=
+    "position:fixed;left:50%;top:-250px;font-size:180px;" +
+    "transform:translateX(-50%);" +
+    "z-index:9150;" +
+    "filter:drop-shadow(0 0 30px cyan);";
+    ufo.textContent="🛸";
+    document.body.appendChild(ufo);
+
+    const rice=document.createElement("div");
+    rice.style.cssText=
+    "position:fixed;left:50%;bottom:100px;font-size:100px;" +
+    "transform:translateX(-50%);" +
+    "z-index:9160;";
+    rice.textContent="🍙";
+    document.body.appendChild(rice);
+
+    const finalDiv=document.createElement("div");
+    finalDiv.style.cssText=
+    "position:fixed;left:50%;top:50%;" +
+    "transform:translate(-50%,-50%) scale(.2);" +
+    "opacity:0;text-align:center;" +
+    "z-index:9300;";
+    finalDiv.innerHTML=`
+        <div style="font-size:220px">🛸</div>
+        <div style="
+        color:#8ef;
+        font-size:42px;
+        letter-spacing:8px;
+        text-shadow:0 0 20px cyan;">
+        UFO ONIGIRI.
+        </div>
+    `;
+    document.body.appendChild(finalDiv);
+
+    blackout.animate([{opacity:0},{opacity:1}],{duration:1000,fill:"forwards"});
+
+    setTimeout(()=>{
+        ufo.animate([{top:"-250px"},{top:"120px"}],{duration:2500,fill:"forwards",easing:"ease-out"});
+    },500);
+
+    setTimeout(()=>{ beam.style.opacity="1"; },3000);
+
+    setTimeout(()=>{
+        rice.animate([
+            {transform:"translateX(-50%) translateY(0) scale(1)"},
+            {transform:"translateX(-50%) translateY(-700px) scale(.2)"}
+        ],{duration:1800,fill:"forwards"});
+    },3300);
+
+    setTimeout(()=>{
+        for(let i=0;i<80;i++){
+            const p=document.createElement("div");
+            p.textContent="✨";
+            p.style.cssText="position:fixed;left:50%;top:50%;font-size:30px;z-index:9200;";
+            document.body.appendChild(p);
+            const a=Math.random()*Math.PI*2;
+            const d=Math.random()*1200+200;
+            p.animate([
+                {transform:"translate(-50%,-50%)",opacity:1},
+                {transform:`translate(${Math.cos(a)*d}px,${Math.sin(a)*d}px)`,opacity:0}
+            ],{duration:1800});
+            setTimeout(()=>p.remove(),1800);
+        }
+    },5200);
+
+    setTimeout(()=>{
+        finalDiv.style.transition="2s";
+        finalDiv.style.opacity="1";
+        finalDiv.style.transform="translate(-50%,-50%) scale(1)";
+    },6000);
+
+    setTimeout(()=>{
+        injectQSecretProcess("🛸🍙 UFOおにぎり","🛸",9999999);
+        addQLog("AI","🛸 未確認飛行物体が具材ラインを誘拐しました。");
+        blackout.remove(); stars.remove(); beam.remove(); ufo.remove(); rice.remove(); finalDiv.remove();
+        _ufoEventActive=false;
+    },9000);
+}
+
+function triggerQuantumEvent(){
+    if(_quantumEventActive) return;
+    _quantumEventActive=true;
+
+    const blackout=document.createElement("div");
+    blackout.style.cssText=
+    "position:fixed;inset:0;background:black;" +
+    "opacity:0;pointer-events:none;z-index:9100;";
+    document.body.appendChild(blackout);
+
+    const finalDiv=document.createElement("div");
+    finalDiv.style.cssText=
+    "position:fixed;left:50%;top:50%;" +
+    "transform:translate(-50%,-50%) scale(.1);" +
+    "opacity:0;text-align:center;" +
+    "z-index:9300;";
+    finalDiv.innerHTML=`
+        <div style="
+        font-size:220px;
+        filter:drop-shadow(0 0 30px #00ffff)
+               drop-shadow(0 0 80px #ff00ff);">
+        ⚛️
+        </div>
+        <div style="
+        font-size:42px;
+        letter-spacing:8px;
+        color:white;
+        text-shadow:
+        0 0 20px cyan,
+        0 0 50px magenta;">
+        QUANTUM ONIGIRI.
+        </div>
+    `;
+    document.body.appendChild(finalDiv);
+
+    blackout.animate([{opacity:0},{opacity:1}],{duration:1200,fill:"forwards"});
+
+    const clones=[];
+    setTimeout(()=>{
+        for(let i=0;i<70;i++){
+            const q=document.createElement("div");
+            q.textContent="🍙";
+            q.style.cssText=
+            "position:fixed;" +
+            "left:50%;top:50%;" +
+            "font-size:"+(40+Math.random()*80)+"px;" +
+            "z-index:9150;" +
+            "pointer-events:none;";
+            document.body.appendChild(q);
+            clones.push(q);
+            const x=(Math.random()-.5)*1800;
+            const y=(Math.random()-.5)*1200;
+            q.animate([
+                {transform:"translate(-50%,-50%) scale(.2)",opacity:0},
+                {transform:`translate(${x}px,${y}px) scale(1.5)`,opacity:.8}
+            ],{duration:1800,fill:"forwards"});
+        }
+    },500);
+
+    const texts=["QUANTUM","Q?ANTUM","QUA??UM","QUANT?M","QUANTUM"];
+    setTimeout(()=>{
+        let i=0;
+        const timer=setInterval(()=>{
+            finalDiv.innerHTML=`
+            <div style="font-size:220px">⚛️</div>
+            <div style="font-size:42px;color:white;letter-spacing:8px;">
+            ${texts[i%texts.length]}
+            </div>`;
+            document.body.style.filter=`hue-rotate(${Math.random()*360}deg) contrast(${1+Math.random()})`;
+            i++;
+            if(i>20){ clearInterval(timer); document.body.style.filter=""; }
+        },120);
+    },2200);
+
+    setTimeout(()=>{
+        clones.forEach(c=>{
+            c.animate([
+                {transform:c.style.transform,opacity:1},
+                {transform:"translate(-50%,-50%) scale(.2)",opacity:0}
+            ],{duration:1500,fill:"forwards"});
+        });
+    },5200);
+
+    setTimeout(()=>{
+        const flash=document.createElement("div");
+        flash.style.cssText="position:fixed;inset:0;background:white;z-index:9200;";
+        document.body.appendChild(flash);
+        flash.animate([{opacity:0},{opacity:1},{opacity:0}],{duration:1200});
+        setTimeout(()=>flash.remove(),1200);
+    },7000);
+
+    setTimeout(()=>{
+        finalDiv.style.transition="2s";
+        finalDiv.style.opacity="1";
+        finalDiv.style.transform="translate(-50%,-50%) scale(1)";
+    },7800);
+
+    setTimeout(()=>{
+        injectQSecretProcess("⚛️🍙 量子おにぎり","⚛️",9999999);
+        addQLog("AI","⚛️ おにぎりが複数状態で存在しています。観測したため収束しました。");
+        clones.forEach(c=>c.remove());
+        blackout.remove(); finalDiv.remove();
+        document.body.style.filter="";
+        _quantumEventActive=false;
+    },10500);
+}
 
 </script>
     <!-- 輸送中詳細モーダル -->
@@ -5438,5 +7202,7 @@ window._adminTimeScale = 1;
         </div>
     </div>
 </div><!-- end earthWorld -->
+<!-- 設定ボタン（全惑星共通・常時表示） -->
+<button onclick="openSettingsPanel()" style="position:fixed;bottom:16px;left:16px;z-index:2000;background:#1a1a2a;border:1px solid #555;color:#aaa;padding:8px 14px;border-radius:8px;font-size:13px;cursor:pointer;">⚙️ 設定</button>
 </body>
 </html>
