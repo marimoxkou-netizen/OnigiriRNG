@@ -402,6 +402,9 @@ input,select{
     font-size: 13px;
 }
 .status-val { font-weight: bold; color: #ffd166; }
+.unit-hint{
+    font-size:11px;color:#ffd166;margin-left:4px;pointer-events:none;white-space:nowrap;
+}
 </style>
 </head>
 <body>
@@ -436,7 +439,7 @@ input,select{
     <div class="left-column">
         <div class="panel">
             <div class="topStats">
-                <div class="statBox">💰 資金残高<br><br><span id="money" class="money">0</span>円<br><span id="foreignMoney" style="font-size:13px; color:#55aaff; font-weight:bold; display:none;">外貨 0</span><br><span id="rpDisplay" style="font-size:13px; color:#c0a0ff; font-weight:bold; display:none;">RP 0.0</span><br><span id="debtDisplay" style="display:none; font-size:12px; color:#ff3333; font-weight:bold;"></span></div>
+                <div class="statBox">💰 資金残高<br><br><span id="money" class="money">0</span><span id="moneyHint" class="unit-hint"></span>円<br><span id="foreignMoney" style="font-size:13px; color:#55aaff; font-weight:bold; display:none;">外貨 0</span><br><span id="rpDisplay" style="font-size:13px; color:#c0a0ff; font-weight:bold; display:none;">RP 0.0</span><br><span id="debtDisplay" style="display:none; font-size:12px; color:#ff3333; font-weight:bold;"></span></div>
                 <div class="statBox" id="storageCountCard">🎒 倉庫保管数<br><br><span id="itemCount" style="font-size:22px; font-weight:bold;">0</span></div>
                 <div class="statBox">🔌 現在電力<br><br><span id="powerDisplay" style="font-size:22px; font-weight:bold; color:#ff9f1c;">100%</span><br><span id="instabilityDisplay" style="font-size:11px; color:#888;">電圧不安定度: 安定</span></div>
             </div>
@@ -444,7 +447,7 @@ input,select{
 
         <div class="panel center">
             <h2>🏭 生産ライン（通過時に変異確定）<button id="toggleLineBtn" onclick="toggleProductionLines()" style="margin-left:12px;padding:3px 10px;font-size:12px;background:#333;color:#aaa;border:1px solid #555;border-radius:6px;cursor:pointer;">非表示</button></h2>
-            <div id="brokenMachinePanel" style="display:none;background:#2a1a0a;border:1px solid #ff9f1c;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;"></div>
+            <div id="brokenMachinePanel" style="display:none;background:#2a1a0a;border:1px solid #ff9f1c;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;max-height:160px;overflow-y:auto;"></div>
             <div class="multiGrid" id="multiRollDisplay"></div>
             <div style="margin-top:10px;">
                 <button id="rollButton" onclick="manualRoll()">手動パルス生産</button>
@@ -466,6 +469,11 @@ input,select{
             <div id="upgradeArea"></div>
         </div>
 
+        <div class="panel" id="exchangePanel" style="display:none;">
+            <h2>💱 両替所</h2>
+            <div id="exchangeArea"></div>
+        </div>
+
         <div class="panel">
             <h2>🚚 物流トラック配備</h2>
             <div class="grid" id="truckInfo"></div>
@@ -485,7 +493,10 @@ input,select{
         </div>
 
         <div class="panel">
-            <h2>🎒 倉庫ストレージ（Shift/Ctrl+クリックで複数選択・ドラッグで出荷）</h2>
+            <h2>🎒 倉庫ストレージ</h2>
+            <div style="font-size:12px;color:#aaa;margin-top:-10px;margin-bottom:8px;">
+                （Shift/Ctrl+クリックまたは範囲選択で複数選択）　倉庫保存数 <span id="invStorageCurrent" style="color:#ffd166;font-weight:bold;">0</span>/<span id="invStorageMax" style="color:#ffd166;font-weight:bold;">0</span>
+            </div>
             <div style="margin-bottom:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                 <select id="shopSelectForSend" style="padding:6px;border-radius:8px;background:#333;color:white;border:none;"></select>
                 <select id="truckSelectForSend" style="padding:6px;border-radius:8px;background:#333;color:white;border:none;"></select>
@@ -697,7 +708,7 @@ function initQuaplanasFactoryData(){
             {name:"⭐ 星系市場 β", unlocked:false, baseMulti:1.1, busy:false, saleId:null, endTime:0, pendingTotal:0, pendingCount:0},
             {name:"🌀 時空市場 γ", unlocked:false, baseMulti:1.25, busy:false, saleId:null, endTime:0, pendingTotal:0, pendingCount:0},
         ],
-        storageMax: 30,
+        storageMax: Infinity,
         lines: [], // 生産ライン
         nextItemId: 1,
         discoveredOnigiris: [],
@@ -779,7 +790,8 @@ let _rocketDevTimer = null;
 // ロケットは1機のみ所持可能
 let ownedRockets = {};              // {small:0, medium:0, large:0}
 let ufoOwned = false;               // UFO所持
-let rocketMission = null;
+let rocketMissions = [];  // 複数派遣対応: { id, type, planet, progress, totalSec, rewarded }
+let rocketMission = null; // 旧互換（セーブデータ読み込み用）
 let rocketUnlocked = false;
 let rocketDevStarted = false;
 let telescopeBoughtAt = 0;
@@ -814,7 +826,7 @@ let powerGrid = { level: 100, status: "安定", isBroken: false };
 let truckAccidentPenalty = 1.0;
 let truckAccidentEnd = 0;
 let debt = 0;
-let brokenMachines = []; // { id, stageIndex, stageName, stageIcon }
+let brokenMachines = []; // { id, lineId, stageIndex, stageName, stageIcon }
 let autoRepairOwned = false;
 let _machineIdCtr = 0;
 let _bananaEventActive = false;
@@ -915,7 +927,8 @@ const shops = [
     {name:"いかりスーパー",multi:7.0, time:90,  unlocked:false, busy:false, price:120000, endTime:0, saleId:null, pendingTotal:0, pendingCount:0},
     {name:"闇通販",        multi:6.0, time:5,   unlocked:false, busy:false, price:2500000, endTime:0, saleId:null, pendingTotal:0, pendingCount:0},
     {name:"海外輸出",      multi:1.0, time:300, unlocked:false, busy:false, price:10000000, endTime:0, saleId:null, pendingTotal:0, pendingCount:0, currency:"foreign"},
-    {name:"海外通販",      multi:0.25, time:30,  unlocked:false, busy:false, price:0, priceForeign:10000, priceMoney:10000000000000, endTime:0, saleId:null, pendingTotal:0, pendingCount:0, currency:"foreign"}
+    {name:"海外通販",      multi:0.5, time:30,  unlocked:false, busy:false, price:0, priceForeign:10000, priceMoney:10000000000000, endTime:0, saleId:null, pendingTotal:0, pendingCount:0, currency:"foreign"},
+    {name:"🗑️ 放棄",      multi:0,   time:0,   unlocked:true,  busy:false, price:0,      endTime:0, saleId:null, pendingTotal:0, pendingCount:0, isAbandon:true}
 ];
 
 const onigiris = [
@@ -1049,7 +1062,28 @@ let gameSettings = {
     stackInventory: false,    // 倉庫ストレージ圧縮
     stackThreshold: "uncommon", // この以下のレア度をまとめる
     breakerProtect: false,    // ブレーカー保護（落ちない）
+    unitConvert: false,       // 万・億単位変換ヒント表示
 };
+// 万・億単位変換ヒント（gameSettings.unitConvert が true のとき使用）
+// html=true(default): <span class="unit-hint">(1億)</span>
+// html=false: "(1億)" の文字列だけ返す
+function formatUnitHint(value, html=true){
+    if(!gameSettings.unitConvert) return "";
+    const n = parseFloat(value);
+    if(!isFinite(n) || n === 0) return "";
+    let label;
+    const abs = Math.abs(n);
+    if     (abs >= 1e28) label = `${(n/1e28).toFixed(2).replace(/\.?0+$/,"")}穣`;
+    else if(abs >= 1e24) label = `${(n/1e24).toFixed(2).replace(/\.?0+$/,"")}秭`;
+    else if(abs >= 1e20) label = `${(n/1e20).toFixed(2).replace(/\.?0+$/,"")}𥝱`;
+    else if(abs >= 1e16) label = `${(n/1e16).toFixed(2).replace(/\.?0+$/,"")}京`;
+    else if(abs >= 1e12) label = `${(n/1e12).toFixed(2).replace(/\.?0+$/,"")}兆`;
+    else if(abs >= 1e8)  label = `${(n/1e8).toFixed(2).replace(/\.?0+$/,"")}億`;
+    else if(abs >= 1e4)  label = `${(n/1e4).toFixed(2).replace(/\.?0+$/,"")}万`;
+    else return "";
+    return html ? `<span class="unit-hint">(${label})</span>` : `(${label})`;
+}
+
 const _logRecentMap = {}; // key: text, value: {count, firstTime}
 function addLog(type, text) {
     const logBox = document.getElementById("logBox");
@@ -1522,8 +1556,19 @@ function updateMachines(line){
         if(!el) return;
         const mkey = `${line.id}_${i}`;
         const textActive = !!_textTimers[mkey];
+        const isBroken = brokenMachines.some(b=>b.lineId===line.id && b.stageIndex===i);
         if(!el.classList.contains("flash")) el.className = `machine ${stage.conveyor?"conveyor":""}`;
+        if(isBroken) el.classList.add("machine-broken");
         if(!tel||stage.conveyor) return;
+        if(isBroken){
+            // 故障中: 修理ボタンを表示
+            const bm = brokenMachines.find(b=>b.lineId===line.id && b.stageIndex===i);
+            if(bm && !textActive){
+                tel.innerHTML = `<button onclick="repairMachine(${bm.id})" style="font-size:8px;padding:1px 3px;background:#ff9f1c;color:#111;border:none;border-radius:3px;cursor:pointer;white-space:nowrap;">修理</button>`;
+                tel.style.color=""; tel.style.fontWeight="";
+            }
+            return;
+        }
         if(!lead){ if(!textActive){tel.textContent=stage.name;tel.style.color="";tel.style.fontWeight="";} return; }
         if(i===fp) el.classList.add("active");
         if(!textActive){ tel.textContent=stage.name; tel.style.color=""; tel.style.fontWeight=""; }
@@ -1606,7 +1651,7 @@ function tickLines(now){
                     // 電力700%以上で合計0.01%（0.0001）
                     // 各確率: バナナ0.00180%, DJ0.00162%, Error0.00148%, 発光0.00130%, 抹茶あんこ0.00112%,
                     //         違法電圧0.00090%, 圧縮0.00076%, 密輸0.00061%, 賄賂0.00050%, ???0.00065%  合計0.01074%→正規化済み
-                    if(s===8 && !powerGrid.isBroken && powerGrid.level >= 700){
+                    if(s===8 && it.process.class!=="secret" && !powerGrid.isBroken && powerGrid.level >= 700){
                         const roll = Math.random();
                         // 各値は累積閾値（合計ちょうど0.0001 = 0.01%）
                         const SECRETS = [
@@ -1779,6 +1824,7 @@ function calcTotal(process){
     total *= getTrendMulti(process);
     total *= (1 + qualityLevel*0.15);
     total *= truckAccidentPenalty;
+    if (trafficLawOwned) total *= 1.2;  // 交通法規適用: 販売価格1.2倍
     return Math.floor(total) * process.product.priceMulti;
 }
 
@@ -1792,7 +1838,10 @@ function renderInventory(){
     vsSchedule(); // 仮想スクロールに描画を委譲
 
     document.getElementById("money").textContent = Math.floor(money).toLocaleString();
-    document.getElementById("foreignMoney").textContent = `外貨 ${formatForeign(foreignMoney)}`;
+    const _mhEl = document.getElementById("moneyHint");
+    if(_mhEl) _mhEl.innerHTML = formatUnitHint(money);
+    const fmEl = document.getElementById("foreignMoney");
+    fmEl.innerHTML = `外貨 ${formatForeign(foreignMoney)}${formatUnitHint(foreignMoney)}`;
     if(quaplanasFactory){
             const tb = document.getElementById("factoryTravelBar"); if(tb){ tb.style.display="flex"; tb.style.setProperty("display","flex","important"); document.body.style.paddingTop="42px"; }
         }
@@ -1800,7 +1849,7 @@ function renderInventory(){
     if(rpUnlocked){
         const rpEl = document.getElementById("rpDisplay");
         rpEl.style.display = "";
-        rpEl.textContent = `RP ${rp.toFixed(0)}`;
+        rpEl.innerHTML = `RP ${rp.toFixed(0)}${formatUnitHint(rp)}`;
     }
     if(mysteryPanelUnlocked) renderMysteryPanel();
     if(spacePanelUnlocked) renderSpacePanel();
@@ -1820,7 +1869,7 @@ function showTransportDetail(saleId){
             <span style="font-size:22px;">${item.emoji}</span>
             <div style="flex:1;">
                 <div style="color:${RARITY_COLORS[item.class]||'#fff'};font-size:12px;font-weight:bold;">${item.name}</div>
-                <div style="font-size:11px;color:#ffd166;">${item.finalPrice.toLocaleString()}円</div>
+                <div style="font-size:11px;color:#ffd166;">${item.finalPrice.toLocaleString()}${formatUnitHint(item.finalPrice)}円</div>
                 <div style="font-size:10px;color:#aaa;">${item.mutations.map(m=>colorMutation(m)).join(" / ")||"変異なし"}</div>
             </div>
         </div>`).join("");
@@ -1829,9 +1878,9 @@ function showTransportDetail(saleId){
     document.getElementById("tdmTitle").textContent = `🚚 輸送中 ×${items.length} → ${shopName}`;
     const isForeign = shop && shop.currency === "foreign";
     const totalLabel = isForeign
-        ? `外貨 ${formatForeign(total / 100000000)}`
-        : `${total.toLocaleString()}円`;
-    document.getElementById("tdmSub").textContent = `合計: ${totalLabel} ／ 残り ${remain}s`;
+        ? `外貨 ${formatForeign(total / 100000000)}${formatUnitHint(total / 100000000)}`
+        : `${total.toLocaleString()}${formatUnitHint(total)}円`;
+    document.getElementById("tdmSub").innerHTML = `合計: ${totalLabel} ／ 残り ${remain}s`;
     document.getElementById("tdmBody").innerHTML = rows;
     modal.style.display = "flex";
 }
@@ -1948,8 +1997,8 @@ function vsRender(){
             const shopName = shop ? shop.name : '輸送先';
             const isForeign = shop && shop.currency === "foreign";
             const totalDisplay = isForeign
-                ? `<span style="color:#55aaff;font-weight:bold;">外貨 ${formatForeign(total / 100000000)}</span>`
-                : `${total.toLocaleString()}円`;
+                ? `<span style="color:#55aaff;font-weight:bold;">外貨 ${formatForeign(total / 100000000)}${formatUnitHint(total / 100000000)}</span>`
+                : `${total.toLocaleString()}${formatUnitHint(total)}円`;
             html += `<div class="card" style="border:2px solid ${isForeign?'#55aaff88':'#55aaff44'};background:${isForeign?'#0a1a2e':'#0d1a2a'};cursor:default;">
                 <div style="font-size:28px;margin-top:8px;">${isForeign?'✈️':'🚚'}</div>
                 <h4 style="margin:4px 0;color:#55aaff;font-size:13px;">輸送中 ×${items.length}</h4>
@@ -1967,7 +2016,7 @@ function vsRender(){
                 <span class="rarityBadge" style="background:${clsColor}22;color:${clsColor};border:1px solid ${clsColor}55;">${RARITY_LABELS[cls]||cls}</span>
                 <div style="font-size:32px;margin-top:10px;">📦</div>
                 <h4 style="margin:5px 0;color:${clsColor};font-size:12px;">×${items.length}個まとめ</h4>
-                <div class="money" style="font-size:14px;color:${clsColor};">${total.toLocaleString()}円</div>
+                <div class="money" style="font-size:14px;color:${clsColor};">${total.toLocaleString()}${formatUnitHint(total)}円</div>
                 <button onclick="event.stopPropagation();showStackDetail([${ids}], '${cls}')" style="margin-top:6px;padding:2px 8px;font-size:11px;background:#1a1a1a;color:#aaa;border:1px solid #555;border-radius:4px;cursor:pointer;">詳細</button>
             </div>`;
         } else {
@@ -1978,13 +2027,18 @@ function vsRender(){
                 <span class="rarityBadge" style="background:${RARITY_COLORS[item.class]||'#888'}22;color:${RARITY_COLORS[item.class]||'#888'};border:1px solid ${RARITY_COLORS[item.class]||'#888'}55;">${RARITY_LABELS[item.class]||''}</span>
                 <div style="font-size:40px;margin-top:10px;">${item.emoji}</div>
                 <h4 style="margin:5px 0;color:${RARITY_COLORS[item.class]||'#fff'};">${item.name}${(()=>{const o=calcBaseOdds(item.name);return o?` <span style="font-size:10px;color:#888;">${o}</span>`:''})()}</h4>
-                <div class="money" style="font-size:16px;color:${RARITY_COLORS[item.class]||'#fff'};">${item.finalPrice.toLocaleString()}円</div>
+                <div class="money" style="font-size:16px;color:${RARITY_COLORS[item.class]||'#fff'};">${item.finalPrice.toLocaleString()}${formatUnitHint(item.finalPrice)}円</div>
                 <div style="font-size:11px;color:#aaa;">${item.kind} / 積載:${item.loadSize}枠</div>
                 <div style="font-size:10px;margin-top:5px;">${item.mutations.map(m=>colorMutation(m)).join("<br>")}</div>
             </div>`;
         }
     }
     visible.innerHTML = html;
+    // 倉庫保存数を更新
+    const _invCur = document.getElementById("invStorageCurrent");
+    const _invMax = document.getElementById("invStorageMax");
+    if(_invCur) _invCur.textContent = inventory.length;
+    if(_invMax) _invMax.textContent = getStorageLimit();
 }
 
 function showStackDetail(ids, clsHint){
@@ -2010,7 +2064,7 @@ function showStackDetail(ids, clsHint){
             <span style="font-size:20px;">${it.emoji}</span>
             <div style="flex:1;">
                 <div style="font-size:12px;color:${clsColor};">${it.name}</div>
-                <div style="font-size:11px;color:#ffd166;">${it.finalPrice.toLocaleString()}円</div>
+                <div style="font-size:11px;color:#ffd166;">${it.finalPrice.toLocaleString()}${formatUnitHint(it.finalPrice)}円</div>
             </div>
             <button onclick="selectItem(event,${it.id});document.getElementById('stackDetailModal').style.display='none';" style="padding:2px 8px;font-size:11px;background:#1a2a1a;color:#5edc88;border:1px solid #5edc8855;border-radius:4px;cursor:pointer;">選択</button>
         </div>`).join("")}
@@ -2161,7 +2215,7 @@ function updateShopSelects(){
     if(shopSel){
         const prev = shopSel.value;
         shopSel.innerHTML = shops.map((s,i)=>
-            s.unlocked ? `<option value="${i}" ${prev==i?"selected":""}>${s.name} (x${s.multi})${s.busy?" 🚚":""}</option>` : ""
+            s.unlocked ? `<option value="${i}" ${prev==i?"selected":""}>${s.isAbandon?`${s.name}（輸送0秒・倍率0倍）`:`${s.name} (x${s.multi})${s.busy?" 🚚":""}`}</option>` : ""
         ).join("");
     }
     const truckSel = document.getElementById("truckSelectForSend");
@@ -2188,6 +2242,7 @@ function renderShops(){
     }
 
     shops.forEach((shop,index)=>{
+        if(shop.isAbandon) return; // 放棄は通常の市場カードとして表示しない
         const remain = shop.busy ? Math.max(0, Math.ceil((shop.endTime-Date.now())/1000)) : 0;
         div.innerHTML += `
             <div class="shop ${shop.unlocked ? "" : "locked"}" id="shop${index}" ondragover="shopHover(event,${index})" ondrop="dropSell(event,${index})" ondragleave="shopLeave(${index})">
@@ -2196,8 +2251,8 @@ function renderShops(){
                 <div>輸送時間: ${shop.time}秒</div>
                 <div style="font-weight:bold; margin-top:5px;">${shop.busy ? `🚚 納品中 ${shop.pendingCount||""}個 (${remain}秒)` : shop.unlocked ? "注文待機中" : "未開放市場"}</div>
                 ${!shop.unlocked ? (shop.priceForeign !== undefined
-                    ? `<button class="btn-shop" onclick="buyShop(${index})" ${(money < shop.priceMoney || foreignMoney < shop.priceForeign) ? "disabled" : ""}>市場開拓(外貨${shop.priceForeign.toLocaleString()} + ${shop.priceMoney.toLocaleString()}円)</button>`
-                    : `<button class="btn-shop" onclick="buyShop(${index})" ${money < shop.price ? "disabled" : ""}>市場開拓(${shop.price.toLocaleString()}円)</button>`) : ""}
+                    ? `<button class="btn-shop" onclick="buyShop(${index})" ${(money < shop.priceMoney || foreignMoney < shop.priceForeign) ? "disabled" : ""}>市場開拓(外貨${shop.priceForeign.toLocaleString()}${formatUnitHint(shop.priceForeign,false)} + ${shop.priceMoney.toLocaleString()}${formatUnitHint(shop.priceMoney,false)}円)</button>`
+                    : `<button class="btn-shop" onclick="buyShop(${index})" ${money < shop.price ? "disabled" : ""}>市場開拓(${shop.price.toLocaleString()}${formatUnitHint(shop.price,false)}円)</button>`) : ""}
             </div>
         `;
     });
@@ -2240,20 +2295,20 @@ function startSell(index,forcedItems=null,forcedTruck=null){
     const total = sending.reduce((s, item) => s + item.finalPrice, 0);
     const saleId = nextSaleId++;
     const rpTruckMul = 1 + (rpTruckSpeedLevel||0)*0.1;
-    const time = Math.max(1, Math.floor(shop.time * (trafficLawOwned ? 1.5 : 1.0) / truck.speed / rpTruckMul));
+    const time = shop.isAbandon ? 0 : Math.max(1, Math.floor(shop.time * (trafficLawOwned ? 1.5 : 1.0) / truck.speed / rpTruckMul));
 
     // アイテムはinventoryに残してtransportingフラグだけ立てる（表示用）
     const sentIds = new Set(sending.map(item=>item.id));
     sending.forEach(item=>{
         item.transporting = true;
         item.saleId = saleId;
-        item.transportEnd = Date.now() + time*1000;
+        item.transportEnd = Date.now() + adminScaledMs(time*1000);
     });
     selectedItems = selectedItems.filter(id => !sentIds.has(id));
 
     shop.busy = true;
     shop.saleId = saleId;
-    shop.endTime = Date.now() + time*1000;
+    shop.endTime = Date.now() + adminScaledMs(time*1000);
     shop.pendingTotal = total;   // ← 合計をここで確定
     shop.pendingCount = sending.length;
 
@@ -2314,6 +2369,11 @@ function finishSell(shopIndex,saleId){
     earnLog.push({t: Date.now(), v: profit});
     _earthPassiveEarnLog.push({t: Date.now(), v: profit});
 
+    if(shop.isAbandon){
+        addLog("通知", `🗑️ アイテムを放棄しました。`);
+        renderAll();
+        return;
+    }
     addLog("通知", `${shop.name}への納品完了。利益 +${profit.toLocaleString()}円 を受領。`);
     renderAll();
 }
@@ -2353,7 +2413,25 @@ function renderHackArea(){
         const autoRecoverBtn = autoRecoverOwned
             ? `<span style="font-size:11px;color:#5edc88;margin-left:8px;">✅ 自動復旧待機中...</span>`
             : ``;
-        area.innerHTML = `<div style="min-height:240px;"><button onclick="recoverPower()" style="background:#5edc88; width:100%;">ブレーカー復旧 (100万円 / 5秒)</button>${autoRecoverBtn}</div>`;
+        // ハッカーUIも表示しつつ停止メッセージを出す
+        const hackerBreakerLabel = hackerOwned ? `
+            <div style="margin-top:8px;padding:6px 8px;background:#1a1a2e;border:1px solid #c86cff44;border-radius:8px;font-size:12px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                    <input type="checkbox" id="hackerEnabledCb" ${hackerEnabled?"checked":""} onchange="setHackerEnabled(this.checked)"
+                        style="width:16px;height:16px;cursor:pointer;accent-color:#c86cff;">
+                    <span style="color:#c86cff;font-weight:bold;">🤖 ハッカー</span>
+                    <span style="color:#ff9f1c;">ブレーカー停止により自動ハッキングがブレーカーが復旧するまで停止中</span>
+                </label>
+                <div style="margin-top:4px;font-size:11px;color:#aaa;">
+                    目標電力:
+                    <input type="number" id="hackerTargetInput" value="${hackerTargetLevel}" min="110"
+                        style="width:60px;padding:2px 4px;font-size:11px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;"
+                        onchange="setHackerTarget(this.value)"
+                        oninput="document.getElementById('hackerTargetHint').innerHTML=formatUnitHint(this.value)"> %<span id="hackerTargetHint">${formatUnitHint(hackerTargetLevel)}</span>
+                    （到達で停止・下回ると再開）
+                </div>
+            </div>` : ``;
+        area.innerHTML = `<div style="min-height:240px;"><button onclick="recoverPower()" style="background:#5edc88; width:100%;">ブレーカー復旧 (100万円 / 5秒)</button>${autoRecoverBtn}</div>${hackerBreakerLabel}`;
         return;
     }
     if(hackLevel === 0){
@@ -2377,9 +2455,10 @@ function renderHackArea(){
             </label>
             <div style="margin-top:4px;font-size:11px;color:#aaa;">
                 目標電力:
-                <input type="number" id="hackerTargetInput" value="${hackerTargetLevel}" min="110" max="900"
+                <input type="number" id="hackerTargetInput" value="${hackerTargetLevel}" min="110"
                     style="width:60px;padding:2px 4px;font-size:11px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;"
-                    onchange="setHackerTarget(this.value)"> %
+                    onchange="setHackerTarget(this.value)"
+                    oninput="document.getElementById('hackerTargetHint').innerHTML=formatUnitHint(this.value)"> %<span id="hackerTargetHint">${formatUnitHint(hackerTargetLevel)}</span>
                 （到達で停止・下回ると再開）
             </div>
         </div>` : ``;
@@ -2426,7 +2505,9 @@ function startHack(){
     hackActive = true;
     hackPos = 0;
     const _cfg = {...HACK_CONFIGS[Math.max(0,hackLevel-1)]};
-    _cfg.zoneW = Math.min(80, _cfg.zoneW + (rpHackLevel||0)*5);
+    _cfg.zoneW = Math.min(80, _cfg.zoneW);
+    // rpHackLevel: 最終電力獲得量を倍増 (Lv1→2倍, Lv2→3倍...)
+    _cfg.gain = Math.floor(_cfg.gain * (1 + (rpHackLevel||0)));
     hackDir = _cfg.speed + Math.random() * 1.5;
     renderHackArea();
     hackLoop();
@@ -2448,7 +2529,8 @@ function stopHack(){
     hackActive = false;
     cancelAnimationFrame(hackAnimId);
     
-    const cfg = HACK_CONFIGS[Math.max(0,hackLevel-1)];
+    const cfg = {...HACK_CONFIGS[Math.max(0,hackLevel-1)]};
+    cfg.gain = Math.floor(cfg.gain * (1 + (rpHackLevel||0)));
     const zoneLeft = 85 - cfg.zoneW;
     if(hackPos >= zoneLeft && hackPos <= 85){
         powerGrid.level += cfg.gain;
@@ -2484,7 +2566,7 @@ function showSecretStorageFullDialog(secretProcess, cheapestItem){
             <div style="background:#1a1a2a;border:1px solid #333;border-radius:8px;padding:10px;margin-bottom:16px;font-size:13px;">
                 <div style="color:#ff9999;font-weight:bold;">放棄予定アイテム:</div>
                 <div style="color:${RARITY_COLORS[cheapestItem.class]||'#888'};margin-top:4px;">${cheapestItem.emoji} ${cheapestItem.name}</div>
-                <div style="color:#ffd166;font-size:12px;">${cheapestItem.finalPrice.toLocaleString()}円</div>
+                <div style="color:#ffd166;font-size:12px;">${cheapestItem.finalPrice.toLocaleString()}${formatUnitHint(cheapestItem.finalPrice,false)}円</div>
             </div>
             <div style="display:flex;gap:10px;justify-content:center;">
                 <button onclick="confirmSecretStorageReplace()" style="background:#fff;color:#111;padding:10px 20px;border-radius:8px;font-weight:bold;font-size:14px;">✅ 放棄してSECRETを保管</button>
@@ -2655,7 +2737,6 @@ function triggerGlowEvent(){
     setTimeout(()=>{
         blackout.style.transition = "2.2s"; blackout.style.opacity = "0";
         setTimeout(()=>{ blackout.remove(); aura.remove(); finalDiv.remove(); }, 2200);
-        injectSecretProcess("発光おにぎり", "✨", 99999);
         addLog("AI", "✨ 発光反応を確認。おにぎりが勝手に自己発光しています。");
         _glowEventActive = false;
     }, 4200);
@@ -2711,7 +2792,6 @@ function triggerMatchaAnkoEvent(){
     setTimeout(()=>{
         blackout.style.transition = "2s"; blackout.style.opacity = "0";
         setTimeout(()=>{ blackout.remove(); finalDiv.remove(); }, 2000);
-        injectSecretProcess("抹茶あんこおにぎり", "🍵", 99999);
         addLog("AI", "🍵 甘味と苦味のバランスが暴走。抹茶あんこが具材投入口で結合しました。");
         _matchaAnkoEventActive = false;
     }, 4600);
@@ -2774,7 +2854,6 @@ function triggerIllegalVoltageEvent(){
     setTimeout(()=>{
         blackout.style.transition = "2.3s"; blackout.style.opacity = "0";
         setTimeout(()=>{ blackout.remove(); finalDiv.remove(); }, 2300);
-        injectSecretProcess("違法電圧おにぎり", "⚡", 99999);
         addLog("AI", "⚡ 電圧規格違反を検出。工場が法定上限を超えて発火しています。");
         _illegalVoltageEventActive = false;
     }, 5200);
@@ -2823,7 +2902,7 @@ function renderBuffs(){
 
 // 深夜テンション：1分に1回7%で発生
 setInterval(()=>{
-    if(!_midnightTensionActive && Math.random() < 0.07) triggerMidnightTension();
+    if(!_midnightTensionActive && Math.random() < 0.035) triggerMidnightTension();
     if(_midnightTensionActive) renderBuffs(); // カウントダウン更新
 }, 60000);
 // バフ表示更新（カウントダウン）
@@ -2889,7 +2968,6 @@ function triggerCompressedEvent(){
     setTimeout(()=>{
         blackout.style.transition = "2s"; blackout.style.opacity = "0";
         setTimeout(()=>{ blackout.remove(); finalDiv.remove(); }, 2000);
-        injectSecretProcess("圧縮おにぎり", "📦", 99999);
         addLog("AI", "📦 具材データを高圧縮化。サイズは小さいのに圧が重いです。");
         _compressedEventActive = false;
     }, 4700);
@@ -2952,7 +3030,6 @@ function triggerSmugglingEvent(){
         blackout.style.transition = "2.2s"; blackout.style.opacity = "0";
         lane.remove();
         setTimeout(()=>{ blackout.remove(); finalDiv.remove(); }, 2200);
-        injectSecretProcess("密輸おにぎり", "🚢", 99999);
         addLog("AI", "🚢 正規ルートを外れた輸送を確認。おにぎりが港を経由しています。");
         _smugglingEventActive = false;
     }, 5200);
@@ -3008,7 +3085,6 @@ function triggerBribeEvent(){
     setTimeout(()=>{
         blackout.style.transition = "2.2s"; blackout.style.opacity = "0";
         setTimeout(()=>{ blackout.remove(); finalDiv.remove(); }, 2200);
-        injectSecretProcess("賄賂おにぎり", "💴", 99999);
         addLog("AI", "💴 金銭の受け渡しを確認。おにぎり工場の倫理が少し横にずれました。");
         _bribeEventActive = false;
     }, 5000);
@@ -3068,7 +3144,6 @@ function triggerUnknownEvent(){
         blackout.style.transition = "2.4s"; blackout.style.opacity = "0";
         noise.style.transition = "2.4s"; noise.style.opacity = "0";
         setTimeout(()=>{ blackout.remove(); noise.remove(); finalDiv.remove(); }, 2400);
-        injectSecretProcess("???おにぎり", "❓", 99999);
         addLog("AI", "❓ 未知の具材反応を検出。説明不能です。たぶんロジックが勝手に夢を見てます。");
         _unknownEventActive = false;
     }, 5600);
@@ -3206,19 +3281,8 @@ function triggerBananaEvent(){
             blackout.remove(); aura.remove(); finalDiv.remove();
         }, 3000);
 
-        // 1本目のラインにバナナを1個投入
-        const targetLine = lines.find(l=>l.domReady) || null;
-        if(targetLine){
-            const bananaProcess = buildProductionProcess();
-            if(bananaProcess){
-                bananaProcess.name = "🍌バナナおにぎり";
-                bananaProcess.emoji = "🍌";
-                bananaProcess.base = {...bananaProcess.base, name:"バナナおにぎり", emoji:"🍌", price:99999};
-                bananaProcess.class = "secret";
-                targetLine.items.push({process:bananaProcess, pos:0, done:false, completedOnce:false, needsInitFlash:true});
-                if(!lineRafId){ lastLineTime=0; lineRafId=requestAnimationFrame(tickLines); }
-            }
-        }
+        // 注: シークレット変換はtickLines内のSECRETS判定で対象アイテムをin-placeで変換済みのため、
+        // ここでの追加投入は行わない（2個生成バグ防止）
         addLog("AI", "🍌 電力過剰による量子バナナ生成を確認。おにぎり工場にバナナが侵入しました。");
         _bananaEventActive = false;
     }, 7200);
@@ -3391,26 +3455,30 @@ function repairMachine(mid, auto=false){
     const m = brokenMachines[idx];
     if(!auto) payOrBorrow(REPAIR_COST);
     brokenMachines.splice(idx, 1);
-    addLog("通知", `🔧 ${m.stageIcon}${m.stageName}マシンを修理しました。`);
+    addLog("通知", `🔧 ${m.stageIcon}${m.stageName}マシン(ライン${m.lineId+1})を修理しました。`);
     renderBrokenMachines();
-    for(const line of lines){
-        const el = document.getElementById(`ln_m_${line.id}_${m.stageIndex}`);
-        if(el) el.classList.remove("machine-broken");
-    }
+    // そのラインのそのステージだけ赤色解除
+    const el = document.getElementById(`ln_m_${m.lineId}_${m.stageIndex}`);
+    if(el) el.classList.remove("machine-broken");
+    // updateMachinesキャッシュをリセット（修理ボタンを即消す）
+    const line = lines.find(l=>l.id===m.lineId);
+    if(line) line._lastLeadFp = -999;
 }
 
 function renderBrokenMachines(){
+    // ラインごとにstageに machine-broken を付ける/外す
     for(const line of lines){
         productionStages.forEach((stage,si)=>{
             const el = document.getElementById(`ln_m_${line.id}_${si}`);
             if(!el) return;
-            if(brokenMachines.some(b=>b.stageIndex===si)){
+            if(brokenMachines.some(b=>b.lineId===line.id && b.stageIndex===si)){
                 el.classList.add("machine-broken");
             } else {
                 el.classList.remove("machine-broken");
             }
         });
     }
+    // 故障中マシンパネル（既存UI）
     const panel = document.getElementById("brokenMachinePanel");
     if(!panel) return;
     if(brokenMachines.length === 0){ panel.style.display="none"; panel.innerHTML=""; return; }
@@ -3418,6 +3486,7 @@ function renderBrokenMachines(){
     panel.innerHTML = `<div style="color:#ff9f1c;font-weight:bold;margin-bottom:4px;">🔧 故障中マシン</div>` +
         brokenMachines.map(m=>`
             <div style="display:flex;align-items:center;gap:8px;margin:3px 0;">
+                <span style="font-size:11px;color:#ff9f1c;">ライン${m.lineId+1}</span>
                 <span>${m.stageIcon} ${m.stageName}</span>
                 <button onclick="repairMachine(${m.id})" style="font-size:11px;padding:2px 8px;background:#ff9f1c;color:#111;border:none;border-radius:4px;cursor:pointer;">修理(10万円)</button>
             </div>`).join("");
@@ -3521,11 +3590,11 @@ function renderTruckCard(type,title){
             状態:${truck.owned ? '<span class="statusOwned">運用中</span>' : "未配備"}
             <br>
             <button onclick="buyTruck('${type}')" ${money < truck.price || truck.owned ? "disabled":""} style="padding:4px 8px; font-size:11px;">
-                ${truck.owned ? "確保済" : `購入(${truck.price.toLocaleString()}円)`}
+                ${truck.owned ? "確保済" : `購入(${truck.price.toLocaleString()}${formatUnitHint(truck.price,false)}円)`}
             </button>
             ${truck.upgradeLevel >= truck.maxUpgrade
                 ? `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み</span>`
-                : `<button onclick="upgradeTruck('${type}')" ${!truck.owned || money < upgradeCost ? "disabled":""} style="padding:4px 8px; font-size:11px;">強化 L.${truck.upgradeLevel} (${upgradeCost.toLocaleString()}円)</button>`
+                : `<button onclick="upgradeTruck('${type}')" ${!truck.owned || money < upgradeCost ? "disabled":""} style="padding:4px 8px; font-size:11px;">強化 L.${truck.upgradeLevel} (${upgradeCost.toLocaleString()}${formatUnitHint(upgradeCost,false)}円)</button>`
             }
         </div>
     `;
@@ -3757,7 +3826,8 @@ function renderMoonCard(){
     return `<div style="background:#1a1830;border:1px solid #8888cc;border-radius:8px;padding:10px 14px;margin-top:8px;">
         <div style="font-size:14px;font-weight:bold;color:#aaaaee;margin-bottom:4px;">🌕 月</div>
         <div style="font-size:12px;color:#bbb;margin-bottom:6px;">研究者を雇って月の研究を進めよう。<br>研究者1人につき10秒ごとに <span style="color:#aaaaee;">+10 RP</span></div>
-        <div style="font-size:13px;color:#aaaaee;margin-bottom:6px;">月の研究者: <b>${moonResearchers}</b>人（上限10人）　所持RP: <b>${rp.toFixed(0)}</b></div>
+        <div style="font-size:13px;color:#aaaaee;margin-bottom:6px;">月の研究者: <b>${moonResearchers}</b>人（上限10人）　所持RP: <b>${rp.toFixed(0)}${formatUnitHint(rp)}</b></div>
+        ${_bhFocusResearch ? `<div style="font-size:12px;color:#ff90c0;margin-bottom:6px;">🕳️ 研究者はブラックホールの研究をするために月の研究を停止しています。</div>` : ``}
         ${!moonResearcherBought
             ? `<button onclick="buyFirstMoonResearcher()" ${foreignMoney < 6000 ? "disabled":""} style="background:#2a1060;border:1px solid #8888cc;color:#aaaaee;padding:5px 14px;border-radius:6px;">
                 👩‍🔬 研究者を雇う<br><span style="font-size:11px;">外貨 6,000</span>
@@ -3775,7 +3845,8 @@ function renderMarsCard(){
     return `<div style="background:#1a1030;border:1px solid #a060ff;border-radius:8px;padding:10px 14px;margin-top:8px;">
         <div style="font-size:14px;font-weight:bold;color:#c090ff;margin-bottom:4px;">🔴 火星</div>
         <div style="font-size:12px;color:#bbb;margin-bottom:6px;">研究者を雇って火星を研究しよう。<br>研究者1人につき10秒ごとに <span style="color:#c0a0ff;">+20 RP</span>（月の2倍）</div>
-        <div style="font-size:13px;color:#c0a0ff;margin-bottom:6px;">火星の研究者: <b>${marsResearchers}</b>人（上限10人）　所持RP: <b>${rp.toFixed(0)}</b></div>
+        <div style="font-size:13px;color:#c0a0ff;margin-bottom:6px;">火星の研究者: <b>${marsResearchers}</b>人（上限10人）　所持RP: <b>${rp.toFixed(0)}${formatUnitHint(rp)}</b></div>
+        ${_bhFocusResearch ? `<div style="font-size:12px;color:#ff90c0;margin-bottom:6px;">🕳️ 研究者はブラックホールの研究をするために火星の研究を停止しています。</div>` : ``}
         ${!marsResearcherBought
             ? `<button onclick="buyFirstMarsResearcher()" ${foreignMoney < 8000 ? "disabled":""} style="background:#2a1060;border:1px solid #a060ff;color:#c090ff;padding:5px 14px;border-radius:6px;">
                 👩‍🔬 研究者を雇う<br><span style="font-size:11px;">外貨 8,000</span>
@@ -3793,7 +3864,8 @@ function renderSolarCard(){
     return `<div style="background:#1a1020;border:1px solid #ffd166;border-radius:8px;padding:10px 14px;margin-top:8px;">
         <div style="font-size:14px;font-weight:bold;color:#ffd166;margin-bottom:4px;">☀️ 太陽系</div>
         <div style="font-size:12px;color:#bbb;margin-bottom:6px;">太陽系を研究しよう。<br>研究者1人につき10秒ごとに <span style="color:#ffd166;">+30 RP</span></div>
-        <div style="font-size:13px;color:#ffd166;margin-bottom:6px;">太陽系の研究者: <b>${solarResearchers}</b>人（上限10人）　所持RP: <b>${rp.toFixed(0)}</b></div>
+        <div style="font-size:13px;color:#ffd166;margin-bottom:6px;">太陽系の研究者: <b>${solarResearchers}</b>人（上限10人）　所持RP: <b>${rp.toFixed(0)}${formatUnitHint(rp)}</b></div>
+        ${_bhFocusResearch ? `<div style="font-size:12px;color:#ff90c0;margin-bottom:6px;">🕳️ 研究者はブラックホールの研究をするために太陽系の研究を停止しています。</div>` : ``}
         ${!solarResearcherBought
             ? `<button onclick="buyFirstSolarResearcher()" ${foreignMoney < 15000 ? "disabled":""} style="background:#1a1a00;border:1px solid #ffd166;color:#ffd166;padding:5px 14px;border-radius:6px;">
                 👩‍🔬 研究者を雇う<br><span style="font-size:11px;">外貨 15,000</span>
@@ -3811,26 +3883,36 @@ function renderBlackholeCard(){
     let html = `<div style="background:#0a0a1a;border:1px solid #ff60a0;border-radius:8px;padding:10px 14px;margin-top:8px;">
         <div style="font-size:14px;font-weight:bold;color:#ff60a0;margin-bottom:4px;">🕳️ ブラックホール</div>
         <div style="font-size:12px;color:#bbb;margin-bottom:6px;">ブラックホールを研究することで新技術が生まれるかもしれない。</div>`;
+
+    // 研究者は常に雇える（ワープ開発前も）
+    const bhResearcherBtn = !bhResearcherBought
+        ? `<button onclick="buyFirstBHResearcher()" ${foreignMoney < 30000 ? "disabled":""} style="background:#1a0030;border:1px solid #ff60a0;color:#ff90c0;padding:5px 14px;border-radius:6px;">👩‍🔬 研究者を雇う<br><span style='font-size:11px;'>外貨 30,000</span></button>`
+        : bhResearchers >= 10
+            ? `<span style="font-size:11px;color:#5edc88;">✅ 研究者 最大（10人）</span>`
+            : `<button onclick="buyBHResearcherWithRP()" ${rp < 1000 ? "disabled":""} style="background:#1a0030;border:1px solid #ff60a0;color:#ff90c0;padding:5px 14px;border-radius:6px;">👩‍🔬 研究者を追加雇用<br><span style='font-size:11px;'>RP 1,000</span></button>`;
+
     if(!warpDeveloped){
+        const _allMaxed = moonResearchers >= 10 && marsResearchers >= 10 && solarResearchers >= 10;
         if(!blackholeResearching && blackholeResearchProgress === 0){
-            html += `<button onclick="startBHResearch()" style="background:#1a0030;border:1px solid #ff60a0;color:#ff90c0;padding:4px 12px;border-radius:6px;font-size:12px;">🔬 ブラックホールを研究する（5分）</button>`;
+            if(_allMaxed){
+                html += `<button onclick="startBHFocusResearch()" style="background:#1a0030;border:1px solid #ff60a0;color:#ff90c0;padding:4px 12px;border-radius:6px;font-size:12px;">🔬 ブラックホールを重点的に研究する（5分）<br><span style="font-size:10px;color:#aaa;">研究者を集中させる（他惑星研究が一時停止）</span></button>`;
+            } else {
+                html += `<button disabled style="background:#1a0030;border:1px solid #553355;color:#776677;padding:4px 12px;border-radius:6px;font-size:12px;cursor:not-allowed;">🔬 ブラックホールを重点的に研究する（5分）<br><span style="font-size:10px;color:#776677;">月・火星・太陽系の研究者が全員上限（10人）になると重点研究できます</span></button>`;
+            }
         } else if(blackholeResearchProgress < 100){
-            html += `<div style="font-size:12px;color:#aaa;margin-bottom:3px;">研究中... ${blackholeResearchProgress}%</div>
+            html += `<div style="font-size:12px;color:#aaa;margin-bottom:3px;">🔬 重点研究中... ${blackholeResearchProgress}%（他惑星研究停止中）</div>
             <div style="background:#111;border-radius:6px;height:10px;overflow:hidden;">
                 <div style="width:${blackholeResearchProgress}%;height:100%;background:linear-gradient(90deg,#ff60a0,#a000ff);"></div>
             </div>`;
         }
+        html += `<div style="font-size:12px;color:#bbb;margin-top:8px;margin-bottom:4px;">ブラックホール研究者（RP生産）:<br>研究者1人につき10秒ごとに <span style="color:#ff60a0;">+50 RP</span></div>
+        <div style="font-size:13px;color:#ff60a0;margin-bottom:6px;">BHの研究者: <b>${bhResearchers}</b>人（上限10人）</div>
+        ${bhResearcherBtn}`;
     } else {
         html += `<div style="font-size:12px;color:#5edc88;margin-bottom:6px;">✅ ワープ技術を開発済み</div>`;
-        // ブラックホール研究者
-        const bhBtn = !bhResearcherBought
-            ? `<button onclick="buyFirstBHResearcher()" ${foreignMoney < 30000 ? "disabled":""} style="background:#1a0030;border:1px solid #ff60a0;color:#ff90c0;padding:5px 14px;border-radius:6px;">👩‍🔬 研究者を雇う<br><span style='font-size:11px;'>外貨 30,000</span></button>`
-            : bhResearchers >= 10
-                ? `<span style="font-size:11px;color:#5edc88;">✅ 研究者 最大（10人）</span>`
-                : `<button onclick="buyBHResearcherWithRP()" ${rp < 1000 ? "disabled":""} style="background:#1a0030;border:1px solid #ff60a0;color:#ff90c0;padding:5px 14px;border-radius:6px;">👩‍🔬 研究者を追加雇用<br><span style='font-size:11px;'>RP 1,000</span></button>`;
         html += `<div style="font-size:12px;color:#bbb;margin-bottom:4px;">ブラックホールをさらに研究。<br>研究者1人につき10秒ごとに <span style="color:#ff60a0;">+50 RP</span></div>
         <div style="font-size:13px;color:#ff60a0;margin-bottom:6px;">BHの研究者: <b>${bhResearchers}</b>人（上限10人）</div>
-        ${bhBtn}`;
+        ${bhResearcherBtn}`;
     }
     html += `</div>`;
     return html;
@@ -3843,18 +3925,32 @@ function renderQuaplanasCard(){
 
     const m = quaplanasMission;
 
+    // クァプラナス研究者（工場建設前でも雇える）
+    let quapResearcherHtml = "";
+    if(quaplanasUnlocked){
+        const qrBought = quaplanasFactoryData?.quapResearcherBought || false;
+        const qrCount = quaplanasFactoryData?.quapResearchers || 0;
+        if(!qrBought){
+            quapResearcherHtml = `<div style="margin-top:6px;font-size:12px;color:#aaa;">クァプラナスの研究者を雇う（10秒ごとに+100RP）<br>
+            <button onclick="buyFirstQuapResearcher()" ${foreignMoney < 50000 ? "disabled":""} style="background:#0a1a0a;border:1px solid #5edc88;color:#5edc88;padding:3px 10px;border-radius:5px;font-size:11px;margin-top:3px;">
+                👩‍🔬 クァプラナス研究者を雇う（外貨 50,000）
+            </button></div>`;
+        } else if(qrCount < 10){
+            quapResearcherHtml = `<div style="margin-top:6px;font-size:12px;color:#aaa;">クァプラナス研究者: <b style="color:#5edc88;">${qrCount}</b>人（上限10人）<br>
+            <button onclick="buyQuapResearcherWithRP()" ${rp < 2000 ? "disabled":""} style="background:#0a1a0a;border:1px solid #5edc88;color:#5edc88;padding:3px 10px;border-radius:5px;font-size:11px;margin-top:3px;">
+                👩‍🔬 追加雇用（RP 2,000）
+            </button></div>`;
+        } else {
+            quapResearcherHtml = `<div style="margin-top:6px;font-size:11px;color:#5edc88;">✅ クァプラナス研究者 最大（10人）</div>`;
+        }
+    }
+
     if(quaplanasFactory){
         html += `<div style="font-size:12px;color:#5edc88;margin-bottom:4px;">✅ クァプラナス工場稼働中</div>
         <button onclick="travelToQuaplanas()" style="background:#0a3a0a;border:1px solid #5edc88;color:#5edc88;padding:5px 14px;border-radius:6px;font-size:12px;">
             🛸 クァプラナス工場へ移動
-        </button>`;
-        if(ufoTechAcquired){
-            html += `<div style="margin-top:6px;font-size:12px;color:#aaa;">UFO派遣（RP・外貨獲得）</div>
-            ${!m ? `<button onclick="startLifeMission('ufo')" ${foreignMoney < 30000 ? "disabled":""} style="background:#0a2a0a;border:1px solid #5edc88;color:#5edc88;padding:5px 14px;border-radius:6px;font-size:12px;margin-top:4px;">
-                🛸 UFOで派遣（外貨 30,000）
-            </button>` : m.progress < 100 ? `<div style="font-size:12px;color:#aaa;margin-top:4px;">🛸 UFO派遣中... ${m.progress}%</div>
-            <div style="background:#111;border-radius:6px;height:10px;overflow:hidden;margin-top:3px;"><div style="width:${m.progress}%;height:100%;background:linear-gradient(90deg,#5edc88,#00ffff);"></div></div>` : ""}`;
-        }
+        </button>
+        <div style="font-size:11px;color:#5edc88;margin-top:5px;">UFO定期派遣はロケット＆UFOパネルから行えます。</div>`;
     } else if(quaplanasResearched){
         html += `<div style="font-size:12px;color:#aaa;margin-bottom:6px;">クァプラナス星の研究が完了した。<br>おにぎり工場を建設できる。</div>
         <button onclick="buildQuaplanasFactory()" ${foreignMoney < 100000 ? "disabled":""} style="background:#0a3a0a;border:1px solid #5edc88;color:#5edc88;padding:6px 16px;border-radius:6px;font-size:13px;">
@@ -3887,7 +3983,11 @@ function renderQuaplanasCard(){
                 html += `<div style="font-size:12px;color:#ffd166;margin-bottom:6px;">👽 クァプラン：「シークレットのおにぎりが食べてみたい。くれたら良い報酬をあげるよ。」</div>
                 <button onclick="startLifeMission('secret')" ${foreignMoney < 30000 ? "disabled":""} style="background:#1a1a00;border:1px solid #ffd166;color:#ffd166;padding:6px 16px;border-radius:6px;font-size:13px;">
                     🚀 ワープエンジンで宇宙飛行士にシークレットおにぎりを持たせて派遣（外貨 30,000）
-                </button>`;
+                </button>
+                <div style="font-size:11px;color:#aaa;margin-top:4px;">※シークレットおにぎりを1個消費します。送るものを選択してください：<br>
+                <select id="secretItemSelect" style="background:#222;color:#ffd166;border:1px solid #ffd16644;border-radius:4px;padding:2px;max-width:260px;margin-top:2px;">
+                ${inventory.filter(it=>it.class==="secret"&&!it.transporting).map(it=>`<option value="${it.id}">${it.emoji||"⭐"} ${it.name} (${it.finalPrice.toLocaleString()}円)</option>`).join("")||'<option disabled>シークレットおにぎりがありません</option>'}
+                </select></div>`;
             } else if(m.progress < 100){
                 html += `<div style="font-size:12px;color:#aaa;margin-bottom:3px;">🚀 シークレットおにぎり配達中... ${m.progress}%</div>
                 <div style="background:#111;border-radius:6px;height:12px;overflow:hidden;"><div style="width:${m.progress}%;height:100%;background:linear-gradient(90deg,#ffd166,#ff9f1c);"></div></div>`;
@@ -3897,6 +3997,7 @@ function renderQuaplanasCard(){
         html += `<div style="font-size:12px;color:#aaa;">ワープ技術が開発されると派遣できるようになる。</div>`;
     }
 
+    html += quapResearcherHtml;
     html += `</div>`;
     return html;
 }
@@ -3973,8 +4074,9 @@ function initQuaplanasFactoryData(){
             {name:"🌌 銀河市場 α",baseMulti:1.0,unlocked:true},
             {name:"⭐ 星系市場 β",baseMulti:1.1,unlocked:false},
             {name:"🌀 時空市場 γ",baseMulti:1.25,unlocked:false},
+            {name:"🗑️ 放棄",baseMulti:0,unlocked:true,isAbandon:true},
         ],
-        storageMax:30,nextItemId:1,discoveredOnigiris:[],
+        storageMax:Infinity,nextItemId:1,discoveredOnigiris:[],
     };
 }
 
@@ -4467,7 +4569,11 @@ function runQAutoTransport(){
         ids.forEach(id=>_qSelectedItems.delete(id));
         quap+=total;
         _quapPassiveEarnLog.push({t:Date.now(),v:total});
-        addQLog("自動輸送",`📡 ルート${ _qAutoTransportRoutes.indexOf(route)+1}: ${candidates.length}個 → 💠 ${total.toLocaleString()} クァプ`);
+        if(shop.isAbandon){
+            addQLog("自動輸送",`📡 ルート${ _qAutoTransportRoutes.indexOf(route)+1}: ${candidates.length}個を放棄しました。`);
+        } else {
+            addQLog("自動輸送",`📡 ルート${ _qAutoTransportRoutes.indexOf(route)+1}: ${candidates.length}個 → 💠 ${total.toLocaleString()} クァプ`);
+        }
         renderQuaplanasFactory(); renderAll();
         break;
     }
@@ -4516,7 +4622,7 @@ function renderQAtRoute(ri){
     html+=`<span id="qatPriceArea_${ri}"> 単価 <input type="number" id="qatMaxPrice_${ri}" value="${route.maxPrice}" style="width:80px;" min="0"> クァプ以下を出荷</span>`;
     html+=`<span id="qatRarityArea_${ri}" style="display:none;"> <select id="qatMaxRarity_${ri}">${RARITY_ORDER.map(r=>`<option value="${r}" ${route.maxRarity===r?"selected":""}>${RARITY_LABELS_Q[r]||RARITY_LABELS[r]||r}</option>`).join("")}</select> 以下を出荷</span>`;
     html+=`<br>最低輸送数: <input type="number" id="qatMinCount_${ri}" value="${route.minCount||0}" style="width:60px;" min="0"> 個以上で出荷`;
-    html+=` ➜ 納品先: <select id="qatShop_${ri}">${(fd?.shops||[]).map((s,i)=>`<option value="${i}" ${route.shop===i?"selected":""} ${!s.unlocked?"disabled":""}>${s.name}</option>`).join("")}</select>`;
+    html+=` ➜ 納品先: <select id="qatShop_${ri}">${(fd?.shops||[]).map((s,i)=>`<option value="${i}" ${route.shop===i?"selected":""} ${!s.unlocked?"disabled":""}>${s.isAbandon?`${s.name}（倍率0倍）`:s.name}</option>`).join("")}</select>`;
     html+=`</div></div>`;
     return html;
 }
@@ -4621,7 +4727,7 @@ function qVsRender(){
     }
     visible.innerHTML=html||'<span style="color:#555;padding:16px;display:block;">倉庫は空です</span>';
     // count update
-    const cnt=document.getElementById("qItemCount"); if(cnt) cnt.textContent=`${fd.inventory.length}/${fd.storageMax}`;
+    const cnt=document.getElementById("qItemCount"); if(cnt) cnt.textContent=`${fd.inventory.length}/∞`;
 }
 function qVsSchedule(){
     if(QVS._dirty) return;
@@ -4649,7 +4755,7 @@ function renderQuaplanasFactory(){
         sa.innerHTML=`<div>生産速度:</div><div style="color:#ffd166;">Lv${fd.speedLevel}</div>
         <div>並列ライン:</div><div style="color:#ffd166;">${fd.multiRoll}</div>
         <div>梱包方式:</div><div style="color:#ffd166;">${pkName} (${pkMulti}倍)</div>
-        <div>倉庫容量:</div><div style="color:#ffd166;">${fd.storageMax}</div>`;
+        <div>倉庫容量:</div><div style="color:#ffd166;">∞</div>`;
     }
     ensureQLines(fd);
     renderQUpgradeArea(fd);
@@ -4665,7 +4771,7 @@ function renderQuaplanasFactory(){
 
 function renderQShopSelect(fd){
     const sel=document.getElementById("qShopSelectForSend"); if(!sel) return;
-    sel.innerHTML=fd.shops.filter(s=>s.unlocked).map((s,i)=>`<option value="${fd.shops.indexOf(s)}">${s.name} x${s.baseMulti}</option>`).join("");
+    sel.innerHTML=fd.shops.filter(s=>s.unlocked).map((s,i)=>`<option value="${fd.shops.indexOf(s)}">${s.isAbandon?`${s.name}（倍率0倍）`:`${s.name} x${s.baseMulti}`}</option>`).join("");
 }
 
 function renderQUpgradeArea(fd){
@@ -4677,24 +4783,19 @@ function renderQUpgradeArea(fd){
     const mlCost=Math.floor(2000*Math.pow(4,fd.multiRoll-1));
     const mutCost=Math.floor(500*Math.pow(3,fd.mutationLevel));
     const qualCost=Math.floor(1000*Math.pow(3,fd.qualityLevel));
-    const qSpCost=Math.floor(50*Math.pow(2,fd.quapSpeedBoost||0));
-    const qStCost=Math.floor(30*Math.pow(2,fd.quapStorageBoost||0));
     const avgIncome=estimateQuapIncomePerMin(fd);
     el.innerHTML=`<div style="font-size:12px;line-height:2.2;">
         <div style="font-size:11px;color:#5edc88;margin-bottom:4px;">📊 推定平均収入: 💠 ${avgIncome.toLocaleString()}/分${currentWorld!=="quaplanas"?` ｜ 別惑星滞在 ${Math.max(0,Math.floor((Date.now()-_worldSwitchTime)/60000))}分`:``}</div>
-        ⚡ 生産基本速度 Lv${fd.speedLevel}/${Q_MAX_SPEED} ${fd.speedLevel>=Q_MAX_SPEED?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradeSpeed()" ${money<spCost?"disabled":""} style="padding:2px 6px;font-size:11px;">強化(${spCost.toLocaleString()}円)</button>`}
-        <br>🔁 同時並列ライン ${fd.multiRoll}/${Q_MAX_MULTI} ${fd.multiRoll>=Q_MAX_MULTI?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradeMulti()" ${money<mlCost?"disabled":""} style="padding:2px 6px;font-size:11px;">拡張(${mlCost.toLocaleString()}円)</button>`}
-        <br>🧬 禁断変異誘導 Lv${fd.mutationLevel}/${Q_MAX_MUT} ${fd.mutationLevel>=Q_MAX_MUT?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradeMutation()" ${money<mutCost?"disabled":""} style="padding:2px 6px;font-size:11px;">研究(${mutCost.toLocaleString()}円)</button>`}
-        <br>✨ 量子品質保証 Lv${fd.qualityLevel}/${Q_MAX_QUAL} ${fd.qualityLevel>=Q_MAX_QUAL?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradeQuality()" ${money<qualCost?"disabled":""} style="padding:2px 6px;font-size:11px;">投資(${qualCost.toLocaleString()}円)</button>`}
-        <br>📦 バルク梱包: <span style="color:#ffd166;">${fd.packagingLevel===0?"通常生産(1倍)":`${pkName}(${pkMulti}倍)`}</span> ${!nextPk?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradePackaging()" ${money<nextPk.cost?"disabled":""} style="padding:2px 6px;font-size:11px;">${nextPk.name}化(${nextPk.cost.toLocaleString()}円 / ${nextPk.multi}倍)</button>`}
+        ⚡ 生産基本速度 Lv${fd.speedLevel}/${Q_MAX_SPEED} ${fd.speedLevel>=Q_MAX_SPEED?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradeSpeed()" ${quap<spCost?"disabled":""} style="padding:2px 6px;font-size:11px;">強化(${spCost.toLocaleString()}💠)</button>`}
+        <br>🔁 同時並列ライン ${fd.multiRoll}/${Q_MAX_MULTI} ${fd.multiRoll>=Q_MAX_MULTI?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradeMulti()" ${quap<mlCost?"disabled":""} style="padding:2px 6px;font-size:11px;">拡張(${mlCost.toLocaleString()}💠)</button>`}
+        <br>🧬 禁断変異誘導 Lv${fd.mutationLevel}/${Q_MAX_MUT} ${fd.mutationLevel>=Q_MAX_MUT?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradeMutation()" ${quap<mutCost?"disabled":""} style="padding:2px 6px;font-size:11px;">研究(${mutCost.toLocaleString()}💠)</button>`}
+        <br>✨ 量子品質保証 Lv${fd.qualityLevel}/${Q_MAX_QUAL} ${fd.qualityLevel>=Q_MAX_QUAL?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradeQuality()" ${quap<qualCost?"disabled":""} style="padding:2px 6px;font-size:11px;">投資(${qualCost.toLocaleString()}💠)</button>`}
+        <br>📦 バルク梱包: <span style="color:#ffd166;">${fd.packagingLevel===0?"通常生産(1倍)":`${pkName}(${pkMulti}倍)`}</span> ${!nextPk?'<span style="color:#5edc88;font-size:11px;">✅ 最大強化済み</span>':`<button onclick="qUpgradePackaging()" ${quap<nextPk.cost?"disabled":""} style="padding:2px 6px;font-size:11px;">${nextPk.name}化(${nextPk.cost.toLocaleString()}💠 / ${nextPk.multi}倍)</button>`}
         <br>🤖 自動化パルス生産コア:
         ${_qAutoRollOwned?`<span style="font-size:11px;color:#5edc88;">✅ 所有済み</span>`:`<button onclick="buyQAutoRoll()" ${foreignMoney<500?"disabled":""} style="padding:2px 6px;font-size:11px;">AIコア購入(外貨500)</button>`}
         <button onclick="toggleQAutoRoll()" ${_qAutoRollOwned?"":"disabled"} style="padding:2px 6px;font-size:11px;background:${_qAutoRollEnabled?'#5edc88':'#ffd166'};">
             状態: ${_qAutoRollEnabled?"稼働中(ON)":"待機中(OFF)"}
         </button>
-        <hr style="border-color:#1a2a1a;margin:4px 0;">
-        💠 速度クァプ強化 Lv${fd.quapSpeedBoost||0} ${(fd.quapSpeedBoost||0)>=10?'<span style="color:#5edc88;font-size:11px;">✅ 最大</span>':`<button onclick="qUpgradeWithQuap('speed')" ${quap<qSpCost?"disabled":""} style="padding:2px 6px;font-size:11px;">強化(${qSpCost}💠)</button>`}
-        <br>💠 倉庫拡張+10 ${(fd.quapStorageBoost||0)>=10?'<span style="color:#5edc88;font-size:11px;">✅ 最大</span>':`<button onclick="qUpgradeWithQuap('storage')" ${quap<qStCost?"disabled":""} style="padding:2px 6px;font-size:11px;">拡張(${qStCost}💠)</button>`}
     </div>`;
 }
 
@@ -4721,7 +4822,7 @@ function renderQAutoTransport(){
 function renderQShops(fd){
     const el=document.getElementById("qShopsArea"); if(!el) return;
     const costs=[0,50000,500000];
-    el.innerHTML=`<div class="grid">${fd.shops.map((s,i)=>`
+    el.innerHTML=`<div class="grid">${fd.shops.filter(s=>!s.isAbandon).map((s)=>{const i=fd.shops.indexOf(s);return `
         <div class="card" style="background:#0a0a18;border:1px solid ${s.unlocked?"#5edc8844":"#333"};">
             <h4 style="color:#5edc88;">${s.name}</h4>
             <div style="font-size:12px;color:#aaa;">市場倍率 x${s.baseMulti}</div>
@@ -4730,7 +4831,7 @@ function renderQShops(fd){
             ${s.unlocked
                 ?'<span style="font-size:11px;color:#5edc88;">✅ 開放済み</span>'
                 :`<button onclick="qUnlockShop(${i})" ${money<costs[i]?"disabled":""} style="margin-top:6px;padding:3px 8px;font-size:11px;">開放(${costs[i].toLocaleString()}円)</button>`}
-        </div>`).join("")}</div>`;
+        </div>`;}).join("")}</div>`;
 }
 
 function renderQDictionary(fd){
@@ -4757,36 +4858,45 @@ function renderQDictionary(fd){
     area.innerHTML=html||"未発見";
 }
 
-function qUpgradeSpeed(){ const fd=getQFD();if(!fd||fd.speedLevel>=Q_MAX_SPEED)return;const c=Math.floor(1000*Math.pow(3,fd.speedLevel-1));if(money<c)return;money-=c;fd.speedLevel++;restartQAutoRoll();renderQuaplanasFactory();renderAll(); }
-function qUpgradeMulti(){ const fd=getQFD();if(!fd||fd.multiRoll>=Q_MAX_MULTI)return;const c=Math.floor(2000*Math.pow(4,fd.multiRoll-1));if(money<c)return;money-=c;fd.multiRoll++;ensureQLines(fd);renderQuaplanasFactory();renderAll(); }
-function qUpgradeMutation(){ const fd=getQFD();if(!fd||fd.mutationLevel>=Q_MAX_MUT)return;const c=Math.floor(500*Math.pow(3,fd.mutationLevel));if(money<c)return;money-=c;fd.mutationLevel++;renderQuaplanasFactory();renderAll(); }
-function qUpgradeQuality(){ const fd=getQFD();if(!fd||fd.qualityLevel>=Q_MAX_QUAL)return;const c=Math.floor(1000*Math.pow(3,fd.qualityLevel));if(money<c)return;money-=c;fd.qualityLevel++;renderQuaplanasFactory();renderAll(); }
-function qUpgradePackaging(){ const fd=getQFD();if(!fd)return;const nPk=Q_PACKAGING[fd.packagingLevel+1];if(!nPk||money<nPk.cost)return;money-=nPk.cost;fd.packagingLevel++;renderQuaplanasFactory();renderAll(); }
+function qUpgradeSpeed(){ const fd=getQFD();if(!fd||fd.speedLevel>=Q_MAX_SPEED)return;const c=Math.floor(1000*Math.pow(3,fd.speedLevel-1));if(quap<c)return;quap-=c;fd.speedLevel++;restartQAutoRoll();renderQuaplanasFactory();renderAll(); }
+function qUpgradeMulti(){ const fd=getQFD();if(!fd||fd.multiRoll>=Q_MAX_MULTI)return;const c=Math.floor(2000*Math.pow(4,fd.multiRoll-1));if(quap<c)return;quap-=c;fd.multiRoll++;ensureQLines(fd);renderQuaplanasFactory();renderAll(); }
+function qUpgradeMutation(){ const fd=getQFD();if(!fd||fd.mutationLevel>=Q_MAX_MUT)return;const c=Math.floor(500*Math.pow(3,fd.mutationLevel));if(quap<c)return;quap-=c;fd.mutationLevel++;renderQuaplanasFactory();renderAll(); }
+function qUpgradeQuality(){ const fd=getQFD();if(!fd||fd.qualityLevel>=Q_MAX_QUAL)return;const c=Math.floor(1000*Math.pow(3,fd.qualityLevel));if(quap<c)return;quap-=c;fd.qualityLevel++;renderQuaplanasFactory();renderAll(); }
+function qUpgradePackaging(){ const fd=getQFD();if(!fd)return;const nPk=Q_PACKAGING[fd.packagingLevel+1];if(!nPk||quap<nPk.cost)return;quap-=nPk.cost;fd.packagingLevel++;renderQuaplanasFactory();renderAll(); }
 function qUnlockShop(i){ const fd=getQFD();if(!fd)return;const costs=[0,50000,500000];if(money<(costs[i]||0))return;money-=costs[i]||0;fd.shops[i].unlocked=true;renderQShops(fd);renderQShopSelect(fd); }
-function qUpgradeWithQuap(type){
-    const fd=getQFD();if(!fd)return;
-    if(type==="speed"){const c=Math.floor(50*Math.pow(2,fd.quapSpeedBoost||0));if(quap<c)return;quap-=c;fd.quapSpeedBoost=(fd.quapSpeedBoost||0)+1;restartQAutoRoll();}
-    else if(type==="storage"){const c=Math.floor(30*Math.pow(2,fd.quapStorageBoost||0));if(quap<c)return;quap-=c;fd.quapStorageBoost=(fd.quapStorageBoost||0)+1;fd.storageMax+=10;}
-    renderQuaplanasFactory();
-}
 function restartQAutoRoll(){if(_qAutoRollTimer){clearInterval(_qAutoRollTimer);_qAutoRollTimer=null;}if(_qAutoRollOwned&&_qAutoRollEnabled&&quaplanasFactory)startQAutoRoll();}
 
 function estimateEarthIncomePerMin(){
     const delay=getRollDelay();
-    if(!delay||!autoRollOwned||!autoRollEnabled||powerGrid.isBroken) return 0;
-    const rollsPerMin=(60000/delay)*multiRoll;
+    const autoRollActive = delay && autoRollOwned && autoRollEnabled && !powerGrid.isBroken;
+    const autoTransportActive = autoTransportOwned && autoTransportRoutes.some(r=>r.enabled);
+    if(!autoRollActive && !autoTransportActive) return 0;
+    const rollsPerMin=autoRollActive?(60000/delay)*multiRoll:0;
     const avgBase=onigiris.reduce((s,o)=>s+o.price,0)/Math.max(1,onigiris.length);
     const pkgMult=packagingLevel===0?1:packagingLevel===1?40:500;
     const qualMult=1+qualityLevel*0.15;
     const mutEst=2.5;
     const recent=_earthPassiveEarnLog.filter(e=>Date.now()-e.t<120000);
     const recentAvg=recent.length?recent.reduce((s,e)=>s+e.v,0)/Math.max(1,recent.length/60000*60000):0;
-    const theoretical=Math.floor(rollsPerMin*avgBase*pkgMult*qualMult*mutEst*0.35);
+    const theoretical=autoRollActive?Math.floor(rollsPerMin*avgBase*pkgMult*qualMult*mutEst*0.35):0;
     return recentAvg>0?Math.floor(recentAvg*60/2):theoretical;
 }
 
+function estimateEarthForeignPerMin(){
+    // 外貨は宇宙ショップへの輸送で得られる。簡易推定: 最近2分の外貨ログから
+    if(!foreignUnlocked) return 0;
+    const recent = _earthPassiveEarnLog.filter(e=>Date.now()-e.t<120000 && e.foreign);
+    if(!recent.length) return 0;
+    return Math.floor(recent.reduce((s,e)=>s+e.foreign,0)/2);
+}
+
+function estimateEarthRPPerMin(){
+    if(!rpUnlocked) return 0;
+    const rpPerSec = (_bhFocusResearch ? 0 : (moonResearchers*10 + marsResearchers*20 + solarResearchers*30)) + bhResearchers*50;
+    return Math.floor(rpPerSec / 10 * 60);
+}
+
 function estimateQuapIncomePerMin(fd){
-    if(!fd) fd=getQFD();
     if(!fd||!_qAutoRollOwned||!_qAutoRollEnabled) return 0;
     const delay=getQRollDelay(fd);
     const rollsPerMin=(60000/delay)*(fd.multiRoll||1);
@@ -4893,87 +5003,205 @@ function travelToEarth(){
 
 
 function renderRocketCard(){
-    const mission = rocketMission;
-    const vehicleName = ufoOwned ? "ロケット＆UFO" : "ロケット";
-    const ROCKET_DEFS = [
-        { key:"small",  label:"🚀 小型ロケット",   price:500,  rpCost:1000, travelSec:{ moon:60, mars:100 } },
-        { key:"medium", label:"🚀🚀 中型ロケット",  price:2000, rpCost:2500, travelSec:{ moon:40, mars:80 } },
-        { key:"large",  label:"🚀🚀🚀 大型ロケット",price:8000, rpCost:5000, travelSec:{ moon:25, mars:60 } },
+    const PLANET_DEFS = [
+        { val:"moon",      label:"🌕 月",           color:"#aaccff", border:"#55aaff",
+          reward:"外貨 300〜800 + RP 50〜150", ufoOnly:false },
+        { val:"mars",      label:"🔴 火星",          color:"#ffaa88", border:"#ff6633",
+          reward:"外貨 700〜2,000 + RP 100〜300 + ボーナス10,000", ufoOnly:false },
+        { val:"solar",     label:"☀️ 太陽系",        color:"#ffd166", border:"#ffaa00",
+          reward:"外貨 3,000〜8,000 + RP 300〜800 + ボーナス50,000", ufoOnly:true },
+        { val:"blackhole", label:"🕳️ ブラックホール", color:"#ff60c0", border:"#ff00aa",
+          reward:"外貨 10,000〜30,000 + RP 1,000〜3,000 + ボーナス200,000", ufoOnly:true },
+        { val:"quaplanas", label:"🌍✨ クァプラナス星", color:"#5edc88", border:"#00cc66",
+          reward:"RP 500〜1,000 + 外貨 5,000〜10,000", ufoOnly:true, extraCost:true },
     ];
+    const ROCKET_DEFS_LOCAL = [
+        { key:"small",  label:"🚀 小型",    rpCost:1000, multi:1.0, price:500 },
+        { key:"medium", label:"🚀🚀 中型",   rpCost:2500, multi:1.5, price:2000 },
+        { key:"large",  label:"🚀🚀🚀 大型", rpCost:5000, multi:2.5, price:8000 },
+        { key:"ufo",    label:"🛸 UFO",     rpCost:3000, multi:3.5, price:0, ufoOnly:true },
+    ];
+    const vehicleName = ufoOwned ? "ロケット＆UFO" : "ロケット";
 
     let html = `<div style="background:#0a1a30;border:1px solid #55aaff66;border-radius:8px;padding:10px 14px;margin-top:8px;">
-        <div style="font-size:14px;font-weight:bold;color:#55aaff;margin-bottom:6px;">🚀 ${vehicleName}</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">`;
+        <div style="font-size:14px;font-weight:bold;color:#55aaff;margin-bottom:8px;">🚀 ${vehicleName}</div>`;
 
-    ROCKET_DEFS.forEach(r => {
-        const owned = ownedRockets[r.key] || 0;
-        html += `<div style="background:#111;border:1px solid ${owned>0?"#5edc88":"#334"};border-radius:6px;padding:6px 10px;font-size:12px;">
+    // 所有状況バッジ
+    html += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">`;
+    ROCKET_DEFS_LOCAL.forEach(r => {
+        if(r.ufoOnly && !ufoOwned) return;
+        const owned = r.key==="ufo" ? ufoOwned : (ownedRockets[r.key]||0)>0;
+        html += `<div style="background:#111;border:1px solid ${owned?"#5edc88":"#334"};border-radius:6px;padding:5px 9px;font-size:11px;text-align:center;min-width:72px;">
             <div style="color:#ffd166;">${r.label}</div>
-            <div style="color:#aaa;font-size:11px;">RP消費: ${r.rpCost}</div>
-            <div style="color:#c0a0ff;font-size:11px;">${owned>0 ? "✅ 所有中" : "未購入"}</div>
-            ${owned>0
-                ? `<span style="font-size:11px;color:#5edc88;padding:2px 8px;display:inline-block;margin-top:4px;">✅ 確保済</span>`
-                : `<button onclick="buyRocket('${r.key}')" ${rp < r.price ? "disabled":""} style="margin-top:4px;padding:2px 8px;font-size:11px;background:#1a2a50;border:1px solid #55aaff;color:#aaccff;border-radius:4px;">購入 RP ${r.price}</button>`
+            <div style="color:#aaa;font-size:10px;">RP ${r.rpCost} / x${r.multi}</div>
+            ${owned
+                ? `<span style="color:#5edc88;font-size:10px;">✅ 所有中</span>`
+                : r.key==="ufo" ? `<span style="color:#555;font-size:10px;">未取得</span>`
+                : `<button onclick="buyRocket('${r.key}')" ${rp<r.price?"disabled":""} style="margin-top:2px;padding:1px 6px;font-size:10px;background:#1a2a50;border:1px solid #55aaff;color:#aaccff;border-radius:4px;">購入 RP ${r.price}</button>`
             }
         </div>`;
     });
+    html += `</div><div style="display:flex;flex-direction:column;gap:8px;">`;
 
-    if(ufoOwned){
-        html += `<div style="background:#111;border:1px solid #5edc88;border-radius:6px;padding:6px 10px;font-size:12px;">
-            <div style="color:#5edc88;">🛸 UFO</div>
-            <div style="color:#aaa;font-size:11px;">✅ 所有中</div>
-        </div>`;
+    // 解放済み惑星を絞り込む
+    const unlockedPlanets = PLANET_DEFS.filter(pd => {
+        if(pd.val==="moon")      return moonUnlocked;
+        if(pd.val==="mars")      return marsUnlocked;
+        if(pd.val==="solar")     return solarSystemUnlocked;
+        if(pd.val==="blackhole") return blackholeUnlocked;
+        if(pd.val==="quaplanas") return quaplanasUnlocked && ufoTechAcquired && quaplanasFactory;
+        return false;
+    });
+
+    if(unlockedPlanets.length === 0){
+        html += `<div style="font-size:12px;color:#555;">望遠鏡で惑星を発見すると派遣できます。</div>`;
     }
-    html += `</div>`;
 
-    if(!mission){
-        // select値を事前に読んで保存（DOMが再作成される前に）
-        const _ps = document.getElementById("rocketPlanetSelect");
-        const _rs = document.getElementById("rocketTypeSelect");
-        if(_ps && _ps.value) _savedPlanet = _ps.value;
-        if(_rs && _rs.value) _savedRocketType = _rs.value;
-        const availPlanets = [];
-        if(moonUnlocked) availPlanets.push({val:"moon", label:"🌕 月"});
-        if(marsUnlocked) availPlanets.push({val:"mars", label:"🔴 火星"});
-        const hasAnyRocket = Object.values(ownedRockets).some(v=>v>0);
-        const availRockets = [];
-        if((ownedRockets.small||0)>0)  availRockets.push({val:"small", label:"🚀 小型 (RP 1,000)"});
-        if((ownedRockets.medium||0)>0) availRockets.push({val:"medium", label:"🚀🚀 中型 (RP 2,500)"});
-        if((ownedRockets.large||0)>0)  availRockets.push({val:"large",  label:"🚀🚀🚀 大型 (RP 5,000)"});
+    unlockedPlanets.forEach(pd => {
+        const activeMission = rocketMissions.find(m=>m.planet===pd.val && m.progress<100);
+        const isBusy = !!activeMission;
+        const availVehicles = ROCKET_DEFS_LOCAL.filter(r => {
+            if(pd.ufoOnly) return r.key==="ufo" && ufoOwned;
+            return r.key==="ufo" ? ufoOwned : (ownedRockets[r.key]||0)>0;
+        });
 
-        if(availPlanets.length > 0){
-            const selPlanet = _savedPlanet || availPlanets[0].val;
-            const selRocket = (_savedRocketType && (ownedRockets[_savedRocketType]||0)>0) ? _savedRocketType : (availRockets[0]?.val || "small");
-            const rDef = ROCKET_DEFS.find(r=>r.key===selRocket);
-            const rpNeeded = rDef ? rDef.rpCost : 1000;
-            const canDispatch = rp >= rpNeeded && hasAnyRocket;
-            html += `<div style="font-size:12px;color:#aaa;margin-bottom:6px;">
-                派遣先: <select id="rocketPlanetSelect" onchange="_savedPlanet=this.value" style="background:#222;color:#fff;border:1px solid #555;border-radius:4px;padding:2px;">
-                    ${availPlanets.map(p=>`<option value="${p.val}" ${selPlanet===p.val?"selected":""}>${p.label}</option>`).join("")}
-                </select>
-                &nbsp;ロケット: <select id="rocketTypeSelect" onchange="_savedRocketType=this.value" style="background:#222;color:#fff;border:1px solid #555;border-radius:4px;padding:2px;" ${!hasAnyRocket?"disabled":""}>
-                    ${hasAnyRocket ? availRockets.map(r=>`<option value="${r.val}" ${selRocket===r.val?"selected":""}>${r.label}</option>`).join("") : `<option>（ロケット未購入）</option>`}
-                </select>
+        html += `<div style="background:#0d1525;border:1px solid ${pd.border}55;border-radius:8px;padding:8px 12px;">
+            <div style="font-size:13px;font-weight:bold;color:${pd.color};margin-bottom:2px;">${pd.label}</div>
+            <div style="font-size:11px;color:#666;margin-bottom:5px;">${pd.reward}${pd.extraCost?" （外貨30,000も消費）":""}</div>`;
+
+        if(isBusy){
+            html += `<div style="font-size:11px;color:${pd.color};margin-bottom:3px;">派遣中... ${activeMission.progress}%</div>
+            <div style="background:#111;border-radius:4px;height:8px;overflow:hidden;margin-bottom:4px;">
+                <div style="width:${activeMission.progress}%;height:100%;background:linear-gradient(90deg,${pd.border},${pd.color});transition:.3s;"></div>
             </div>
-            <button onclick="startRocketMission()" ${!canDispatch?"disabled":""} style="margin-top:4px;background:${canDispatch?"#1a2a50":"#1a1a1a"};border:1px solid ${canDispatch?"#55aaff":"#444"};color:${canDispatch?"#aaccff":"#666"};padding:10px 24px;border-radius:8px;font-size:14px;font-weight:bold;">
-                🚀 宇宙飛行士をロケットで派遣
-            </button>
-            ${!hasAnyRocket ? `<div style="font-size:11px;color:#ff8888;margin-top:3px;">ロケットを購入してください</div>` : !canDispatch ? `<div style="font-size:11px;color:#ff8888;margin-top:3px;">RP不足（必要: ${rpNeeded}）</div>` : ""}`;
+            <div style="font-size:10px;color:#555;">完了後に再派遣できます</div>`;
+        } else if(pd.ufoOnly && !ufoOwned){
+            html += `<div style="font-size:11px;color:#555;">🛸 UFOが必要です</div>`;
+        } else if(availVehicles.length===0){
+            html += `<div style="font-size:11px;color:#555;">乗り物を購入してください</div>`;
+        } else {
+            const rpShort = rp < Math.min(...availVehicles.map(v=>v.rpCost));
+            const fgShort = pd.extraCost && foreignMoney < 30000;
+            html += `<div style="display:flex;gap:5px;flex-wrap:wrap;">`;
+            availVehicles.forEach(rv => {
+                const canGo = rp>=rv.rpCost && !fgShort;
+                html += `<button onclick="startRocketMissionTo('${pd.val}','${rv.key}')" ${!canGo?"disabled":""}
+                    style="padding:4px 10px;font-size:11px;border-radius:5px;cursor:${canGo?"pointer":"default"};
+                    background:${canGo?"#1a2a50":"#111"};border:1px solid ${canGo?pd.border:"#333"};color:${canGo?pd.color:"#555"};">
+                    ${rv.label}<br><span style="font-size:10px;opacity:.8;">RP ${rv.rpCost}${pd.extraCost?" +外貨30k":""}</span>
+                </button>`;
+            });
+            html += `</div>`;
+            if(rpShort) html += `<div style="font-size:10px;color:#ff8888;margin-top:2px;">RP不足</div>`;
+            else if(fgShort) html += `<div style="font-size:10px;color:#ff8888;margin-top:2px;">外貨不足（30,000必要）</div>`;
         }
-    } else if(mission.progress < 100){
-        html += `<div style="font-size:12px;color:#55aaff;margin-top:4px;margin-bottom:3px;">派遣中... ${mission.progress}%</div>
-        <div style="background:#111;border-radius:6px;height:14px;overflow:hidden;">
-            <div style="width:${mission.progress}%;height:100%;background:linear-gradient(90deg,#ff9f1c,#ff5555);transition:.5s;"></div>
-        </div>`;
-    }
-    html += `</div>`;
+        html += `</div>`;
+    });
+
+    html += `</div></div>`;
     return html;
 }
 
+function startRocketMissionTo(planet, rType){
+    const isUfo = rType === "ufo";
+    const hasVehicle = isUfo ? ufoOwned : (ownedRockets[rType]||0)>0;
+    if(!hasVehicle){ showToast("乗り物を購入してください"); return; }
+    const ufoOnlyPlanets = ["solar","blackhole","quaplanas"];
+    if(ufoOnlyPlanets.includes(planet) && !isUfo){ showToast("この惑星はUFOでのみ派遣できます"); return; }
+    // 同じ惑星に既に派遣中なら不可
+    if(rocketMissions.some(m=>m.planet===planet && m.progress<100)){ showToast("この惑星には既に派遣中です"); return; }
+    const rpNeeded = isUfo ? 3000 : (ROCKET_DEFS_DATA[rType]?.rpCost || 1000);
+    if(!PLANET_REWARDS[planet] && planet!=="quaplanas"){ showToast("派遣先が無効です"); return; }
+    if(rp < rpNeeded){ showToast("RP不足（必要: "+rpNeeded+"）"); return; }
+
+    // クァプラナス専用フロー
+    if(planet === "quaplanas"){
+        if(!alienContactDone){ showToast("まずワープ派遣でクァプランと接触してください"); return; }
+        if(!ufoTechAcquired){ showToast("UFO技術が必要です"); return; }
+        if(foreignMoney < 30000){ showToast("外貨30,000が必要です"); return; }
+        rp -= rpNeeded;
+        foreignMoney -= 30000;
+        const mid = ++_missionIdCounter;
+        const ms = { id:mid, type:rType, planet:"quaplanas", progress:0, totalSec:60 };
+        rocketMissions.push(ms);
+        addLog("通知", "🛸 クァプラナス星へUFO派遣（外貨30,000）。");
+        resumeOneMission(ms);
+        renderAll();
+        return;
+    }
+
+    rp -= rpNeeded;
+    const baseSec = isUfo
+        ? {moon:30, mars:50, solar:90, blackhole:150}[planet]||100
+        : (ROCKET_DEFS_DATA[rType]?.travelSec[planet] || 100);
+    const mid = ++_missionIdCounter;
+    const ms = { id:mid, type:rType, planet, progress:0, totalSec:baseSec };
+    rocketMissions.push(ms);
+    addLog("通知", `${isUfo?"🛸":"🚀"} ${planet}へ派遣（${baseSec}秒）。`);
+    resumeOneMission(ms);
+    renderAll();
+}
+
+function resumeOneMission(ms){
+    if(!ms) return;
+    if(_missionTimers[ms.id]) clearInterval(_missionTimers[ms.id]);
+    const delay = adminScaledMs(ms.totalSec * 10);
+    _missionTimers[ms.id] = setInterval(()=>{
+        const m = rocketMissions.find(x=>x.id===ms.id);
+        if(!m){ clearInterval(_missionTimers[ms.id]); delete _missionTimers[ms.id]; return; }
+        m.progress = Math.min(100, m.progress + 1);
+        if(m.progress >= 100){
+            clearInterval(_missionTimers[ms.id]);
+            delete _missionTimers[ms.id];
+            setTimeout(()=>completeOneMission(ms.id), 300);
+        } else if(spacePanelUnlocked) renderSpacePanel();
+    }, delay);
+}
+
+function completeOneMission(mid){
+    const idx = rocketMissions.findIndex(m=>m.id===mid);
+    if(idx < 0) return;
+    const ms = rocketMissions[idx];
+    if(ms.rewarded) return;
+    ms.rewarded = true;
+    rocketMissions.splice(idx, 1);
+
+    if(ms.planet === "quaplanas"){
+        const rpGain = 500 + Math.floor(Math.random()*500);
+        const fgGain = 5000 + Math.floor(Math.random()*5000);
+        rp += rpGain; foreignMoney += fgGain;
+        addLog("通知", `🛸 クァプラナス派遣完了！RP+${rpGain}、外貨+${fgGain}。`);
+        showTopNotice(`🛸 クァプラナス派遣完了！RP+${rpGain} 外貨+${fgGain}！`, 5000);
+        renderAll(); return;
+    }
+
+    const pr = PLANET_REWARDS[ms.planet];
+    if(!pr){ renderAll(); return; }
+    const [fMin, fMax] = pr.foreign;
+    const [rMin, rMax] = pr.rp;
+    const vehicleMulti = {small:1.0, medium:1.5, large:2.5, ufo:3.5}[ms.type] || 1.0;
+    const fEarned = Math.floor((Math.floor(Math.random()*(fMax-fMin+1))+fMin + (pr.extraForeign||0)) * vehicleMulti);
+    const rpEarned = Math.floor((Math.floor(Math.random()*(rMax-rMin+1))+rMin) * vehicleMulti);
+    foreignMoney += fEarned; rp += rpEarned;
+    const PLANET_LABELS = {moon:"月",mars:"火星",solar:"太陽系",blackhole:"ブラックホール"};
+    const vLabel = {small:"小型🚀",medium:"中型🚀🚀",large:"大型🚀🚀🚀",ufo:"UFO🛸"}[ms.type]||ms.type;
+    addLog("通知", `${vLabel} ${PLANET_LABELS[ms.planet]||ms.planet}探査完了！外貨+${fEarned.toLocaleString()} RP+${rpEarned} (x${vehicleMulti})`);
+    showTopNotice(`${vLabel} ${PLANET_LABELS[ms.planet]||ms.planet}完了！外貨+${fEarned.toLocaleString()} RP+${rpEarned}`, 5000);
+    renderAll();
+}
+
+// 旧互換（単一ミッション用 — 新コードから参照しない）
+function resumeMission(){
+    rocketMissions.forEach(ms => resumeOneMission(ms));
+}
+function completeMission(){
+    // no-op: completeOneMission を使用
+}
+
 function renderRPFactoryCard(){
-    const secretCost = rpFactoryLevel < MAX_RP_FACTORY ? (rpFactoryLevel+1)*500 : 0;
-    const truckCost  = rpTruckSpeedLevel < MAX_RP_TRUCK ? (rpTruckSpeedLevel+1)*300 : 0;
-    const hackCost   = rpHackLevel < MAX_RP_HACK ? (rpHackLevel+1)*800 : 0;
+    const secretCost = rpFactoryLevel < MAX_RP_FACTORY ? Math.floor(500 * Math.pow(3, rpFactoryLevel)) : 0;
+    const truckCost  = rpTruckSpeedLevel < MAX_RP_TRUCK ? Math.floor(300 * Math.pow(2.5, rpTruckSpeedLevel)) : 0;
+    const hackCost   = rpHackLevel < MAX_RP_HACK ? Math.floor(800 * Math.pow(3, rpHackLevel)) : 0;
     const truckMulti = (1 + rpTruckSpeedLevel*0.1).toFixed(1);
     const hackUnlocked = hackLevel >= MAX_HACK_LEVEL;
     return `<div style="background:#1a0a2a;border:1px solid #c060ff;border-radius:8px;padding:10px 14px;margin-top:8px;">
@@ -4992,7 +5220,7 @@ function renderRPFactoryCard(){
                     : `<span style="font-size:11px;color:#5edc88;">✅ 最大</span>`}
             </div>
             ${hackUnlocked ? `<div>
-                <span style="color:#bbb;font-size:12px;">⚡ 発電所ハッキング強化 Lv${rpHackLevel}/${MAX_RP_HACK} (成功率+${rpHackLevel*5}%)</span><br>
+                <span style="color:#bbb;font-size:12px;">⚡ 発電所ハッキング強化 Lv${rpHackLevel}/${MAX_RP_HACK} (成功時電力獲得量 x${rpHackLevel+1})</span><br>
                 ${rpHackLevel < MAX_RP_HACK
                     ? `<button onclick="upgradeRPHack()" ${rp<hackCost?"disabled":""} style="background:#2a1a0a;border:1px solid #ffd166;color:#ffd166;padding:3px 10px;border-radius:5px;font-size:11px;">強化 Lv${rpHackLevel+1} (RP ${hackCost})</button>`
                     : `<span style="font-size:11px;color:#5edc88;">✅ 最大</span>`}
@@ -5003,7 +5231,7 @@ function renderRPFactoryCard(){
 
 function upgradeRPTruckSpeed(){
     if(rpTruckSpeedLevel >= MAX_RP_TRUCK) return;
-    const cost = (rpTruckSpeedLevel+1)*300;
+    const cost = Math.floor(300 * Math.pow(2.5, rpTruckSpeedLevel));
     if(rp < cost) return;
     rp -= cost; rpTruckSpeedLevel++;
     addLog("通知", `🚚 輸送速度強化 Lv${rpTruckSpeedLevel} (x${(1+rpTruckSpeedLevel*0.1).toFixed(1)}倍速)`);
@@ -5012,10 +5240,10 @@ function upgradeRPTruckSpeed(){
 
 function upgradeRPHack(){
     if(rpHackLevel >= MAX_RP_HACK) return;
-    const cost = (rpHackLevel+1)*800;
+    const cost = Math.floor(800 * Math.pow(3, rpHackLevel));
     if(rp < cost) return;
     rp -= cost; rpHackLevel++;
-    addLog("通知", `⚡ 発電所ハッキング強化 Lv${rpHackLevel} (成功率+${rpHackLevel*5}%)`);
+    addLog("通知", `⚡ 発電所ハッキング強化 Lv${rpHackLevel} — 最終電力獲得量 x${(rpHackLevel+1)}`);
     renderAll();
 }
 
@@ -5037,6 +5265,7 @@ function startObserve(target, resume){
     const _obsDelay = Math.max(50, Math.round(1000 / (window._adminTimeScale||1)));
     _observeTimer = setInterval(()=>{
         observeProgress++;
+        renderMysteryPanel();
         if(observeProgress >= 100){
             clearInterval(_observeTimer);
             _observeTimer = null;
@@ -5044,31 +5273,24 @@ function startObserve(target, resume){
             observeProgress = 100;
             finishObserve(target);
         }
-        renderMysteryPanel();
     }, _obsDelay);
 }
 
 function finishObserve(target){
     if(target === "moon"){
-        // 研究完了、5分後に月発見通知
-        addLog("通知", "🔭 観測完了！5分後に結果が出る...");
-        setTimeout(()=>{
-            astronomyUnlocked = true;
-            spacePanelUnlocked = true;
-            moonUnlocked = true;
-            document.getElementById("mysteryPanel").style.display = "none";
-            document.getElementById("spacePanel").style.display = "";
-            addLog("通知", "🌕 天文学者が月を発見しました！宇宙開拓カードが解放されました。");
-            showTopNotice("🌕 天文学者が月を発見しました！宇宙開拓カードが解放された！", 6000);
-            // 5分後に火星発見
-            setTimeout(()=>{
-                marsUnlocked = true;
-                addLog("通知", "🔴 天文学者が火星を発見しました！");
-                showTopNotice("🔴 天文学者が火星を発見しました！", 6000);
-                renderAll();
-            }, 5 * 60 * 1000);
-            renderAll();
-        }, 5 * 60 * 1000);
+        addLog("通知", "🔭 観測完了！月を発見しました！");
+        astronomyUnlocked = true;
+        spacePanelUnlocked = true;
+        moonUnlocked = true;
+        document.getElementById("mysteryPanel").style.display = "none";
+        document.getElementById("spacePanel").style.display = "";
+        addLog("通知", "🌕 天文学者が月を発見しました！宇宙開拓カードが解放されました。");
+        showTopNotice("🌕 天文学者が月を発見しました！宇宙開拓カードが解放された！", 6000);
+        // 火星も即時解放
+        marsUnlocked = true;
+        addLog("通知", "🔴 天文学者が火星を発見しました！");
+        showTopNotice("🔴 天文学者が火星を発見しました！", 6000);
+        renderAll();
     }
 }
 
@@ -5109,6 +5331,7 @@ function resumeRadioResearch(){
         radioTelescopeResearchProgress++;
         if(radioTelescopeResearchProgress >= 100){
             clearInterval(_radioResearchTimer);
+            _radioResearchTimer = null;
             radioTelescopeResearching = false;
             radioTelescopeUnlocked = true;
             showTopNotice("📡 電波望遠鏡が完成しました！", 5000);
@@ -5176,6 +5399,19 @@ function finishRadioObserve(target){
     renderAll();
 }
 
+// ブラックホール重点研究（他惑星研究停止）
+let _bhFocusResearch = false;
+let _savedMoonResearchers = 0, _savedMarsResearchers = 0, _savedSolarResearchers = 0;
+
+function startBHFocusResearch(){
+    if(blackholeResearching || warpDeveloped) return;
+    if(moonResearchers < 10 || marsResearchers < 10 || solarResearchers < 10) return;
+    // 他惑星研究者は維持したまま、一時的にRP生産のみ停止（消滅させない）
+    _bhFocusResearch = true;
+    startBHResearch();
+    addLog("通知", "🔬 ブラックホール重点研究開始。月・火星・太陽系の研究者がブラックホール研究のため一時停止しています。");
+}
+
 function startBHResearch(){
     if(blackholeResearching || warpDeveloped) return;
     blackholeResearching = true;
@@ -5190,6 +5426,11 @@ function startBHResearch(){
             _bhResearchTimer = null;
             blackholeResearching = false;
             warpDeveloped = true;
+            // 重点研究終了後、他惑星の研究を再開
+            if(_bhFocusResearch){
+                _bhFocusResearch = false;
+                addLog("通知", "🔬 重点研究完了。月・火星・太陽系の研究者がそれぞれの研究を再開しました。");
+            }
             addLog("通知", "🔬 研究者の1人がブラックホールでワープと何でも翻訳機を開発しました！");
             showTopNotice("🔬 研究者がブラックホールでワープと何でも翻訳機を開発しました！", 7000);
             renderAll();
@@ -5204,31 +5445,40 @@ function resumeBHResearch(){
         blackholeResearchProgress++;
         if(blackholeResearchProgress >= 100){
             clearInterval(_bhResearchTimer);
+            _bhResearchTimer = null;
             blackholeResearching = false;
             warpDeveloped = true;
+            if(_bhFocusResearch){
+                _bhFocusResearch = false;
+                addLog("通知", "🔬 重点研究完了。月・火星・太陽系の研究者がそれぞれの研究を再開しました。");
+            }
             showTopNotice("🔬 研究者がブラックホールでワープと何でも翻訳機を開発しました！", 7000);
             renderAll();
         } else if(spacePanelUnlocked) renderSpacePanel();
-    }, 3000);
+    }, adminScaledMs(3000));
 }
 
 let _lifeMissionTimer = null;
 function startLifeMission(phase){
     if(foreignMoney < 30000) return;
     if(quaplanasMission && quaplanasMission.progress < 100) return;
+
+    // シークレット派遣：アイテム消費
+    if(phase === "secret"){
+        const sel = document.getElementById("secretItemSelect");
+        const secretItems = inventory.filter(it=>it.class==="secret"&&!it.transporting);
+        if(secretItems.length === 0){ showToast("シークレットおにぎりが倉庫にありません！"); return; }
+        const itemId = sel ? Number(sel.value) : (secretItems[0] && secretItems[0].id);
+        const item = inventory.find(it=>it.id===itemId && it.class==="secret");
+        if(!item){ showToast("選択されたシークレットおにぎりが見つかりません"); return; }
+        inventory = inventory.filter(it=>it.id !== item.id);
+        addLog("通知", `🚀 ${item.emoji||"⭐"} ${item.name} を宇宙飛行士に持たせました。`);
+    }
+
     foreignMoney -= 30000;
-    quaplanasMission = { phase, progress: 0, startedAt: Date.now(), totalSec: 600 };
+    quaplanasMission = { phase, progress: 0 };
     addLog("通知", `🚀 生命惑星へ派遣開始（${phase}）。10分かかる。`);
-    if(_lifeMissionTimer) clearInterval(_lifeMissionTimer);
-    _lifeMissionTimer = setInterval(()=>{
-        const elapsed = (Date.now() - quaplanasMission.startedAt) / 1000;
-        quaplanasMission.progress = Math.min(100, Math.floor(elapsed / 600 * 100));
-        if(quaplanasMission.progress >= 100){
-            clearInterval(_lifeMissionTimer);
-            _lifeMissionTimer = null;
-            finishLifeMission(phase);
-        } else if(spacePanelUnlocked) renderSpacePanel();
-    }, 1000);
+    resumeLifeMission();
     renderAll();
 }
 
@@ -5236,14 +5486,15 @@ function resumeLifeMission(){
     if(!quaplanasMission) return;
     const phase = quaplanasMission.phase;
     if(_lifeMissionTimer) clearInterval(_lifeMissionTimer);
+    const delay = adminScaledMs(6000); // 100ステップ × 6秒 = 10分
     _lifeMissionTimer = setInterval(()=>{
-        const elapsed = (Date.now() - quaplanasMission.startedAt) / 1000;
-        quaplanasMission.progress = Math.min(100, Math.floor(elapsed / 600 * 100));
+        quaplanasMission.progress = Math.min(100, quaplanasMission.progress + 1);
         if(quaplanasMission.progress >= 100){
             clearInterval(_lifeMissionTimer);
+            _lifeMissionTimer = null;
             finishLifeMission(phase);
         } else if(spacePanelUnlocked) renderSpacePanel();
-    }, 1000);
+    }, delay);
 }
 
 function finishLifeMission(phase){
@@ -5270,13 +5521,15 @@ function finishLifeMission(phase){
 
 // ===== ロケット関連 =====
 const ROCKET_DEFS_DATA = {
-    small:  { rpCost:1000, travelSec:{ moon:60, mars:100 } },
-    medium: { rpCost:2500, travelSec:{ moon:40, mars:80 } },
-    large:  { rpCost:5000, travelSec:{ moon:25, mars:60 } },
+    small:  { rpCost:1000, travelSec:{ moon:60, mars:100, solar:180, blackhole:300 } },
+    medium: { rpCost:2500, travelSec:{ moon:40, mars:80,  solar:140, blackhole:240 } },
+    large:  { rpCost:5000, travelSec:{ moon:25, mars:60,  solar:100, blackhole:180 } },
 };
 const PLANET_REWARDS = {
-    moon: { foreign:[300,800], rp:[50,150] },
-    mars: { foreign:[700,2000], rp:[100,300], extraForeign:10000 },
+    moon:      { foreign:[300,800],    rp:[50,150] },
+    mars:      { foreign:[700,2000],   rp:[100,300], extraForeign:10000 },
+    solar:     { foreign:[3000,8000],  rp:[300,800], extraForeign:50000 },
+    blackhole: { foreign:[10000,30000],rp:[1000,3000], extraForeign:200000 },
 };
 
 function resumeRocketDev(){
@@ -5317,57 +5570,11 @@ function buyRocket(type){
     renderAll();
 }
 
-let _missionTimer = null;
-function startRocketMission(){
-    const planet = _savedPlanet || "moon";
-    const hasAny = Object.values(ownedRockets).some(v=>v>0);
-    const rType = (_savedRocketType && (ownedRockets[_savedRocketType]||0)>0) ? _savedRocketType : Object.keys(ownedRockets).find(k=>(ownedRockets[k]||0)>0) || "small";
-    if(!hasAny){ showToast("ロケットを先に購入してください"); return; }
-    const d = ROCKET_DEFS_DATA[rType] || ROCKET_DEFS_DATA[ownedRocket];
-    const pr = PLANET_REWARDS[planet];
-    if(!d || !pr) return;
-    if(rp < d.rpCost){ showToast(`RP不足（必要: ${d.rpCost}）`); return; }
-    if(rocketMission && rocketMission.progress < 100) return;
-    rp -= d.rpCost;
-    const totalSec = d.travelSec[planet] || 100;
-    rocketMission = { type: rType, planet, progress:0, totalSec, startedAt: Date.now() };
-    addLog("通知", `🚀 宇宙飛行士を${planet}へ派遣（${totalSec}秒）。`);
-    resumeMission();
-    renderAll();
-}
+let _missionTimers = {};  // { [missionId]: timerId }
+let _missionIdCounter = 0;
+// startRocketMission は startRocketMissionTo に統合済み
 
-function resumeMission(){
-    if(!rocketMission) return;
-    if(_missionTimer) clearInterval(_missionTimer);
-    _missionTimer = setInterval(()=>{
-        if(!rocketMission){ clearInterval(_missionTimer); return; }
-        const elapsed = (Date.now() - rocketMission.startedAt) / 1000;
-        rocketMission.progress = Math.min(100, Math.floor(elapsed / rocketMission.totalSec * 100));
-        if(rocketMission.progress >= 100){
-            clearInterval(_missionTimer);
-            _missionTimer = null;
-            setTimeout(completeMission, 300);
-        } else if(spacePanelUnlocked) renderSpacePanel();
-    }, 1000);
-}
-
-function completeMission(){
-    if(!rocketMission || rocketMission.rewarded) return;
-    rocketMission.rewarded = true;
-    const planet = rocketMission.planet;
-    const pr = PLANET_REWARDS[planet];
-    if(!pr){ rocketMission = null; renderAll(); return; }
-    const [fMin, fMax] = pr.foreign;
-    const [rMin, rMax] = pr.rp;
-    const fEarned = Math.floor(Math.random()*(fMax-fMin+1))+fMin + (pr.extraForeign||0);
-    const rpEarned = Math.floor(Math.random()*(rMax-rMin+1))+rMin;
-    foreignMoney += fEarned;
-    rp += rpEarned;
-    addLog("通知", `🚀 ${planet}探査完了！外貨+${fEarned.toLocaleString()} RP+${rpEarned}`);
-    showTopNotice(`🚀 ${planet}探査完了！外貨 +${fEarned.toLocaleString()} / RP +${rpEarned}`, 5000);
-    rocketMission = null;
-    renderAll();
-}
+// ↑ resumeMission / completeMission は startRocketMissionTo の下で定義済み
 
 function upgradeTelescope(){
     if(rp < 500) return;
@@ -5379,7 +5586,7 @@ function upgradeTelescope(){
 
 function upgradeRPFactory(){
     if(rpFactoryLevel >= MAX_RP_FACTORY) return;
-    const cost = (rpFactoryLevel + 1) * 500;
+    const cost = Math.floor(500 * Math.pow(3, rpFactoryLevel));
     if(rp < cost) return;
     rp -= cost;
     rpFactoryLevel++;
@@ -5467,6 +5674,28 @@ function buyBHResearcherWithRP(){
     renderAll();
 }
 
+// クァプラナス研究者
+function buyFirstQuapResearcher(){
+    const fd = getQFD();
+    const data = quaplanasFactoryData || (quaplanasFactoryData = {quapResearchers:0, quapResearcherBought:false});
+    if(data.quapResearcherBought || foreignMoney < 50000) return;
+    foreignMoney -= 50000;
+    data.quapResearcherBought = true;
+    data.quapResearchers = 1;
+    if(!rpUnlocked){ rpUnlocked = true; document.getElementById("rpDisplay").style.display = ""; }
+    if(!_rpLoopId) startRPLoop();
+    addLog("通知", "👩‍🔬 クァプラナスの研究者を外貨50,000で雇用した。10秒ごとに+100RP");
+    renderAll();
+}
+function buyQuapResearcherWithRP(){
+    const data = quaplanasFactoryData;
+    if(!data || !data.quapResearcherBought || rp < 2000 || (data.quapResearchers||0) >= 10) return;
+    rp -= 2000;
+    data.quapResearchers = Math.min(10, (data.quapResearchers||0) + 1);
+    addLog("通知", `👩‍🔬 クァプラナス研究者を追加雇用。現在${data.quapResearchers}人。`);
+    renderAll();
+}
+
 // 旧互換（初回研究者購入 → 月）
 function buyFirstResearcher(){ buyFirstMoonResearcher(); }
 function buyResearcherWithRP(){ buyMoonResearcherWithRP(); }
@@ -5481,20 +5710,101 @@ function startRPLoop(){
         if(solarResearchers > 10) solarResearchers = 10;
         if(bhResearchers > 10) bhResearchers = 10;
 
-        const moonGain = moonResearchers * 10;
-        const marsGain = marsResearchers * 20;
-        const solarGain = solarResearchers * 30;
+        const moonGain = _bhFocusResearch ? 0 : moonResearchers * 10;
+        const marsGain = _bhFocusResearch ? 0 : marsResearchers * 20;
+        const solarGain = _bhFocusResearch ? 0 : solarResearchers * 30;
         const bhGain = bhResearchers * 50;
-        const total = moonGain + marsGain + solarGain + bhGain;
+        const quapGain = (quaplanasFactoryData?.quapResearchers || 0) * 100;
+        const total = moonGain + marsGain + solarGain + bhGain + quapGain;
         if(total > 0){
             rp += total;
             const rpEl = document.getElementById("rpDisplay");
-            if(rpEl && rpUnlocked) rpEl.textContent = `RP ${rp.toFixed(0)}`;
+            if(rpEl && rpUnlocked) rpEl.innerHTML = `RP ${rp.toFixed(0)}${formatUnitHint(rp)}`;
             if(spacePanelUnlocked) renderSpacePanel();
         }
     }, 10000);
 }
 
+
+function renderExchangeArea(){
+    const panel = document.getElementById("exchangePanel");
+    const area  = document.getElementById("exchangeArea");
+    if(!panel || !area) return;
+    if(!foreignUnlocked){ panel.style.display = "none"; return; }
+    panel.style.display = "";
+    area.innerHTML = `
+        <div style="font-size:12px;color:#aaa;margin-bottom:8px;">
+            外貨 → 円: <span style="color:#55aaff;">1外貨 = 1,000円</span>　／　円 → 外貨: <span style="color:#55aaff;">1,000円 = 1外貨</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px;">
+            <span style="font-size:12px;color:#ffd166;">💰 ${Math.floor(money).toLocaleString()}${formatUnitHint(money)}円</span>
+            <span style="font-size:12px;color:#55aaff;">🌍 ${formatForeign(foreignMoney)}${formatUnitHint(foreignMoney)}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:4px;">
+            <span style="font-size:12px;">外貨を円に換える:</span>
+            <input type="number" id="ex_foreignToYen" value="1" min="0.001" step="0.001"
+                style="width:90px;padding:3px 5px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
+            <span id="ex_f2yHint"></span>
+            <span style="font-size:12px;color:#aaa;">外貨 → <span id="ex_foreignToYenPreview" style="color:#ffd166;">1,000円</span></span>
+            <button onclick="exchangeForeignToYen()" style="padding:3px 12px;font-size:12px;background:#1a2a3a;border:1px solid #55aaff;color:#aaccff;border-radius:6px;cursor:pointer;">換金</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+            <span style="font-size:12px;">円を外貨に換える:</span>
+            <input type="number" id="ex_yenToForeign" value="1000" min="1" step="1"
+                style="width:90px;padding:3px 5px;background:#222;color:#fff;border:1px solid #555;border-radius:4px;font-size:12px;">
+            <span id="ex_y2fHint"></span>
+            <span style="font-size:12px;color:#aaa;">円 → <span id="ex_yenToForeignPreview" style="color:#55aaff;">1外貨</span></span>
+            <button onclick="exchangeYenToForeign()" style="padding:3px 12px;font-size:12px;background:#1a1a3a;border:1px solid #55aaff;color:#aaccff;border-radius:6px;cursor:pointer;">換金</button>
+        </div>`;
+    // プレビュー更新リスナー（oninputはHTML側で設定済みのためaddEventListenerで追加）
+    const f2y = document.getElementById("ex_foreignToYen");
+    const y2f = document.getElementById("ex_yenToForeign");
+    if(f2y) f2y.addEventListener("input", ()=>{
+        const v = parseFloat(f2y.value)||0;
+        const yen = Math.floor(v * 1000);
+        const prev = document.getElementById("ex_foreignToYenPreview");
+        if(prev) prev.innerHTML = `${yen.toLocaleString()}${formatUnitHint(yen)}円`;
+        const hint = document.getElementById("ex_f2yHint");
+        if(hint) hint.innerHTML = formatUnitHint(v);
+    });
+    if(y2f) y2f.addEventListener("input", ()=>{
+        const v = parseFloat(y2f.value)||0;
+        const gained = v * 0.001;
+        const prev = document.getElementById("ex_yenToForeignPreview");
+        if(prev) prev.innerHTML = `${gained.toFixed(3)}${formatUnitHint(gained)}外貨`;
+        const hint = document.getElementById("ex_y2fHint");
+        if(hint) hint.innerHTML = formatUnitHint(v);
+    });
+}
+
+function exchangeForeignToYen(){
+    const input = document.getElementById("ex_foreignToYen");
+    const amount = parseFloat(input?.value)||0;
+    if(amount <= 0 || foreignMoney < amount){
+        showTopNotice("⚠️ 外貨が不足しています", 2000); return;
+    }
+    const yen = Math.floor(amount * 1000);
+    foreignMoney -= amount;
+    money += yen;
+    addLog("通知", `💱 外貨 ${formatForeign(amount)} → ${yen.toLocaleString()}円 に両替しました。`);
+    renderExchangeArea();
+    document.getElementById("money").textContent = Math.floor(money).toLocaleString();
+}
+
+function exchangeYenToForeign(){
+    const input = document.getElementById("ex_yenToForeign");
+    const yen = Math.floor(parseFloat(input?.value)||0);
+    if(yen <= 0 || money < yen){
+        showTopNotice("⚠️ 円が不足しています", 2000); return;
+    }
+    const gained = yen * 0.001;
+    money -= yen;
+    foreignMoney += gained;
+    addLog("通知", `💱 ${yen.toLocaleString()}円 → 外貨 ${formatForeign(gained)} に両替しました。`);
+    renderExchangeArea();
+    document.getElementById("money").textContent = Math.floor(money).toLocaleString();
+    document.getElementById("foreignMoney").textContent = `外貨 ${formatForeign(foreignMoney)}`;
+}
 
 function renderUpgradeArea(){
     const nextPackaging = PACKAGING_UPGRADES[packagingLevel];
@@ -5521,7 +5831,7 @@ function renderUpgradeArea(){
 
     // 交通法規適用UI
     const trafficLawBtn = trafficLawOwned
-        ? `<span style="font-size:11px;color:#5edc88;">✅ 交通法規適用中（輸送時間x1.5・事故/拒否率大幅低減）</span>`
+        ? `<span style="font-size:11px;color:#5edc88;">✅ 交通法規適用中（販売価格x1.2・輸送時間x1.5・事故/拒否率大幅低減）</span>`
         : `<button onclick="buyTrafficLaw()" ${foreignMoney < TRAFFIC_LAW_COST ? "disabled":""} style="padding:2px 8px;font-size:11px;background:#55aaff;color:#111;">適用(外貨${TRAFFIC_LAW_COST})</button>`;
 
     // 工場拡張ブーストUI
@@ -5530,45 +5840,45 @@ function renderUpgradeArea(){
         : `<button onclick="buyExpansionLimitBoost()" ${foreignMoney < EXPANSION_LIMIT_BOOST_COST ? "disabled":""} style="padding:2px 8px;font-size:11px;background:#55aaff;color:#111;">上限+50%(外貨${EXPANSION_LIMIT_BOOST_COST})</button>`;
 
     document.getElementById("upgradeArea").innerHTML = `
-        <div style="font-size:11px;color:#ffd166;margin-bottom:6px;">📊 推定平均収入: ${estimateEarthIncomePerMin().toLocaleString()}円/分${currentWorld!=="earth"?` ｜ 別惑星滞在 ${Math.max(0,Math.floor((Date.now()-_worldSwitchTime)/60000))}分`:``}</div>
+        <div style="font-size:11px;color:#ffd166;margin-bottom:6px;">📊 推定平均収入: ${estimateEarthIncomePerMin().toLocaleString()}${formatUnitHint(estimateEarthIncomePerMin())}円/分${foreignUnlocked?` ｜ 外貨 ${formatForeign(estimateEarthForeignPerMin())}${formatUnitHint(estimateEarthForeignPerMin())}/分`:''}${rpUnlocked?` ｜ RP ${estimateEarthRPPerMin().toLocaleString()}${formatUnitHint(estimateEarthRPPerMin())}/分`:''}${currentWorld!=="earth"?` ｜ 別惑星滞在 ${Math.max(0,Math.floor((Date.now()-_worldSwitchTime)/60000))}分`:``}</div>
         <div class="controlRow" style="margin-bottom:6px;">
             🔧 自動修理システム:
-            <button onclick="buyAutoRepair()" ${autoRepairOwned || money < 300000 ? "disabled":""} style="padding:2px 8px; font-size:11px; margin-left:4px;">${autoRepairOwned ? "✅ 導入済み" : "導入(300,000円)"}</button>
+            <button onclick="buyAutoRepair()" ${autoRepairOwned || money < 300000 ? "disabled":""} style="padding:2px 8px; font-size:11px; margin-left:4px;">${autoRepairOwned ? "✅ 導入済み" : `導入(300,000${formatUnitHint(300000,false)}円)`}</button>
         </div>
         <hr style="border-color:#333;margin:4px 0 8px;">
         <div style="font-size:13px; line-height:1.8;">
             ⚡ 生産基本速度 Lv.${speedLevel}/${eMaxSpeed} <span style="color:#ffd166; font-size:11px;">(x${(18000/Math.max(1600,(18000-(speedLevel-1)*800))).toFixed(2)}倍速)</span>
             ${speedLevel >= eMaxSpeed
                 ? `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み</span>`
-                : `<button onclick="upgradeSpeed()" ${money < getSpeedUpgradeCost() ? "disabled":""} style="padding:2px 8px; font-size:11px;">強化(${getSpeedUpgradeCost().toLocaleString()}円)</button>`
+                : `<button onclick="upgradeSpeed()" ${money < getSpeedUpgradeCost() ? "disabled":""} style="padding:2px 8px; font-size:11px;">強化(${getSpeedUpgradeCost().toLocaleString()}${formatUnitHint(getSpeedUpgradeCost(),false)}円)</button>`
             }
             | 🔁 同時並列ライン ${multiRoll}/${eMaxMulti} 
             ${multiRoll >= eMaxMulti
                 ? `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み</span>`
-                : `<button onclick="upgradeMultiRoll()" ${money < getMultiRollUpgradeCost() ? "disabled":""} style="padding:2px 8px; font-size:11px;">拡張(${getMultiRollUpgradeCost().toLocaleString()}円)</button>`
+                : `<button onclick="upgradeMultiRoll()" ${money < getMultiRollUpgradeCost() ? "disabled":""} style="padding:2px 8px; font-size:11px;">拡張(${getMultiRollUpgradeCost().toLocaleString()}${formatUnitHint(getMultiRollUpgradeCost(),false)}円)</button>`
             }
             <br>
             🧬 禁断変異誘導誘発 Lv.${mutationLevel}/${eMaxMut} <span style="color:#c86cff; font-size:11px;">(変異ボーナス+${mutationLevel})</span>
             ${mutationLevel >= eMaxMut
                 ? `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み</span>`
-                : `<button onclick="upgradeMutation()" ${money < getMutationUpgradeCost() ? "disabled":""} style="padding:2px 8px; font-size:11px;">研究(${getMutationUpgradeCost().toLocaleString()}円)</button>`
+                : `<button onclick="upgradeMutation()" ${money < getMutationUpgradeCost() ? "disabled":""} style="padding:2px 8px; font-size:11px;">研究(${getMutationUpgradeCost().toLocaleString()}${formatUnitHint(getMutationUpgradeCost(),false)}円)</button>`
             }
             | ✨ 量子品質保証 Lv.${qualityLevel}/${eMaxQual} (現在:x${(1 + qualityLevel*0.15).toFixed(2)})
             ${qualityLevel >= eMaxQual
                 ? `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み</span>`
-                : `<button onclick="upgradeQuality()" ${money < getQualityUpgradeCost() ? "disabled":""} style="padding:2px 8px; font-size:11px;">投資(${getQualityUpgradeCost().toLocaleString()}円)</button>`
+                : `<button onclick="upgradeQuality()" ${money < getQualityUpgradeCost() ? "disabled":""} style="padding:2px 8px; font-size:11px;">投資(${getQualityUpgradeCost().toLocaleString()}${formatUnitHint(getQualityUpgradeCost(),false)}円)</button>`
             }
             <br>
             📦 バルク梱包システム: <span style="color:#ffd166;">${packagingLevel === 0 ? "通常生産" : packagingLevel === 1 ? "クレート(40倍)" : "コンテナ(500倍)"}</span>
             ${!nextPackaging
                 ? `<span style="font-size:11px;color:#5edc88;">✅ 最大強化済み</span>`
-                : `<button onclick="upgradePackaging()" ${money < nextPackaging.cost ? "disabled":""} style="padding:2px 8px; font-size:11px;">${nextPackaging.next}化(${nextPackaging.cost.toLocaleString()}円)</button>`
+                : `<button onclick="upgradePackaging()" ${money < nextPackaging.cost ? "disabled":""} style="padding:2px 8px; font-size:11px;">${nextPackaging.next}化(${nextPackaging.cost.toLocaleString()}${formatUnitHint(nextPackaging.cost,false)}円)</button>`
             }
             <br>
             🤖 自動化パルス生産コア:
             ${autoRollOwned
                 ? `<span style="font-size:11px;color:#5edc88;">✅ 所有済み</span>`
-                : `<button onclick="buyAutoRoll()" ${money < 5000 ? "disabled":""} style="padding:2px 8px; font-size:11px;">AIコア購入(5,000円)</button>`
+                : `<button onclick="buyAutoRoll()" ${money < 5000 ? "disabled":""} style="padding:2px 8px; font-size:11px;">AIコア購入(5,000${formatUnitHint(5000,false)}円)</button>`
             }
             <button onclick="toggleAutoRoll()" ${!autoRollOwned ? "disabled":""} style="padding:2px 8px; font-size:11px; background:${powerGrid.isBroken ? '#444' : autoRollEnabled?'#5edc88':'#ffd166'}">
                 状態: ${powerGrid.isBroken ? "⚡ ブレーカー停止によりOFF" : autoRollEnabled ? "稼働中(ON)" : "待機中(OFF)"}
@@ -5576,12 +5886,12 @@ function renderUpgradeArea(){
             <br>
             🏭 倉庫拡張 現在上限:${getStorageLimit()}/${STORAGE_LIMIT_MAX}個
             ${storageExpansionLevel < STORAGE_EXPANSION_COST.length
-                ? `<button onclick="buyStorageExpansion()" ${money < STORAGE_EXPANSION_COST[storageExpansionLevel] ? "disabled":""} style="padding:2px 8px;font-size:11px;">拡張+100(${STORAGE_EXPANSION_COST[storageExpansionLevel].toLocaleString()}円)</button>`
+                ? `<button onclick="buyStorageExpansion()" ${money < STORAGE_EXPANSION_COST[storageExpansionLevel] ? "disabled":""} style="padding:2px 8px;font-size:11px;">拡張+100(${STORAGE_EXPANSION_COST[storageExpansionLevel].toLocaleString()}${formatUnitHint(STORAGE_EXPANSION_COST[storageExpansionLevel],false)}円)</button>`
                 : `<span style="font-size:11px;color:#5edc88;">✅ 最大拡張済み(${STORAGE_LIMIT_MAX}個)</span>`
             }
             <br>
             ${foreignUnlocked ? `
-            <div style="font-size:15px;font-weight:bold;color:#55aaff;margin-bottom:2px;letter-spacing:1px;">💵 外貨強化エリア <span style="font-size:13px;font-weight:normal;color:#88bbff;">（所持外貨: ${formatForeign(foreignMoney)}）</span></div>
+            <div style="font-size:15px;font-weight:bold;color:#55aaff;margin-bottom:2px;letter-spacing:1px;">💵 外貨強化エリア <span style="font-size:13px;font-weight:normal;color:#88bbff;">（所持外貨: ${formatForeign(foreignMoney)}${formatUnitHint(foreignMoney)}）</span></div>
             <div style="font-size:12px;line-height:2;">
             ⚡ ブレーカー強化 Lv.${breakerLevel}/${MAX_BREAKER_LEVEL}
             <span style="font-size:11px;color:#aaa;">（ブレーカーが落ちた時に強化コストの半額外貨で維持、払えない場合ダウングレード）</span>
@@ -5591,7 +5901,7 @@ function renderUpgradeArea(){
             <span style="font-size:11px;color:#aaa;">（全拡張上限+50%）</span>
             <br>
             🚦 交通法規適用: ${trafficLawBtn}
-            <span style="font-size:11px;color:#aaa;">（納品拒否・事故率を大幅低減、輸送時間は1.5倍）</span>
+            <span style="font-size:11px;color:#aaa;">（販売価格1.2倍・納品拒否・事故率を大幅低減、輸送時間は1.5倍）</span>
             <br>
             ⚡ 自動ブレーカー復旧: ${autoRecoverBtn}
             <span style="font-size:11px;color:#aaa;">（ブレーカーが落ちた時に円を使って自動復旧）</span>
@@ -5647,7 +5957,7 @@ function buyTrafficLaw(){
     if(foreignMoney < TRAFFIC_LAW_COST){ showToast(`外貨が不足しています（必要: ${TRAFFIC_LAW_COST}）`); return; }
     foreignMoney -= TRAFFIC_LAW_COST;
     trafficLawOwned = true;
-    addLog("通知", `🚦 交通法規を適用しました。納品拒否率・事故率が大幅に低下します（輸送時間は1.5倍）。`);
+    addLog("通知", `🚦 交通法規を適用しました。販売価格1.2倍・納品拒否率・事故率が大幅に低下します（輸送時間は1.5倍）。`);
     renderAll();
 }
 
@@ -5674,7 +5984,7 @@ function buyHacker(){
 }
 
 function setHackerTarget(val){
-    hackerTargetLevel = Math.max(110, Math.min(900, Number(val) || 200));
+    hackerTargetLevel = Math.max(110, Number(val) || 200);
     // 目標変更時にすぐチェック
     if(_hackerTimer){ clearTimeout(_hackerTimer); _hackerTimer = null; }
     hackerTick();
@@ -5758,7 +6068,8 @@ function doHackerStop(isSuccess){
     cancelAnimationFrame(hackAnimId);
     _hackerPhase = "waiting";
 
-    const cfg = HACK_CONFIGS[Math.max(0, hackLevel-1)];
+    const cfg = {...HACK_CONFIGS[Math.max(0, hackLevel-1)]};
+    cfg.gain = Math.floor(cfg.gain * (1 + (rpHackLevel||0)));
     if(isSuccess){
         powerGrid.level += cfg.gain;
         addLog("AI", `🤖 ハッカー自動ハッキング成功！電力 → ${powerGrid.level}%`);
@@ -5831,11 +6142,11 @@ function renderAtRoute(ri){
     html += `</div>`;
     html += `<div style="font-size:12px;line-height:1.8;">`;
     html += `フィルタ: <button id="atFilterToggle_${ri}" onclick="toggleAtFilter(${ri})" style="font-size:11px;padding:2px 8px;margin:2px 0;"></button>`;
-    html += `<span id="atPriceArea_${ri}"> 単価 <input type="number" id="atMaxPrice_${ri}" value="${route.maxPrice}" style="width:80px;" min="0"> 円以下を出荷</span>`;
+    html += `<span id="atPriceArea_${ri}"> 単価 <input type="number" id="atMaxPrice_${ri}" value="${route.maxPrice}" style="width:80px;" min="0" oninput="document.getElementById('atPriceHint_${ri}').innerHTML=formatUnitHint(this.value)"> 円以下を出荷<span id="atPriceHint_${ri}">${formatUnitHint(route.maxPrice)}</span></span>`;
     html += `<span id="atRarityArea_${ri}" style="display:none;"> <select id="atMaxRarity_${ri}">${RARITY_ORDER.map(r=>`<option value="${r}" ${route.maxRarity===r?"selected":""}>${RARITY_LABELS[r]||r}</option>`).join("")}</select> 以下を出荷</span>`;
-    html += `<br>最低輸送数: <input type="number" id="atMinCount_${ri}" value="${route.minCount||0}" style="width:60px;" min="0" max="${Math.floor(getTruckCapacity(trucks[route.truck]||trucks.light) / (packagingLevel===2?60:packagingLevel===1?6:1))}" title="この個数に達するまで輸送しない（0=制限なし、最大値は車両積載数）"> 個以上で出荷 <span style="font-size:10px;color:#888;">（最大: ${Math.floor(getTruckCapacity(trucks[route.truck]||trucks.light) / (packagingLevel===2?60:packagingLevel===1?6:1))}）</span></span>`;
+    html += `<br>最低輸送数: <input type="number" id="atMinCount_${ri}" value="${route.minCount||0}" style="width:60px;" min="0" title="この個数に達するまで輸送しない（0=制限なし）" oninput="document.getElementById('atMinHint_${ri}').innerHTML=formatUnitHint(this.value)"><span id="atMinHint_${ri}">${formatUnitHint(route.minCount||0)}</span> 個以上で出荷 <span style="font-size:10px;color:#888;">（積載上限: ${Math.floor(getTruckCapacity(trucks[route.truck]||trucks.light) / (packagingLevel===2?60:packagingLevel===1?6:1))}個 ／ 超過入力時は積載上限で輸送）</span></span>`;
     html += `<br>配備車両: <select id="atTruck_${ri}">${Object.entries(trucks).filter(([,t])=>t.owned).map(([k,t])=>`<option value="${k}" ${route.truck===k?"selected":""}>${t.name}</option>`).join("")}</select>`;
-    html += ` ➜ 納品先目標: <select id="atShop_${ri}">${shops.map((s,i)=>`<option value="${i}" ${route.shop===i?"selected":""} ${!s.unlocked?"disabled":""}>${s.name}</option>`).join("")}</select>`;
+    html += ` ➜ 納品先目標: <select id="atShop_${ri}">${shops.map((s,i)=>`<option value="${i}" ${route.shop===i?"selected":""} ${!s.unlocked?"disabled":""}>${s.isAbandon?`${s.name}（輸送0秒・倍率0倍）`:s.name}</option>`).join("")}</select>`;
     html += `</div></div>`;
     return html;
 }
@@ -5852,10 +6163,7 @@ function bindAtRoute(ri){
     get(`atShop_${ri}`).onchange = e => { route.shop = Number(e.target.value); checkAtDuplicates(); };
     const mc = get(`atMinCount_${ri}`);
     if(mc) mc.onchange = e => {
-        const truckObj = trucks[route.truck] || trucks.light;
-        const ls = packagingLevel===2 ? 60 : packagingLevel===1 ? 6 : 1;
-        const maxVal = Math.floor(getTruckCapacity(truckObj) / ls);
-        route.minCount = Math.max(0, Math.min(maxVal, Number(e.target.value)||0));
+        route.minCount = Math.max(0, Number(e.target.value)||0);
         e.target.value = route.minCount;
     };
 
@@ -5983,6 +6291,10 @@ function runAutoTransport(){
         if(!shop || !shop.unlocked || shop.busy || !truck.owned) continue;
 
         const capacity = getTruckCapacity(truck);
+        const ls = (inventory[0]?.loadSize) || (packagingLevel===2?60:packagingLevel===1?6:1);
+        const maxItems = Math.floor(capacity / ls);
+        // minCountが積載上限を超えている場合、積載上限を実効閾値とする
+        const effectiveMin = (route.minCount > 0 && route.minCount > maxItems) ? maxItems : route.minCount;
         let usedCapacity = 0;
         const targets = [];
 
@@ -5999,15 +6311,129 @@ function runAutoTransport(){
             usedCapacity += item.loadSize;
             targets.push(item.id);
         }
-        if(targets.length > 0 && (!(route.minCount > 0) || targets.length >= route.minCount)) startSell(route.shop, targets, route.truck);
+        if(targets.length > 0 && (!(effectiveMin > 0) || targets.length >= effectiveMin)) startSell(route.shop, targets, route.truck);
     }
 }
 
+// 図鑑コンプリートボーナス倍率計算
+// レア度ごとに「そのレア度の全種を発見済み」で加算
+const DICT_BONUS_TABLE = [
+    {cls:"common",    bonus:0.05},
+    {cls:"uncommon",  bonus:0.07},
+    {cls:"rare",      bonus:0.10},
+    {cls:"epic",      bonus:0.13},
+    {cls:"legend",    bonus:0.08},
+    {cls:"mythical",  bonus:0.07},
+    {cls:"secret",    bonus:1.00},
+];
+const DICT_SECRETS = ["バナナおにぎり","DJおにぎり","Errorおにぎり","発光おにぎり","抹茶あんこおにぎり","違法電圧おにぎり","圧縮おにぎり","密輸おにぎり","賄賂おにぎり","???おにぎり"];
+
+function calcDictBonus(){
+    let multi = 1.0;
+    for(const row of DICT_BONUS_TABLE){
+        const allOfClass = row.cls === "secret"
+            ? DICT_SECRETS
+            : onigiris.filter(o=>o.class===row.cls).map(o=>o.name);
+        if(allOfClass.length > 0 && allOfClass.every(n=>discoveredOnigiris.has(n))){
+            multi += row.bonus;
+        }
+    }
+    return multi;
+}
+
+function showDictBonusPopup(){
+    let existing = document.getElementById("dictBonusPopup");
+    if(existing){ existing.remove(); return; }
+
+    const el = document.createElement("div");
+    el.id = "dictBonusPopup";
+    el.style.cssText = "position:fixed;inset:0;background:#000b;z-index:8500;display:flex;align-items:center;justify-content:center;";
+    el.addEventListener("click", e=>{ if(e.target===el) el.remove(); });
+
+    let cumulative = 1.0;
+    const rows = DICT_BONUS_TABLE.map(row=>{
+        const allOfClass = row.cls === "secret"
+            ? DICT_SECRETS
+            : onigiris.filter(o=>o.class===row.cls).map(o=>o.name);
+        const total = allOfClass.length;
+        const found = allOfClass.filter(n=>discoveredOnigiris.has(n)).length;
+        const complete = total > 0 && found === total;
+        const color = RARITY_COLORS[row.cls] || "#888";
+        const label = RARITY_LABELS[row.cls] || row.cls;
+        const prevCum = cumulative;
+        if(complete) cumulative += row.bonus;
+        const dispCum = complete ? cumulative.toFixed(2) : prevCum.toFixed(2);
+        return `<tr style="opacity:${complete?1:0.4};">
+            <td style="padding:4px 10px;color:${color};">${label}</td>
+            <td style="padding:4px 10px;text-align:center;color:#aaa;font-size:11px;">${found}/${total}</td>
+            <td style="padding:4px 10px;text-align:right;color:${complete?"#ffd166":"#555"};">${complete?dispCum+"倍":"未達成"}</td>
+            <td style="padding:4px 10px;text-align:right;color:${complete?"#5edc88":"#555"};">${complete?"+"+row.bonus.toFixed(2):"--"}</td>
+        </tr>`;
+    }).join("");
+
+    const total = calcDictBonus();
+    el.innerHTML = `<div style="background:#1a1a1a;border:1px solid #555;border-radius:12px;padding:20px;min-width:340px;max-width:95vw;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="font-size:14px;font-weight:bold;color:#ffd166;">📖 図鑑コンプボーナス</div>
+            <button onclick="document.getElementById('dictBonusPopup').remove()" style="background:#333;color:#aaa;border:none;padding:3px 10px;border-radius:6px;cursor:pointer;">✕</button>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+            <thead><tr style="color:#888;font-size:11px;border-bottom:1px solid #333;">
+                <th style="padding:3px 10px;text-align:left;">レア度</th>
+                <th style="padding:3px 10px;">達成</th>
+                <th style="padding:3px 10px;text-align:right;">累計倍率</th>
+                <th style="padding:3px 10px;text-align:right;">増加分</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+        <div style="margin-top:12px;border-top:1px solid #333;padding-top:10px;text-align:right;font-size:14px;color:#ffd166;font-weight:bold;">
+            現在の合計: <span style="font-size:18px;">${total.toFixed(2)}倍</span>
+        </div>
+        <div style="font-size:11px;color:#666;margin-top:6px;text-align:center;">各レア度の全種を発見するとボーナス加算（将来の販売価格補正に使用予定）</div>
+    </div>`;
+    document.body.appendChild(el);
+}
+
 function renderDictionary() {
+    // 倉庫のアイテムを図鑑に永久反映（未登録チェック）
+    const _allowedNames = new Set([...onigiris.map(o=>o.name),"バナナおにぎり","DJおにぎり","Errorおにぎり","発光おにぎり","抹茶あんこおにぎり","違法電圧おにぎり","圧縮おにぎり","密輸おにぎり","賄賂おにぎり","???おにぎり"]);
+    for(const item of inventory){
+        const baseName = onigiris.find(o=>item.name.includes(o.name))?.name || (item.class==="secret" ? item.name.replace(/^[^\w]*/, "").replace(/\s*[\(（].*$/, "").trim() : null);
+        if(baseName && _allowedNames.has(baseName) && !discoveredOnigiris.has(baseName)){
+            discoveredOnigiris.add(baseName);
+        }
+        // シークレットは name から base名を特定
+        if(item.class === "secret"){
+            const secretNames = ["バナナおにぎり","DJおにぎり","Errorおにぎり","発光おにぎり","抹茶あんこおにぎり","違法電圧おにぎり","圧縮おにぎり","密輸おにぎり","賄賂おにぎり","???おにぎり"];
+            for(const sn of secretNames){
+                if(item.name.includes(sn) && !discoveredOnigiris.has(sn)){
+                    discoveredOnigiris.add(sn);
+                }
+            }
+        }
+    }
+
     const area = document.getElementById("dictionaryArea");
     const found = discoveredOnigiris.size;
     const total = onigiris.length + 10; // +10種のSECRET
     document.getElementById("dictCount").textContent = `${found}/${total}`;
+
+    // 図鑑タイトルにボーナス確認ボタン追加
+    const dictBonus = calcDictBonus();
+    const dictHeader = document.getElementById("dictBonusBtn");
+    if(!dictHeader){
+        const h = document.querySelector("#dictionaryArea")?.closest(".panel")?.querySelector("h2");
+        if(h && !h.querySelector("#dictBonusBtn")){
+            const btn = document.createElement("button");
+            btn.id = "dictBonusBtn";
+            btn.textContent = `コンプボーナス x${dictBonus.toFixed(2)}`;
+            btn.style.cssText = "margin-left:8px;padding:2px 8px;font-size:11px;background:#2a1a00;border:1px solid #ffd16688;color:#ffd166;border-radius:6px;cursor:pointer;";
+            btn.onclick = showDictBonusPopup;
+            h.appendChild(btn);
+        }
+    } else {
+        dictHeader.textContent = `コンプボーナス x${dictBonus.toFixed(2)}`;
+    }
 
     // 通常おにぎりの図鑑
     const regularRows = onigiris.map(base => {
@@ -6015,7 +6441,7 @@ function renderDictionary() {
         const color = RARITY_COLORS[base.class] || "#888";
         const label = RARITY_LABELS[base.class] || base.class;
         if(unlocked){
-            return `<div style="padding:3px 0;border-bottom:1px solid #222;display:flex;align-items:center;gap:6px;">
+            return `<div onclick="showDictBonusPopup()" style="padding:3px 0;border-bottom:1px solid #222;display:flex;align-items:center;gap:6px;cursor:pointer;" title="コンプボーナスを確認">
                 <span>${base.emoji}</span>
                 <span style="flex:1;color:${color};">${base.name}</span>
                 <span style="font-size:10px;padding:1px 5px;border-radius:3px;background:${color}22;color:${color};border:1px solid ${color}55;">${label}</span>
@@ -6046,7 +6472,7 @@ function renderDictionary() {
         const unlocked = discoveredOnigiris.has(s.name);
         const color = RARITY_COLORS["secret"] || "#fff";
         if(unlocked){
-            return `<div style="padding:3px 0;border-bottom:1px solid #222;display:flex;align-items:center;gap:6px;">
+            return `<div onclick="showDictBonusPopup()" style="padding:3px 0;border-bottom:1px solid #222;display:flex;align-items:center;gap:6px;cursor:pointer;" title="コンプボーナスを確認">
                 <span>${s.emoji}</span>
                 <span style="flex:1;color:${color};">${s.name}</span>
                 <span style="font-size:10px;padding:1px 5px;border-radius:3px;background:${color}22;color:${color};border:1px solid ${color}55;">SECRET</span>
@@ -6089,7 +6515,8 @@ function updateFactoryStatusText() {
     eElement.textContent = ethicsText;
     eElement.style.color = ethicsColor;
     document.getElementById("maxDangerText").textContent = maxDangerAchieved;
-    document.getElementById("powerDisplay").textContent = powerGrid.level + "%";
+    const _pdEl = document.getElementById("powerDisplay");
+    if(_pdEl) _pdEl.innerHTML = `${powerGrid.level}%${formatUnitHint(powerGrid.level)}`;
 }
 
 function redeemCode(){
@@ -6154,6 +6581,7 @@ function renderAll(){
     renderDebtDisplay();
     renderTruckInfo();
     renderUpgradeArea();
+    renderExchangeArea();
     renderAutoTransport();
     renderDictionary();
     updateFactoryStatusText();
@@ -6280,22 +6708,24 @@ setInterval(()=>{
     powerGrid.level = Math.max(100, Math.round(powerGrid.level - drop));
     updateFactoryStatusText();
 
-    // 機械故障チェック: (level-100)/5000 per 0.5秒
+    // 機械故障チェック: (level-100)/5000 per 0.5秒、ラインごとに独立
     const breakChance = (powerGrid.level - 100) / 5000;
-    productionStages.forEach((stage, si)=>{
-        if(!BREAKABLE_STAGES.has(stage.name)) return;
-        if(brokenMachines.some(b=>b.stageIndex===si)) return;
-        if(Math.random() < breakChance){
-            const mid = _machineIdCtr++;
-            brokenMachines.push({id:mid, stageIndex:si, stageName:stage.name, stageIcon:stage.icon});
-            if(autoRepairOwned){
-                repairMachine(mid, true);
-            } else {
-                addLog("危険", `🔧 ${stage.icon}${stage.name}マシンが故障！修理費用: ${REPAIR_COST.toLocaleString()}円 <button onclick="repairMachine(${mid})" style="font-size:10px;padding:1px 6px;margin-left:6px;background:#ff9f1c;color:#111;border:none;border-radius:4px;cursor:pointer;">修理(10万円)</button>`);
-                renderBrokenMachines();
+    for(const line of lines){
+        productionStages.forEach((stage, si)=>{
+            if(!BREAKABLE_STAGES.has(stage.name)) return;
+            if(brokenMachines.some(b=>b.lineId===line.id && b.stageIndex===si)) return;
+            if(Math.random() < breakChance){
+                const mid = _machineIdCtr++;
+                brokenMachines.push({id:mid, lineId:line.id, stageIndex:si, stageName:stage.name, stageIcon:stage.icon});
+                if(autoRepairOwned){
+                    repairMachine(mid, true);
+                } else {
+                    addLog("危険", `🔧 ライン${line.id+1} ${stage.icon}${stage.name}マシンが故障！修理費用: ${REPAIR_COST.toLocaleString()}円 <button onclick="repairMachine(${mid})" style="font-size:10px;padding:1px 6px;margin-left:6px;background:#ff9f1c;color:#111;border:none;border-radius:4px;cursor:pointer;">修理(10万円)</button>`);
+                    renderBrokenMachines();
+                }
             }
-        }
-    });
+        });
+    }
 }, 500);
 
 // ラッソ選択をwindowに登録
@@ -6334,7 +6764,8 @@ function getSaveData(){
         blackholeResearchProgress, blackholeResearching: false,
         rpFactoryLevel, rpTruckSpeedLevel, rpHackLevel, gameSettings, quaplanasFactory, _qAutoRollOwned, _qAutoRollEnabled, _qAutoTransportOwned, _qAutoTransportRoutes, quaplanasFactoryData, quaplanasResearched, quap, _quaplanasResearchProgress,
         rocketDevelopProgress, rocketDeveloping: false, ownedRockets, ufoOwned, rocketUnlocked, rocketDevStarted,
-        rocketMission,
+        rocketMissions, _missionIdCounter,
+        _bhFocusResearch, _savedMoonResearchers, _savedMarsResearchers, _savedSolarResearchers,
         powerGrid: {...powerGrid},
         shops: shops.map(s=>({unlocked:s.unlocked, busy:false, endTime:0, saleId:null})),
         trucks: Object.fromEntries(Object.entries(trucks).map(([k,t])=>[k,{owned:t.owned,upgradeLevel:t.upgradeLevel}])),
@@ -6343,7 +6774,8 @@ function getSaveData(){
         brokenMachines, maxDangerAchieved,
         earnLog: earnLog.slice(-100),
         usedCodes,
-        savedAt: Date.now()
+        savedAt: Date.now(),
+        lastActiveTime: Date.now()
     });
 }
 
@@ -6434,22 +6866,30 @@ function loadGame(){
         rpTruckSpeedLevel = d.rpTruckSpeedLevel ?? 0;
         rpHackLevel = d.rpHackLevel ?? 0;
         if(d.gameSettings) Object.assign(gameSettings, d.gameSettings);
-        if(d.quaplanasFactoryData) quaplanasFactoryData = d.quaplanasFactoryData;
+        if(d.quaplanasFactoryData){ quaplanasFactoryData = d.quaplanasFactoryData; quaplanasFactoryData.storageMax = Infinity; }
         rocketDevelopProgress = d.rocketDevelopProgress ?? 0;
         rocketDeveloping = false;
         ownedRockets = d.ownedRockets ?? {};
         ufoOwned = d.ufoOwned ?? false;
         rocketUnlocked = d.rocketUnlocked ?? false;
         rocketDevStarted = d.rocketDevStarted ?? false;
-        rocketMission = d.rocketMission ?? null;
+        rocketMission = d.rocketMission ?? null; // 旧セーブ互換
+        rocketMissions = d.rocketMissions ?? (rocketMission && !rocketMission.rewarded ? [Object.assign({id:1}, rocketMission)] : []);
+        _missionIdCounter = d._missionIdCounter ?? rocketMissions.reduce((mx,m)=>Math.max(mx,m.id||0),0);
+        _bhFocusResearch = d._bhFocusResearch ?? false;
+        _savedMoonResearchers = d._savedMoonResearchers ?? 0;
+        _savedMarsResearchers = d._savedMarsResearchers ?? 0;
+        _savedSolarResearchers = d._savedSolarResearchers ?? 0;
+        if(quaplanasFactoryData && d.quaplanasFactoryData){
+            quaplanasFactoryData.quapResearchers = d.quaplanasFactoryData.quapResearchers ?? 0;
+            quaplanasFactoryData.quapResearcherBought = d.quaplanasFactoryData.quapResearcherBought ?? false;
+        }
         // ロケット開発が途中だったら再開
         if(rocketDevStarted && !rocketUnlocked && rocketDevelopProgress < 100){
             resumeRocketDev();
         }
         // ミッション途中だった場合は再開
-        if(rocketMission && !rocketMission.rewarded){
-            resumeMission();
-        }
+        rocketMissions.filter(m=>!m.rewarded).forEach(ms => resumeOneMission(ms));
         // 観測再開
         if(observeProgress > 0 && observeProgress < 100 && currentObserveTarget && !observing){
             startObserve(currentObserveTarget, true);
@@ -6490,10 +6930,81 @@ function loadGame(){
         discoveredOnigiris = new Set(d.discoveredOnigiris ?? []);
         truckAccidentPenalty = d.truckAccidentPenalty ?? 1.0;
         truckAccidentEnd = d.truckAccidentEnd ?? 0;
-        brokenMachines = d.brokenMachines ?? [];
+        brokenMachines = (d.brokenMachines ?? []).map(b=>({...b, lineId: b.lineId ?? 0}));
         maxDangerAchieved = d.maxDangerAchieved ?? "低";
         earnLog = d.earnLog ?? [];
         usedCodes = d.usedCodes ?? [];
+
+        // ── オフライン補填 ──────────────────────────────
+        // setInterval高速再生禁止: 経過秒数を一括計算して各値に加算
+        const _lastActive = d.lastActiveTime ?? d.savedAt ?? 0;
+        if(_lastActive > 0){
+            const offlineSec = Math.min(Math.max(0, (Date.now() - _lastActive) / 1000), 86400); // 最大24時間
+            if(offlineSec >= 1){
+                // RP生成（研究者による）
+                if(rpUnlocked || moonResearchers > 0 || marsResearchers > 0 || solarResearchers > 0 || bhResearchers > 0){
+                    const rpPerSec = (
+                        (_bhFocusResearch ? 0 : moonResearchers * 10) +
+                        (_bhFocusResearch ? 0 : marsResearchers * 20) +
+                        (_bhFocusResearch ? 0 : solarResearchers * 30) +
+                        bhResearchers * 50 +
+                        ((quaplanasFactoryData?.quapResearchers || 0) * 100)
+                    ) / 10; // 10秒ごとに1回なので ÷10
+                    const rpGain = rpPerSec * offlineSec;
+                    if(rpGain > 0){
+                        rp += rpGain;
+                        if(!rpUnlocked && rp > 0){ rpUnlocked = true; }
+                    }
+                }
+                // 研究進捗の補填（残り進捗を秒換算で加算）
+                // observeProgress: 各インターバルが_obsDelay(≈1000ms/scale)
+                if(observeProgress > 0 && observeProgress < 100 && currentObserveTarget && !observing){
+                    const steps = Math.floor(offlineSec); // 約1秒/ステップ
+                    observeProgress = Math.min(100, observeProgress + steps);
+                }
+                // radioTelescopeResearchProgress: 1800ms/ステップ
+                if(radioTelescopeResearchProgress > 0 && !radioTelescopeUnlocked){
+                    const steps = Math.floor(offlineSec / 1.8);
+                    radioTelescopeResearchProgress = Math.min(100, radioTelescopeResearchProgress + steps);
+                }
+                // radioObserveProgress: 3000ms/ステップ
+                if(radioObserveProgress > 0 && radioObserveProgress < 100 && radioObserveTarget){
+                    const steps = Math.floor(offlineSec / 3);
+                    radioObserveProgress = Math.min(100, radioObserveProgress + steps);
+                }
+                // blackholeResearchProgress: 3000ms/ステップ
+                if(blackholeResearchProgress > 0 && !warpDeveloped){
+                    const steps = Math.floor(offlineSec / 3);
+                    blackholeResearchProgress = Math.min(100, blackholeResearchProgress + steps);
+                }
+                // rocketDevelopProgress: 1000ms/ステップ
+                if(rocketDevStarted && !rocketUnlocked && rocketDevelopProgress < 100){
+                    const steps = Math.floor(offlineSec);
+                    rocketDevelopProgress = Math.min(100, rocketDevelopProgress + steps);
+                }
+                // 宇宙派遣ミッション進捗: 6000ms/ステップ
+                if(quaplanasMission && quaplanasMission.progress < 100){
+                    const steps = Math.floor(offlineSec / 6);
+                    quaplanasMission.progress = Math.min(100, quaplanasMission.progress + steps);
+                }
+                // ロケットミッション進捗（各ミッション個別）
+                for(const ms of rocketMissions){
+                    if(!ms.rewarded && ms.endTime && ms.endTime > 0){
+                        if(Date.now() >= ms.endTime){
+                            ms._offlineCompleted = true; // ロード後のresumeOneMissionで即完了処理
+                        }
+                    }
+                }
+                // クァプラナス研究進捗: 3000ms/ステップ
+                if(_quaplanasResearchProgress > 0 && !quaplanasResearched){
+                    const steps = Math.floor(offlineSec / 3);
+                    _quaplanasResearchProgress = Math.min(100, _quaplanasResearchProgress + steps);
+                }
+                addLog("通知", `⏰ オフライン補填: ${Math.floor(offlineSec)}秒分の進捗を反映しました。`);
+            }
+        }
+        // ───────────────────────────────────────────────
+
         return true;
     } catch(e){
         console.warn("Load failed:", e);
@@ -6506,8 +7017,54 @@ function loadGame(){
 function deleteGameData(){
     // beforeunloadのセーブを無効化してから削除
     window.removeEventListener("beforeunload", saveGame);
-    localStorage.removeItem(SAVE_KEY);
+
+    // すべての関連キーを完全に削除（プレイヤーIDは保持）
+    const KEEP_KEYS = new Set(["onigiriRNG_playerId"]);
+    const allKeys = [];
+    for(let i = 0; i < localStorage.length; i++){
+        const k = localStorage.key(i);
+        if(k && k.startsWith("onigiriRNG") && !KEEP_KEYS.has(k)) allKeys.push(k);
+    }
+    for(const k of allKeys) localStorage.removeItem(k);
+
     localStorage.setItem("onigiriRNG_deleted_notice", "1");
+
+    // インメモリ変数も完全リセット（クァプラナス状態含む）
+    quaplanasFactoryData = null;
+    quaplanasFactory = false;
+    quaplanasResearched = false;
+    quaplanasUnlocked = false;
+    quap = 0;
+    _quaplanasResearchProgress = 0;
+    quaplanasMission = null;
+    rocketMissions = [];
+    rocketMission = null;
+    currentWorld = "earth";
+    moonUnlocked = false;
+    marsUnlocked = false;
+    solarSystemUnlocked = false;
+    blackholeUnlocked = false;
+    warpDeveloped = false;
+    alienContactDone = false;
+    ufoTechAcquired = false;
+    ufoOwned = false;
+    spacePanelUnlocked = false;
+    astronomyUnlocked = false;
+    telescopeBought = false;
+    rp = 0;
+    rpUnlocked = false;
+    moonResearchers = 0; moonResearcherBought = false;
+    marsResearchers = 0; marsResearcherBought = false;
+    solarResearchers = 0; solarResearcherBought = false;
+    bhResearchers = 0; bhResearcherBought = false;
+    radioTelescopeUnlocked = false; radioTelescopeResearchProgress = 0;
+    blackholeResearchProgress = 0; blackholeResearching = false;
+    rocketUnlocked = false; rocketDevStarted = false; rocketDevelopProgress = 0;
+    ownedRockets = {};
+    inventory = []; money = 0; foreignMoney = 0; debt = 0;
+    hackerOwned = false; hackerEnabled = true; hackerTargetLevel = 200;
+    foreignUnlocked = false; mysteryPanelUnlocked = false;
+
     location.reload();
 }
 
@@ -6570,6 +7127,10 @@ function openSettingsPanel(){
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
                 <input type="checkbox" id="set_showLog" ${gameSettings.showMainLog?"checked":""} onchange="gameSettings.showMainLog=this.checked;applySettingsDisplay();saveGame();">
                 <span>📜 メインログを表示</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                <input type="checkbox" id="set_unitConvert" ${gameSettings.unitConvert?"checked":""} onchange="gameSettings.unitConvert=this.checked;saveGame();renderAll();">
+                <span>🔢 入力フィールドに万・億単位ヒントを表示</span>
             </label>
             <div style="border:1px solid #333;border-radius:6px;padding:8px;">
                 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:6px;">
@@ -6932,7 +7493,8 @@ function admApplyTimeScale(){
     if(radioObserving && _radioObserveTimer){ clearInterval(_radioObserveTimer); resumeRadioObserve(); }
     if(blackholeResearching && _bhResearchTimer){ clearInterval(_bhResearchTimer); resumeBHResearch(); }
     if(rocketDeveloping && _rocketDevTimer){ clearInterval(_rocketDevTimer); resumeRocketDev(); }
-    if(rocketMission && !rocketMission.rewarded && _missionTimer){ clearInterval(_missionTimer); resumeMission(); }
+    if(rocketMissions.length > 0){ Object.values(_missionTimers).forEach(t=>clearInterval(t)); _missionTimers={}; rocketMissions.filter(m=>!m.rewarded).forEach(ms=>resumeOneMission(ms)); }
+    if(quaplanasMission && quaplanasMission.progress < 100 && _lifeMissionTimer){ clearInterval(_lifeMissionTimer); resumeLifeMission(); }
     if(_quaplanasResearchTimer){ clearInterval(_quaplanasResearchTimer); resumeQuaplanasResearch(); }
     restartQAutoRoll();
     if(_qAutoTransportOwned) startQAutoTransport();
@@ -7073,7 +7635,6 @@ function triggerUfoEvent(){
     },6000);
 
     setTimeout(()=>{
-        injectQSecretProcess("🛸🍙 UFOおにぎり","🛸",9999999);
         addQLog("AI","🛸 未確認飛行物体が具材ラインを誘拐しました。");
         blackout.remove(); stars.remove(); beam.remove(); ufo.remove(); rice.remove(); finalDiv.remove();
         _ufoEventActive=false;
@@ -7148,9 +7709,10 @@ function triggerQuantumEvent(){
             <div style="font-size:42px;color:white;letter-spacing:8px;">
             ${texts[i%texts.length]}
             </div>`;
-            document.body.style.filter=`hue-rotate(${Math.random()*360}deg) contrast(${1+Math.random()})`;
+            document.body.style.filter="";
+            blackout.style.filter=`hue-rotate(${Math.random()*360}deg) contrast(${1+Math.random()})`;
             i++;
-            if(i>20){ clearInterval(timer); document.body.style.filter=""; }
+            if(i>20){ clearInterval(timer); blackout.style.filter=""; }
         },120);
     },2200);
 
@@ -7178,7 +7740,6 @@ function triggerQuantumEvent(){
     },7800);
 
     setTimeout(()=>{
-        injectQSecretProcess("⚛️🍙 量子おにぎり","⚛️",9999999);
         addQLog("AI","⚛️ おにぎりが複数状態で存在しています。観測したため収束しました。");
         clones.forEach(c=>c.remove());
         blackout.remove(); finalDiv.remove();
